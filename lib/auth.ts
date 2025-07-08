@@ -1,6 +1,5 @@
 import type { NextAuthOptions } from "next-auth"
 import DiscordProvider from "next-auth/providers/discord"
-import clientPromise from "./mongodb"
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -22,46 +21,11 @@ export const authOptions: NextAuthOptions = {
       return token
     },
     async session({ session, token }) {
-      session.accessToken = token.accessToken as string
-      if (token.sub) {
-        session.user.id = token.sub
+      if (session.user) {
+        session.user.id = token.sub!
+        session.accessToken = token.accessToken as string
       }
       return session
-    },
-    async signIn({ user, account, profile }) {
-      if (account?.provider === "discord") {
-        try {
-          const client = await clientPromise
-          const db = client.db("dash-bot")
-          const users = db.collection("users")
-
-          const discordProfile = profile as any
-
-          await users.updateOne(
-            { discordId: discordProfile.id },
-            {
-              $set: {
-                discordId: discordProfile.id,
-                username: discordProfile.username,
-                discriminator: discordProfile.discriminator,
-                avatar: discordProfile.avatar,
-                email: discordProfile.email,
-                lastLogin: new Date(),
-              },
-              $setOnInsert: {
-                createdAt: new Date(),
-              },
-            },
-            { upsert: true },
-          )
-
-          return true
-        } catch (error) {
-          console.error("Error saving user:", error)
-          return false
-        }
-      }
-      return true
     },
   },
   pages: {

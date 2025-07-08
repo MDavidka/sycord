@@ -1,257 +1,123 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Bot, Shield, MessageSquare, Users, Zap, ArrowRight, Github, Twitter, CheckCircle, Star } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Bot, Users, Shield, MessageSquare, Star, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 
-async function getServerCount() {
-  try {
-    const response = await fetch(`${process.env.NEXTAUTH_URL}/api/server-count`, {
-      cache: "no-store",
-    })
-    if (response.ok) {
-      const data = await response.json()
-      return data.count || 0
-    }
-  } catch (error) {
-    console.error("Failed to fetch server count:", error)
-  }
-  return 0
-}
+export default function HomePage() {
+  const [serverCount, setServerCount] = useState(0)
 
-export default async function LandingPage() {
-  const serverCount = await getServerCount()
-  const formattedCount = serverCount > 1000 ? `${Math.floor(serverCount / 1000)}K+` : `${serverCount}+`
+  useEffect(() => {
+    fetch("/api/server-count")
+      .then((res) => res.json())
+      .then((data) => setServerCount(data.count))
+      .catch(() => setServerCount(0))
+  }, [])
 
   return (
-    <div className="min-h-screen bg-white text-gray-900">
-      {/* Navigation */}
-      <nav className="border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Image src="/bot-icon.png" alt="Dash Bot" width={32} height={32} className="rounded-lg" />
-            <span className="text-2xl font-bold text-gray-900">Dash</span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="hidden md:flex items-center space-x-6 text-sm text-gray-600">
-              <Link href="#features" className="hover:text-gray-900 transition-colors">
-                Features
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <header className="border-b border-gray-200">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Image src="/bot-icon.png" alt="Dash Bot" width={32} height={32} className="rounded-lg" />
+              <span className="text-xl font-bold text-gray-900">Dash</span>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link href="/login">
+                <Button variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50 bg-transparent">
+                  Login
+                </Button>
               </Link>
-              <Link href="#support" className="hover:text-gray-900 transition-colors">
-                Support
+              <Link href="/login">
+                <Button className="bg-gray-900 text-white hover:bg-gray-800">Get Started</Button>
               </Link>
             </div>
-            <Link href="/login">
-              <Button variant="ghost" className="text-gray-600 hover:text-gray-900">
-                Login
-              </Button>
-            </Link>
-            <Link href="/login">
-              <Button className="bg-gray-900 text-white hover:bg-gray-800">Get Started</Button>
-            </Link>
           </div>
         </div>
-      </nav>
+      </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-16 md:py-24">
-        <div className="max-w-4xl mx-auto text-center">
-          <Badge variant="secondary" className="mb-6 bg-gray-100 text-gray-700 border-gray-200">
-            <Star className="w-4 h-4 mr-2" />
-            Trusted by {formattedCount} servers
-          </Badge>
-
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 text-gray-900 leading-tight">
-            The Discord bot that
-            <span className="block text-gray-600">actually works</span>
-          </h1>
-
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
-            Advanced moderation, smart tickets, and community management. Set up in 2 minutes, works perfectly forever.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <Link href="/login">
-              <Button size="lg" className="bg-gray-900 text-white hover:bg-gray-800 px-8 py-3">
-                Add to Discord
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-          </div>
-
-          {/* Social Proof */}
-          <div className="flex flex-wrap justify-center gap-8 text-sm text-gray-500">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span>99.9% Uptime</span>
+      <section className="py-20">
+        <div className="container mx-auto px-4 text-center">
+          <div className="max-w-3xl mx-auto">
+            <h1 className="text-5xl font-bold text-gray-900 mb-6">The Ultimate Discord Bot for Your Server</h1>
+            <p className="text-xl text-gray-600 mb-8">
+              Powerful moderation, engaging features, and seamless management. Everything you need to build an amazing
+              Discord community.
+            </p>
+            <div className="flex items-center justify-center space-x-4 mb-8">
+              <Link href="/login">
+                <Button size="lg" className="bg-gray-900 text-white hover:bg-gray-800">
+                  Add to Discord
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
             </div>
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              <span>{formattedCount} Servers</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4" />
-              <span>10M+ Messages Protected</span>
+            <div className="flex items-center justify-center space-x-8 text-sm text-gray-600">
+              <div className="flex items-center space-x-2">
+                <Users className="h-4 w-4" />
+                <span>{serverCount.toLocaleString()} servers</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Star className="h-4 w-4" />
+                <span>Free forever</span>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="bg-gray-50 py-16 md:py-24">
+      {/* Features */}
+      <section className="py-20 bg-gray-50">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">Everything you need</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Powerful features that work together to keep your community safe and engaged.
-            </p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Everything you need</h2>
+            <p className="text-lg text-gray-600">Powerful features to manage and grow your Discord community</p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            <Card className="border-gray-200 bg-white hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <MessageSquare className="h-10 w-10 text-gray-700 mb-4" />
-                <CardTitle className="text-gray-900">Smart Support</CardTitle>
-                <CardDescription className="text-gray-600">
-                  Automated ticket system with intelligent responses
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-gray-600 space-y-2">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Auto ticket creation
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Priority routing
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Custom responses
-                  </li>
-                </ul>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <Card className="border-gray-200 bg-white">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <Shield className="h-6 w-6 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Moderation</h3>
+                <p className="text-gray-600">Advanced auto-moderation with customizable filters and actions</p>
               </CardContent>
             </Card>
 
-            <Card className="border-gray-200 bg-white hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <Shield className="h-10 w-10 text-gray-700 mb-4" />
-                <CardTitle className="text-gray-900">Advanced Security</CardTitle>
-                <CardDescription className="text-gray-600">AI-powered moderation and fraud detection</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-gray-600 space-y-2">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Spam protection
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Raid detection
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Auto moderation
-                  </li>
-                </ul>
+            <Card className="border-gray-200 bg-white">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <Users className="h-6 w-6 text-green-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Welcome System</h3>
+                <p className="text-gray-600">Greet new members with custom messages and auto-roles</p>
               </CardContent>
             </Card>
 
-            <Card className="border-gray-200 bg-white hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <Users className="h-10 w-10 text-gray-700 mb-4" />
-                <CardTitle className="text-gray-900">Member Management</CardTitle>
-                <CardDescription className="text-gray-600">Welcome system and role automation</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-gray-600 space-y-2">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Custom welcomes
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Auto roles
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Member tracking
-                  </li>
-                </ul>
+            <Card className="border-gray-200 bg-white">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <MessageSquare className="h-6 w-6 text-purple-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Support Tickets</h3>
+                <p className="text-gray-600">Professional ticket system for member support</p>
               </CardContent>
             </Card>
 
-            <Card className="border-gray-200 bg-white hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <Zap className="h-10 w-10 text-gray-700 mb-4" />
-                <CardTitle className="text-gray-900">Analytics</CardTitle>
-                <CardDescription className="text-gray-600">Real-time insights and reporting</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-gray-600 space-y-2">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Live dashboard
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Member insights
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Activity reports
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card className="border-gray-200 bg-white hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <Bot className="h-10 w-10 text-gray-700 mb-4" />
-                <CardTitle className="text-gray-900">Easy Setup</CardTitle>
-                <CardDescription className="text-gray-600">Get started in minutes, not hours</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-gray-600 space-y-2">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    One-click install
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Guided setup
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    24/7 support
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card className="border-gray-200 bg-white hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <MessageSquare className="h-10 w-10 text-gray-700 mb-4" />
-                <CardTitle className="text-gray-900">Integrations</CardTitle>
-                <CardDescription className="text-gray-600">Connect with your favorite tools</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-gray-600 space-y-2">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Webhooks
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    API access
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                    Custom plugins
-                  </li>
-                </ul>
+            <Card className="border-gray-200 bg-white">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <Bot className="h-6 w-6 text-orange-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Custom Commands</h3>
+                <p className="text-gray-600">Create custom commands and automated responses</p>
               </CardContent>
             </Card>
           </div>
@@ -259,89 +125,32 @@ export default async function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 md:py-24">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">Ready to upgrade your Discord server?</h2>
-            <p className="text-xl text-gray-600 mb-8">
-              Join thousands of communities using Dash to create better Discord experiences.
+      <section className="py-20">
+        <div className="container mx-auto px-4 text-center">
+          <div className="max-w-2xl mx-auto">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to get started?</h2>
+            <p className="text-lg text-gray-600 mb-8">
+              Join thousands of Discord servers using Dash to create amazing communities.
             </p>
             <Link href="/login">
-              <Button size="lg" className="bg-gray-900 text-white hover:bg-gray-800 px-8 py-3">
-                Get Started Free
-                <ArrowRight className="ml-2 h-5 w-5" />
+              <Button size="lg" className="bg-gray-900 text-white hover:bg-gray-800">
+                Add to Discord
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
-            <p className="text-sm text-gray-500 mt-4">Free forever • No credit card required • Setup in 2 minutes</p>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-200 bg-gray-50">
-        <div className="container mx-auto px-4 py-12">
-          <div className="grid md:grid-cols-3 gap-8 mb-8">
-            <div>
-              <div className="flex items-center space-x-3 mb-4">
-                <Image src="/bot-icon.png" alt="Dash Bot" width={24} height={24} className="rounded" />
-                <span className="text-lg font-semibold text-gray-900">Dash</span>
-              </div>
-              <p className="text-gray-600 text-sm mb-4">The most reliable Discord bot for community management.</p>
+      <footer className="border-t border-gray-200 py-8">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Image src="/bot-icon.png" alt="Dash Bot" width={24} height={24} className="rounded" />
+              <span className="font-semibold text-gray-900">Dash</span>
             </div>
-
-            <div>
-              <h3 className="text-gray-900 font-semibold mb-4">Product</h3>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li>
-                  <Link href="#features" className="hover:text-gray-900">
-                    Features
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-gray-900">
-                    Documentation
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/login" className="hover:text-gray-900">
-                    Get Started
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-gray-900 font-semibold mb-4">Support</h3>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li>
-                  <Link href="#" className="hover:text-gray-900">
-                    Help Center
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-gray-900">
-                    Discord Server
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-gray-900">
-                    Contact
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-200 pt-8 flex flex-col md:flex-row items-center justify-between">
-            <div className="flex items-center space-x-4 mb-4 md:mb-0">
-              <Link href="#" className="text-gray-400 hover:text-gray-600">
-                <Github className="h-5 w-5" />
-              </Link>
-              <Link href="#" className="text-gray-400 hover:text-gray-600">
-                <Twitter className="h-5 w-5" />
-              </Link>
-            </div>
-            <span className="text-gray-500 text-sm">© 2024 Dash Bot. All rights reserved.</span>
+            <div className="text-sm text-gray-600">© 2024 Dash Bot. Free forever.</div>
           </div>
         </div>
       </footer>

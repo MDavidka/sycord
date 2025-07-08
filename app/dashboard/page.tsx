@@ -6,26 +6,35 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ServerCard } from "@/components/server-card"
-import { Plus, Bot, Users, Shield, MessageSquare, Info, Bell } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Plus, Search, Users, Crown, Settings } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 
-interface Announcement {
-  _id: string
-  title: string
-  message: string
-  type: "info" | "warning" | "success"
-  createdAt: string
+interface DiscordGuild {
+  id: string
+  name: string
+  icon?: string
+  owner: boolean
+  permissions: string
+  approximate_member_count?: number
 }
 
-export default function DashboardPage() {
+interface UserServer {
+  serverId: string
+  serverName: string
+  serverIcon?: string
+  isBotAdded: boolean
+}
+
+export default function Dashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [servers, setServers] = useState<any[]>([])
-  const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [userServers, setUserServers] = useState<UserServer[]>([])
+  const [availableGuilds, setAvailableGuilds] = useState<DiscordGuild[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [showAddModal, setShowAddModal] = useState(false)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -35,37 +44,67 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (session) {
-      loadData()
+      fetchData()
     }
   }, [session])
 
-  const loadData = async () => {
+  const fetchData = async () => {
     try {
-      // Load user servers
-      const serversResponse = await fetch("/api/user-servers")
-      if (serversResponse.ok) {
-        const serversData = await serversResponse.json()
-        setServers(serversData.servers)
+      // Fetch user's configured servers
+      const userServersResponse = await fetch("/api/user-servers")
+      if (userServersResponse.ok) {
+        const userServersData = await userServersResponse.json()
+        setUserServers(userServersData.servers || [])
       }
 
-      // Load announcements
-      const announcementsResponse = await fetch("/api/announcements")
-      if (announcementsResponse.ok) {
-        const announcementsData = await announcementsResponse.json()
-        setAnnouncements(announcementsData.announcements || [])
+      // Fetch available Discord guilds
+      const guildsResponse = await fetch("/api/discord/guilds")
+      if (guildsResponse.ok) {
+        const guildsData = await guildsResponse.json()
+        setAvailableGuilds(guildsData.guilds || [])
       }
     } catch (error) {
-      console.error("Error loading data:", error)
+      console.error("Error fetching data:", error)
     } finally {
       setLoading(false)
     }
   }
 
+  const handleSelectServer = async (guild: DiscordGuild) => {
+    try {
+      const response = await fetch("/api/select-server", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          serverId: guild.id,
+          serverName: guild.name,
+          serverIcon: guild.icon,
+        }),
+      })
+
+      if (response.ok) {
+        await fetchData()
+        setShowAddModal(false)
+        router.push(`/dashboard/server/${guild.id}`)
+      }
+    } catch (error) {
+      console.error("Error selecting server:", error)
+    }
+  }
+
+  const filteredGuilds = availableGuilds.filter((guild) => {
+    const isAlreadyAdded = userServers.some((server) => server.serverId === guild.id)
+    const matchesSearch = guild.name.toLowerCase().includes(searchTerm.toLowerCase())
+    return !isAlreadyAdded && matchesSearch
+  })
+
   if (status === "loading" || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading dashboard...</p>
         </div>
       </div>
@@ -84,16 +123,13 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Image src="/bot-icon.png" alt="Dash Bot" width={32} height={32} className="rounded-lg" />
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">Dash</h1>
-                <p className="text-sm text-gray-600">Discord Bot Dashboard</p>
-              </div>
+              <span className="text-xl font-bold text-gray-900">Dash</span>
             </div>
             <div className="flex items-center space-x-4">
-              <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">
-                <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                Online
-              </Badge>
+              <Button onClick={() => setShowAddModal(true)} className="bg-gray-900 text-white hover:bg-gray-800">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Server
+              </Button>
               <div className="flex items-center space-x-2">
                 <Image
                   src={session.user?.image || "/placeholder-user.jpg"}
@@ -110,132 +146,162 @@ export default function DashboardPage() {
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Announcements */}
-        {announcements.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Bell className="h-5 w-5" />
-              Announcements
-            </h2>
-            <div className="space-y-4">
-              {announcements.map((announcement) => (
-                <Alert
-                  key={announcement._id}
-                  className={`border-l-4 ${
-                    announcement.type === "info"
-                      ? "border-blue-500 bg-blue-50"
-                      : announcement.type === "warning"
-                        ? "border-yellow-500 bg-yellow-50"
-                        : "border-green-500 bg-green-50"
-                  }`}
-                >
-                  <Info className="h-4 w-4" />
-                  <div>
-                    <h3 className="font-medium text-gray-900">{announcement.title}</h3>
-                    <AlertDescription className="text-gray-700">{announcement.message}</AlertDescription>
-                    <p className="text-xs text-gray-500 mt-2">
-                      {new Date(announcement.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </Alert>
-              ))}
+        {/* Servers Grid */}
+        {userServers.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Plus className="h-8 w-8 text-gray-400" />
             </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No servers yet</h3>
+            <p className="text-gray-600 mb-6">Add Dash to your Discord server to get started</p>
+            <Button onClick={() => setShowAddModal(true)} className="bg-gray-900 text-white hover:bg-gray-800">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Your First Server
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {userServers.map((server) => (
+              <Card key={server.serverId} className="border-gray-200 bg-white hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-start space-x-4">
+                    <Image
+                      src={
+                        server.serverIcon
+                          ? `https://cdn.discordapp.com/icons/${server.serverId}/${server.serverIcon}.png?size=128`
+                          : "/placeholder.svg?height=48&width=48"
+                      }
+                      alt={server.serverName}
+                      width={48}
+                      height={48}
+                      className="rounded-lg"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-semibold text-gray-900 truncate">{server.serverName}</h3>
+                      <div className="flex items-center space-x-2 mt-2">
+                        <Badge
+                          variant={server.isBotAdded ? "default" : "secondary"}
+                          className={
+                            server.isBotAdded
+                              ? "bg-green-100 text-green-800 border-green-200"
+                              : "bg-yellow-100 text-yellow-800 border-yellow-200"
+                          }
+                        >
+                          {server.isBotAdded ? "Active" : "Pending"}
+                        </Badge>
+                      </div>
+                      <div className="mt-4">
+                        {server.isBotAdded ? (
+                          <Link href={`/dashboard/server/${server.serverId}`}>
+                            <Button size="sm" className="bg-gray-900 text-white hover:bg-gray-800">
+                              <Settings className="h-4 w-4 mr-2" />
+                              Configure
+                            </Button>
+                          </Link>
+                        ) : (
+                          <p className="text-sm text-gray-500">Add the bot to this server to start configuring</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="border-gray-200 bg-white">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Servers</p>
-                  <p className="text-2xl font-bold text-gray-900">{servers.length}</p>
+        {/* Add Server Modal */}
+        {showAddModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <Card className="max-w-2xl w-full max-h-[80vh] overflow-y-auto bg-white">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Add Server</h2>
+                    <p className="text-gray-600">Select a server to add Dash bot</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowAddModal(false)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    ×
+                  </Button>
                 </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Users className="h-6 w-6 text-blue-600" />
+
+                <div className="relative mb-4">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search servers..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 border-gray-300"
+                  />
                 </div>
+
+                {filteredGuilds.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      {searchTerm ? "No servers found" : "All servers configured"}
+                    </h3>
+                    <p className="text-gray-600">
+                      {searchTerm
+                        ? "No servers match your search."
+                        : "You've already configured all your available servers."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {filteredGuilds.map((guild) => (
+                      <Card
+                        key={guild.id}
+                        className="border-gray-200 hover:shadow-md cursor-pointer transition-shadow"
+                        onClick={() => handleSelectServer(guild)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-3">
+                            <Image
+                              src={
+                                guild.icon
+                                  ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`
+                                  : "/placeholder.svg?height=40&width=40"
+                              }
+                              alt={guild.name}
+                              width={40}
+                              height={40}
+                              className="rounded-lg"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium text-gray-900 truncate">{guild.name}</h3>
+                              <div className="flex items-center space-x-2 mt-1">
+                                {guild.approximate_member_count && (
+                                  <div className="flex items-center text-xs text-gray-500">
+                                    <Users className="h-3 w-3 mr-1" />
+                                    {guild.approximate_member_count.toLocaleString()}
+                                  </div>
+                                )}
+                                {guild.owner && (
+                                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 text-xs">
+                                    <Crown className="h-3 w-3 mr-1" />
+                                    Owner
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            <Button size="sm" className="bg-gray-900 text-white hover:bg-gray-800">
+                              <Plus className="h-4 w-4 mr-1" />
+                              Add
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-gray-200 bg-white">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Active Bots</p>
-                  <p className="text-2xl font-bold text-gray-900">{servers.filter((s) => s.is_bot_added).length}</p>
-                </div>
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <Bot className="h-6 w-6 text-green-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-gray-200 bg-white">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Protected</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {servers.filter((s) => s.moderation_level !== "off").length}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <Shield className="h-6 w-6 text-purple-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-gray-200 bg-white">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Support Active</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {servers.filter((s) => s.support?.ticket_system?.enabled).length}
-                  </p>
-                </div>
-                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                  <MessageSquare className="h-6 w-6 text-orange-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Servers Section */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Your Servers</h2>
-          <Link href="/invite-server">
-            <Button className="bg-gray-900 text-white hover:bg-gray-800">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Server
-            </Button>
-          </Link>
-        </div>
-
-        {servers.length === 0 ? (
-          <Card className="border-gray-200 bg-white">
-            <CardContent className="p-12 text-center">
-              <Bot className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No servers yet</h3>
-              <p className="text-gray-600 mb-6">Add Dash to your Discord server to get started</p>
-              <Link href="/invite-server">
-                <Button className="bg-gray-900 text-white hover:bg-gray-800">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Your First Server
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {servers.map((server) => (
-              <ServerCard key={server.serverId} server={server} />
-            ))}
+            </Card>
           </div>
         )}
       </div>

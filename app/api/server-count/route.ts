@@ -5,12 +5,9 @@ export async function GET() {
   try {
     const client = await clientPromise
     const db = client.db("dash-bot")
-    const users = db.collection("users")
+    const servers = db.collection("bot_servers")
 
-    // Count total servers across all users
-    const result = await users.aggregate([{ $unwind: "$servers" }, { $count: "totalServers" }]).toArray()
-
-    const count = result.length > 0 ? result[0].totalServers : 0
+    const count = await servers.countDocuments()
 
     return NextResponse.json({ count })
   } catch (error) {
