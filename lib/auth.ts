@@ -41,43 +41,4 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/login",
   },
-  events: {
-    async signIn({ user, account, profile }) {
-      try {
-        // Create or update user document with Discord information
-        const { db } = await import("./mongodb").then((mod) => mod.connectToDatabase())
-
-        // Check if user exists
-        const existingUser = await db.collection("users").findOne({ discordId: user.id })
-
-        if (!existingUser) {
-          // Create new user with empty servers array
-          await db.collection("users").insertOne({
-            discordId: user.id,
-            username: user.name,
-            email: user.email,
-            avatar: user.image,
-            servers: [],
-            createdAt: new Date(),
-            lastLogin: new Date(),
-          })
-        } else {
-          // Update last login time
-          await db.collection("users").updateOne(
-            { discordId: user.id },
-            {
-              $set: {
-                lastLogin: new Date(),
-                username: user.name,
-                email: user.email,
-                avatar: user.image,
-              },
-            },
-          )
-        }
-      } catch (error) {
-        console.error("Error in signIn event:", error)
-      }
-    },
-  },
 }

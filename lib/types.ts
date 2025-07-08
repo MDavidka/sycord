@@ -17,26 +17,30 @@ declare module "next-auth" {
 }
 
 export interface User {
-  _id?: string
-  discordId: string
-  username: string
+  id: string
+  name: string
   email: string
-  avatar?: string
-  servers: UserServer[]
-  createdAt: Date
-  lastLogin: Date
+  image?: string
+  discordId: string
+  accessToken?: string
+  refreshToken?: string
 }
 
-export interface UserServer {
+export interface Server {
+  serverId: string
+  serverName: string
+  serverIcon?: string
+  ownerId: string
+  isBotAdded: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface ServerConfig {
   serverId: string
   serverName: string
   serverIcon?: string
   isBotAdded: boolean
-  addedAt: Date
-  settings: ServerSettings
-}
-
-export interface ServerSettings {
   moderationLevel: "off" | "on" | "lockdown"
   rolesAndNames: { [key: string]: string }
   channels?: { [key: string]: string }
@@ -174,6 +178,14 @@ export interface BotServer {
   memberCount: number
   addedAt: Date
   isActive: boolean
+}
+
+export interface UserServer {
+  serverId: string
+  serverName: string
+  serverIcon?: string
+  isBotAdded: boolean
+  addedAt?: Date
 }
 
 export interface DiscordGuild {
