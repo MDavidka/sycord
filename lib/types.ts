@@ -1,3 +1,21 @@
+import type { DefaultSession } from "next-auth"
+
+// Extend the NextAuth session to include custom properties
+declare module "next-auth" {
+  interface Session {
+    accessToken?: string
+    user: {
+      id: string
+    } & DefaultSession["user"]
+  }
+
+  interface JWT {
+    accessToken?: string
+    refreshToken?: string
+    userId?: string
+  }
+}
+
 export interface User {
   id: string
   name: string

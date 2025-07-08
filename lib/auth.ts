@@ -18,20 +18,25 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, account, user }) {
-      if (account && user) {
+      // Persist the OAuth access_token and user ID to the token right after sign-in
+      if (account) {
         token.accessToken = account.access_token
         token.refreshToken = account.refresh_token
-        token.userId = user.id
+        token.userId = user?.id // Store the user ID from the database
       }
       return token
     },
     async session({ session, token }) {
-      if (session.user && token) {
+      // Send properties to the client, such as an access_token and user id from a provider.
+      if (session.user) {
         session.user.id = token.userId as string
         session.accessToken = token.accessToken as string
       }
       return session
     },
+  },
+  session: {
+    strategy: "jwt", // Use JWT for session management
   },
   pages: {
     signIn: "/login",
