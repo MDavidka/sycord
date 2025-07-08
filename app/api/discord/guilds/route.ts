@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
+import { connectToDatabase } from "@/lib/mongodb"
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,7 +12,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Get the user's access token from the database
-    const { connectToDatabase } = await import("@/lib/mongodb")
     const { db } = await connectToDatabase()
 
     const account = await db.collection("accounts").findOne({
@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
     })
 
     if (!response.ok) {
+      console.error("Discord API error:", response.status, response.statusText)
       return NextResponse.json({ error: "Failed to fetch Discord guilds" }, { status: 500 })
     }
 

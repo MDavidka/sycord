@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Plus, Search, Users, Crown, Settings } from "lucide-react"
+import { Plus, Search, Users, Crown, Settings, Bot } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 
@@ -35,6 +35,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [showAddModal, setShowAddModal] = useState(false)
+  const [addingServer, setAddingServer] = useState(false)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -50,6 +51,8 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
+      setLoading(true)
+
       // Fetch user's configured servers
       const userServersResponse = await fetch("/api/user-servers")
       if (userServersResponse.ok) {
@@ -62,6 +65,8 @@ export default function Dashboard() {
       if (guildsResponse.ok) {
         const guildsData = await guildsResponse.json()
         setAvailableGuilds(guildsData.guilds || [])
+      } else {
+        console.error("Failed to fetch guilds:", guildsResponse.status)
       }
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -72,6 +77,7 @@ export default function Dashboard() {
 
   const handleSelectServer = async (guild: DiscordGuild) => {
     try {
+      setAddingServer(true)
       const response = await fetch("/api/select-server", {
         method: "POST",
         headers: {
@@ -88,9 +94,13 @@ export default function Dashboard() {
         await fetchData()
         setShowAddModal(false)
         router.push(`/dashboard/server/${guild.id}`)
+      } else {
+        console.error("Failed to select server:", response.status)
       }
     } catch (error) {
       console.error("Error selecting server:", error)
+    } finally {
+      setAddingServer(false)
     }
   }
 
@@ -144,13 +154,13 @@ export default function Dashboard() {
         {userServers.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Plus className="h-8 w-8 text-gray-400" />
+              <Bot className="h-8 w-8 text-gray-400" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No servers yet</h3>
-            <p className="text-gray-600 mb-6">Add Dash to your Discord server to get started</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No servers configured</h3>
+            <p className="text-gray-600 mb-6">Add your first Discord server to get started</p>
             <Button onClick={() => setShowAddModal(true)} className="bg-gray-900 text-white hover:bg-gray-800">
               <Plus className="h-4 w-4 mr-2" />
-              Add Your First Server
+              Add Server
             </Button>
           </div>
         ) : (
@@ -189,7 +199,7 @@ export default function Dashboard() {
                                 : "bg-yellow-100 text-yellow-800 border-yellow-200"
                             }
                           >
-                            {server.isBotAdded ? "Active" : "Pending"}
+                            {server.isBotAdded ? "Active" : "Waiting for bot"}
                           </Badge>
                         </div>
                         <div className="mt-4">
@@ -201,7 +211,10 @@ export default function Dashboard() {
                               </Button>
                             </Link>
                           ) : (
-                            <p className="text-sm text-gray-500">Add the bot to this server to start configuring</p>
+                            <div className="text-center py-4">
+                              <Bot className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                              <p className="text-sm text-gray-500">Invite the bot to start configuring</p>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -221,7 +234,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-xl font-bold text-gray-900">Add Server</h2>
-                    <p className="text-gray-600">Select a server to add Dash bot</p>
+                    <p className="text-gray-600">Select a server to configure</p>
                   </div>
                   <Button
                     variant="ghost"
@@ -261,7 +274,7 @@ export default function Dashboard() {
                       <Card
                         key={guild.id}
                         className="border-gray-200 hover:shadow-md cursor-pointer transition-shadow"
-                        onClick={() => handleSelectServer(guild)}
+                        onClick={() => !addingServer && handleSelectServer(guild)}
                       >
                         <CardContent className="p-4">
                           <div className="flex items-center space-x-3">
@@ -293,9 +306,19 @@ export default function Dashboard() {
                                 )}
                               </div>
                             </div>
-                            <Button size="sm" className="bg-gray-900 text-white hover:bg-gray-800">
-                              <Plus className="h-4 w-4 mr-1" />
-                              Add
+                            <Button
+                              size="sm"
+                              className="bg-gray-900 text-white hover:bg-gray-800"
+                              disabled={addingServer}
+                            >
+                              {addingServer ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                              ) : (
+                                <>
+                                  <Plus className="h-4 w-4 mr-1" />
+                                  Add
+                                </>
+                              )}
                             </Button>
                           </div>
                         </CardContent>

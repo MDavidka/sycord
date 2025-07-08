@@ -142,16 +142,39 @@ export interface Announcement {
 }
 
 export interface Plugin {
-  _id: string
+  id: string
   name: string
   description: string
   version: string
   author: string
-  category: string
   enabled: boolean
-  featured: boolean
-  downloadCount: number
-  rating: number
-  createdAt: Date
-  updatedAt: Date
+  category: string
+  permissions: string[]
+  commands: string[]
+}
+
+export interface BotServer {
+  serverId: string
+  serverName: string
+  serverIcon?: string
+  memberCount: number
+  addedAt: Date
+  isActive: boolean
+}
+
+export interface UserServer {
+  serverId: string
+  serverName: string
+  serverIcon?: string
+  isBotAdded: boolean
+  addedAt?: Date
+}
+
+export interface DiscordGuild {
+  id: string
+  name: string
+  icon?: string
+  owner: boolean
+  permissions: string
+  approximate_member_count?: number
 }

@@ -13,17 +13,24 @@ export async function GET(request: NextRequest) {
 
     const { db } = await connectToDatabase()
 
-    // Fetch user's servers
-    const servers = await db.collection("servers").find({ ownerId: session.user.id }).sort({ createdAt: -1 }).toArray()
+    // Get user's servers
+    const userServers = await db.collection("user_servers").find({ userId: session.user.id }).toArray()
 
-    const formattedServers = servers.map((server) => ({
+    // Get bot servers to check which ones have the bot added
+    const botServers = await db.collection("bot_servers").find({}).toArray()
+
+    const botServerIds = new Set(botServers.map((server) => server.serverId))
+
+    // Map user servers with bot status
+    const servers = userServers.map((server) => ({
       serverId: server.serverId,
       serverName: server.serverName,
       serverIcon: server.serverIcon,
-      isBotAdded: server.isBotAdded,
+      isBotAdded: botServerIds.has(server.serverId),
+      addedAt: server.addedAt,
     }))
 
-    return NextResponse.json({ servers: formattedServers })
+    return NextResponse.json({ servers })
   } catch (error) {
     console.error("Error fetching user servers:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
