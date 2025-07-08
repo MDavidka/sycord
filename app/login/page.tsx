@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Image from "next/image"
+import { Loader2 } from "lucide-react" // Import Loader2 icon
 
 export default function LoginPage() {
   const router = useRouter()
@@ -14,6 +15,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     const checkSession = async () => {
+      setLoading(true) // Set loading true while checking session
       try {
         const session = await getSession()
         if (session) {
@@ -25,6 +27,8 @@ export default function LoginPage() {
       } catch (e) {
         console.error("Error checking session:", e)
         setError("Failed to check session. Please try again.")
+      } finally {
+        setLoading(false) // Set loading false after checking session
       }
     }
     checkSession()
@@ -46,6 +50,8 @@ export default function LoginPage() {
         router.push(result.url)
       } else {
         console.log("Sign-in initiated, waiting for callback.")
+        // This case might happen if signIn doesn't immediately return a URL or error
+        // The useEffect will handle the eventual session check and redirect
       }
     } catch (e) {
       console.error("Unexpected login error:", e)
@@ -74,7 +80,7 @@ export default function LoginPage() {
           >
             {loading ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" /> {/* Using Lucide icon */}
                 <span>Signing in...</span>
               </>
             ) : (
