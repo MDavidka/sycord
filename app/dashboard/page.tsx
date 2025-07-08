@@ -112,18 +112,19 @@ export default function DashboardPage() {
       })
       const data = await response.json()
       if (response.ok) {
-        // Update userServers state to reflect the newly added server
-        setUserServers((prev) => [
-          ...prev,
-          {
-            serverId: guild.id,
-            serverName: guild.name,
-            serverIcon: guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png` : null,
-            isBotAdded: false, // Initially false, bot will update this
-            addedAt: new Date(),
-          },
-        ])
-        setIsAddServerDialogOpen(false) // Close dialog on success
+        // Now verify if the bot is actually added to this server
+        const verifyBotResponse = await fetch(`/api/verify-bot/${guild.id}`)
+        const verifyBotData = await verifyBotResponse.json()
+
+        if (verifyBotResponse.ok && verifyBotData.botAdded) {
+          // If bot is added, redirect to config page
+          router.push(`/dashboard/server/${guild.id}`)
+        } else {
+          // If bot is not added, just close the dialog and let the user invite it
+          setIsAddServerDialogOpen(false)
+        }
+        // Always refresh the user servers list to reflect the new addition and its bot status
+        fetchUserServers()
       } else {
         setAddServerError(data.error || "Failed to add server.")
         console.error("Error adding server:", data.error)
@@ -245,7 +246,10 @@ export default function DashboardPage() {
                 <ScrollArea className="h-[300px] pr-4">
                   <div className="grid gap-4">
                     {availableGuilds.map((guild) => (
-                      <Card key={guild.id} className="flex items-center p-3 shadow-sm">
+                      <Card
+                        key={guild.id}
+                        className="flex items-center p-3 bg-white border border-gray-200 rounded-lg shadow-md"
+                      >
                         <Image
                           src={getGuildIcon(guild) || "/placeholder.svg"}
                           alt={guild.name}
@@ -347,7 +351,10 @@ export default function DashboardPage() {
                   <ScrollArea className="h-[300px] pr-4">
                     <div className="grid gap-4">
                       {availableGuilds.map((guild) => (
-                        <Card key={guild.id} className="flex items-center p-3 shadow-sm">
+                        <Card
+                          key={guild.id}
+                          className="flex items-center p-3 bg-white border border-gray-200 rounded-lg shadow-md"
+                        >
                           <Image
                             src={getGuildIcon(guild) || "/placeholder.svg"}
                             alt={guild.name}
