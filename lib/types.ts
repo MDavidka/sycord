@@ -1,63 +1,157 @@
 export interface User {
-  _id?: string
+  id: string
+  name: string
+  email: string
+  image?: string
   discordId: string
-  username: string
-  avatar?: string
-  servers: UserServer[]
-  createdAt: Date
-  lastLogin: Date
+  accessToken?: string
+  refreshToken?: string
 }
 
-export interface UserServer {
-  server_id: string
-  server_name: string
-  server_icon?: string
-  is_bot_added: boolean
-  last_updated: Date
-}
-
-export interface BotServer {
-  _id?: string
+export interface Server {
   serverId: string
   serverName: string
   serverIcon?: string
   ownerId: string
-  botAdded: boolean
-  joinedAt: Date
-  lastActivity: Date
-  memberCount?: number
+  isBotAdded: boolean
+  createdAt: Date
+  updatedAt: Date
 }
 
-export interface ServerSettings {
-  _id?: string
+export interface ServerConfig {
   serverId: string
-  ownerId: string
-  moderation: {
-    enabled: boolean
-    automod: boolean
-    spam_protection: boolean
-    bad_words_filter: boolean
-    max_mentions: number
-    max_emojis: number
-  }
+  serverName: string
+  serverIcon?: string
+  isBotAdded: boolean
+  moderationLevel: "off" | "on" | "lockdown"
+  rolesAndNames: { [key: string]: string }
+  channels?: { [key: string]: string }
   welcome: {
     enabled: boolean
-    channel?: string
+    channelId?: string
     message?: string
-    auto_role?: string
+    dmEnabled?: boolean
   }
-  support: {
-    ticket_system: {
+  moderation: {
+    linkFilter: {
       enabled: boolean
-      category?: string
-      support_role?: string
+      config: "all_links" | "whitelist_only" | "phishing_only"
+      whitelist?: string[]
+    }
+    badWordFilter: {
+      enabled: boolean
+      customWords?: string[]
+    }
+    raidProtection: {
+      enabled: boolean
+      threshold?: number
+    }
+    suspiciousAccounts: {
+      enabled: boolean
+      minAgeDays?: number
+    }
+    autoRole: {
+      enabled: boolean
+      roleId?: string
+    }
+    permissionAbuse: {
+      enabled: boolean
+      notifyOwnerOnRoleChange: boolean
+      monitorAdminActions: boolean
+    }
+    maliciousBotDetection: {
+      enabled: boolean
+      newBotNotifications: boolean
+      botActivityMonitoring: boolean
+      botTimeoutThreshold: number
+    }
+    tokenWebhookAbuse: {
+      enabled: boolean
+      webhookCreationMonitor: boolean
+      webhookAutoRevoke: boolean
+      webhookVerificationTimeout: number
+      leakedWebhookScanner: boolean
+    }
+    inviteHijacking: {
+      enabled: boolean
+      inviteLinkMonitor: boolean
+      vanityUrlWatcher: boolean
+    }
+    massPingProtection: {
+      enabled: boolean
+      antiMentionFlood: boolean
+      mentionRateLimit: number
+      messageCooldownOnRaid: boolean
+      cooldownDuration: number
+    }
+    maliciousFileScanner: {
+      enabled: boolean
+      suspiciousAttachmentBlocker: boolean
+      autoFileFilter: boolean
+      allowedFileTypes?: string[]
     }
   }
-  custom_commands: Array<{
-    trigger: string
-    response: string
+  support: {
+    ticketSystem: {
+      enabled: boolean
+      channelId?: string
+      priorityRoleId?: string
+    }
+    autoAnswer: {
+      enabled: boolean
+      qaPairs?: string
+    }
+  }
+  giveaway: {
     enabled: boolean
-  }>
+    defaultChannelId?: string
+  }
+  logs: {
+    enabled: boolean
+    channelId?: string
+    messageEdits: boolean
+    modActions: boolean
+    memberJoins: boolean
+    memberLeaves: boolean
+  }
+  serverStats?: {
+    totalMembers?: number
+    totalBots?: number
+    totalAdmins?: number
+  }
+  lastUpdated?: Date
+}
+
+export interface BotSettings {
+  serverId: string
+  name: string
+  avatar: string
+  status: "online" | "idle" | "dnd" | "offline"
+  version: string
+  updatedAt: Date
+}
+
+export interface Announcement {
+  _id: string
+  title: string
+  message: string
+  type: "info" | "warning" | "success"
+  active: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface Plugin {
+  _id: string
+  name: string
+  description: string
+  version: string
+  author: string
+  category: string
+  enabled: boolean
+  featured: boolean
+  downloadCount: number
+  rating: number
   createdAt: Date
   updatedAt: Date
 }

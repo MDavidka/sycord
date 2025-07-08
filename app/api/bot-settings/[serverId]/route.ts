@@ -1,29 +1,41 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
+import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
-import clientPromise from "@/lib/mongodb"
+import { connectToDatabase } from "@/lib/mongodb"
 
 export async function GET(request: NextRequest, { params }: { params: { serverId: string } }) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
+
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const { serverId } = params
-    const client = await clientPromise
-    const db = client.db("dash-bot")
-    const botSettings = db.collection("bot_settings")
+    const { db } = await connectToDatabase()
 
-    const settings = await botSettings.findOne({ serverId })
+    // Check if user owns this server
+    const server = await db.collection("servers").findOne({
+      serverId,
+      ownerId: session.user.id,
+    })
+
+    if (!server) {
+      return NextResponse.json({ error: "Server not found or access denied" }, { status: 404 })
+    }
+
+    // Get bot settings
+    const botSettings = await db.collection("bot_settings").findOne({ serverId })
+
+    const defaultSettings = {
+      name: "Dash",
+      avatar: "/bot-icon.png",
+      status: "online",
+      version: "2.1.0",
+    }
 
     return NextResponse.json({
-      settings: settings || {
-        name: "Dash",
-        avatar: "/bot-icon.png",
-        status: "online",
-        version: "2.1.0",
-      },
+      settings: botSettings || defaultSettings,
     })
   } catch (error) {
     console.error("Error fetching bot settings:", error)
@@ -34,20 +46,35 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
 export async function PUT(request: NextRequest, { params }: { params: { serverId: string } }) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
+
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const { serverId } = params
     const { settings } = await request.json()
+    const { db } = await connectToDatabase()
 
-    const client = await clientPromise
-    const db = client.db("dash-bot")
-    const botSettings = db.collection("bot_settings")
+    // Check if user owns this server
+    const server = await db.collection("servers").findOne({
+      serverId,
+      ownerId: session.user.id,
+    })
 
-    await botSettings.updateOne(
+    if (!server) {
+      return NextResponse.json({ error: "Server not found or access denied" }, { status: 404 })
+    }
+
+    // Update bot settings
+    await db.collection("bot_settings").updateOne(
       { serverId },
-      { $set: { ...settings, serverId, updatedAt: new Date() } },
+      {
+        $set: {
+          ...settings,
+          serverId,
+          updatedAt: new Date(),
+        },
+      },
       { upsert: true },
     )
 

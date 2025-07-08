@@ -1,13 +1,13 @@
-import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
+import { type NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
-import clientPromise from "@/lib/mongodb"
+import { connectToDatabase } from "@/lib/mongodb"
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user?.id) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -17,35 +17,134 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    const client = await clientPromise
-    const db = client.db("dash-bot")
-    const users = db.collection("users")
+    const { db } = await connectToDatabase()
 
-    // Update or create user with new server
-    await users.updateOne(
-      { discordId: session.user.id },
-      {
-        $setOnInsert: {
-          discordId: session.user.id,
-          username: session.user.name,
-          avatar: session.user.image,
-          createdAt: new Date(),
+    // Check if server already exists
+    const existingServer = await db.collection("servers").findOne({ serverId })
+
+    if (existingServer) {
+      return NextResponse.json({ error: "Server already exists" }, { status: 400 })
+    }
+
+    // Create server record
+    const serverData = {
+      serverId,
+      serverName,
+      serverIcon: serverIcon || null,
+      ownerId: session.user.id,
+      isBotAdded: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    await db.collection("servers").insertOne(serverData)
+
+    // Create default server configuration
+    const defaultConfig = {
+      serverId,
+      serverName,
+      serverIcon: serverIcon || null,
+      isBotAdded: false,
+      moderationLevel: "off",
+      rolesAndNames: {},
+      channels: {},
+      welcome: {
+        enabled: false,
+        channelId: null,
+        message: null,
+        dmEnabled: false,
+      },
+      moderation: {
+        linkFilter: {
+          enabled: false,
+          config: "phishing_only",
+          whitelist: [],
         },
-        $addToSet: {
-          servers: {
-            server_id: serverId,
-            server_name: serverName,
-            server_icon: serverIcon,
-            is_bot_added: false,
-            last_updated: new Date(),
-          },
+        badWordFilter: {
+          enabled: false,
+          customWords: [],
         },
-        $set: {
-          lastLogin: new Date(),
+        raidProtection: {
+          enabled: false,
+          threshold: 10,
+        },
+        suspiciousAccounts: {
+          enabled: false,
+          minAgeDays: 30,
+        },
+        autoRole: {
+          enabled: false,
+          roleId: null,
+        },
+        permissionAbuse: {
+          enabled: false,
+          notifyOwnerOnRoleChange: false,
+          monitorAdminActions: false,
+        },
+        maliciousBotDetection: {
+          enabled: false,
+          newBotNotifications: false,
+          botActivityMonitoring: false,
+          botTimeoutThreshold: 300,
+        },
+        tokenWebhookAbuse: {
+          enabled: false,
+          webhookCreationMonitor: false,
+          webhookAutoRevoke: false,
+          webhookVerificationTimeout: 60,
+          leakedWebhookScanner: false,
+        },
+        inviteHijacking: {
+          enabled: false,
+          inviteLinkMonitor: false,
+          vanityUrlWatcher: false,
+        },
+        massPingProtection: {
+          enabled: false,
+          antiMentionFlood: false,
+          mentionRateLimit: 5,
+          messageCooldownOnRaid: false,
+          cooldownDuration: 300,
+        },
+        maliciousFileScanner: {
+          enabled: false,
+          suspiciousAttachmentBlocker: false,
+          autoFileFilter: false,
+          allowedFileTypes: ["jpg", "png", "gif", "pdf"],
         },
       },
-      { upsert: true },
-    )
+      support: {
+        ticketSystem: {
+          enabled: false,
+          channelId: null,
+          priorityRoleId: null,
+        },
+        autoAnswer: {
+          enabled: false,
+          qaPairs: null,
+        },
+      },
+      giveaway: {
+        enabled: false,
+        defaultChannelId: null,
+      },
+      logs: {
+        enabled: false,
+        channelId: null,
+        messageEdits: false,
+        modActions: false,
+        memberJoins: false,
+        memberLeaves: false,
+      },
+      serverStats: {
+        totalMembers: 0,
+        totalBots: 0,
+        totalAdmins: 0,
+      },
+      lastUpdated: new Date(),
+    }
+
+    await db.collection("server_configs").insertOne(defaultConfig)
 
     return NextResponse.json({ success: true })
   } catch (error) {

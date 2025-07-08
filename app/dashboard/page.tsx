@@ -125,21 +125,15 @@ export default function Dashboard() {
               <Image src="/bot-icon.png" alt="Dash Bot" width={32} height={32} className="rounded-lg" />
               <span className="text-xl font-bold text-gray-900">Dash</span>
             </div>
-            <div className="flex items-center space-x-4">
-              <Button onClick={() => setShowAddModal(true)} className="bg-gray-900 text-white hover:bg-gray-800">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Server
-              </Button>
-              <div className="flex items-center space-x-2">
-                <Image
-                  src={session.user?.image || "/placeholder-user.jpg"}
-                  alt={session.user?.name || "User"}
-                  width={32}
-                  height={32}
-                  className="rounded-full"
-                />
-                <span className="text-sm font-medium text-gray-900">{session.user?.name}</span>
-              </div>
+            <div className="flex items-center space-x-2">
+              <Image
+                src={session.user?.image || "/placeholder-user.jpg"}
+                alt={session.user?.name || "User"}
+                width={32}
+                height={32}
+                className="rounded-full"
+              />
+              <span className="text-sm font-medium text-gray-900">{session.user?.name}</span>
             </div>
           </div>
         </div>
@@ -160,54 +154,63 @@ export default function Dashboard() {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {userServers.map((server) => (
-              <Card key={server.serverId} className="border-gray-200 bg-white hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start space-x-4">
-                    <Image
-                      src={
-                        server.serverIcon
-                          ? `https://cdn.discordapp.com/icons/${server.serverId}/${server.serverIcon}.png?size=128`
-                          : "/placeholder.svg?height=48&width=48"
-                      }
-                      alt={server.serverName}
-                      width={48}
-                      height={48}
-                      className="rounded-lg"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-semibold text-gray-900 truncate">{server.serverName}</h3>
-                      <div className="flex items-center space-x-2 mt-2">
-                        <Badge
-                          variant={server.isBotAdded ? "default" : "secondary"}
-                          className={
-                            server.isBotAdded
-                              ? "bg-green-100 text-green-800 border-green-200"
-                              : "bg-yellow-100 text-yellow-800 border-yellow-200"
-                          }
-                        >
-                          {server.isBotAdded ? "Active" : "Pending"}
-                        </Badge>
-                      </div>
-                      <div className="mt-4">
-                        {server.isBotAdded ? (
-                          <Link href={`/dashboard/server/${server.serverId}`}>
-                            <Button size="sm" className="bg-gray-900 text-white hover:bg-gray-800">
-                              <Settings className="h-4 w-4 mr-2" />
-                              Configure
-                            </Button>
-                          </Link>
-                        ) : (
-                          <p className="text-sm text-gray-500">Add the bot to this server to start configuring</p>
-                        )}
+          <>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Your Servers</h2>
+              <Button onClick={() => setShowAddModal(true)} className="bg-gray-900 text-white hover:bg-gray-800">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Server
+              </Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {userServers.map((server) => (
+                <Card key={server.serverId} className="border-gray-200 bg-white hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-start space-x-4">
+                      <Image
+                        src={
+                          server.serverIcon
+                            ? `https://cdn.discordapp.com/icons/${server.serverId}/${server.serverIcon}.png?size=128`
+                            : "/placeholder.svg?height=48&width=48"
+                        }
+                        alt={server.serverName}
+                        width={48}
+                        height={48}
+                        className="rounded-lg"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold text-gray-900 truncate">{server.serverName}</h3>
+                        <div className="flex items-center space-x-2 mt-2">
+                          <Badge
+                            variant={server.isBotAdded ? "default" : "secondary"}
+                            className={
+                              server.isBotAdded
+                                ? "bg-green-100 text-green-800 border-green-200"
+                                : "bg-yellow-100 text-yellow-800 border-yellow-200"
+                            }
+                          >
+                            {server.isBotAdded ? "Active" : "Pending"}
+                          </Badge>
+                        </div>
+                        <div className="mt-4">
+                          {server.isBotAdded ? (
+                            <Link href={`/dashboard/server/${server.serverId}`}>
+                              <Button size="sm" className="bg-gray-900 text-white hover:bg-gray-800">
+                                <Settings className="h-4 w-4 mr-2" />
+                                Configure
+                              </Button>
+                            </Link>
+                          ) : (
+                            <p className="text-sm text-gray-500">Add the bot to this server to start configuring</p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </>
         )}
 
         {/* Add Server Modal */}
