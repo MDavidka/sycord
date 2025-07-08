@@ -1,4 +1,5 @@
 import { MongoClient } from "mongodb"
+import type { Db } from "mongodb"
 
 if (!process.env.MONGODB_URI) {
   throw new Error('Invalid/Missing environment variable: "MONGODB_URI"')
@@ -23,6 +24,15 @@ if (process.env.NODE_ENV === "development") {
 } else {
   client = new MongoClient(uri, options)
   clientPromise = client.connect()
+}
+
+/**
+ * Connect to database and return both client and db
+ */
+export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db }> {
+  const client = await clientPromise
+  const db = client.db("dash-discord-bot") // Replace with your DB name if different
+  return { client, db }
 }
 
 export default clientPromise
