@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Plus, Search, Users, Crown, Settings, Bot } from "lucide-react"
+import { Plus, Search, Users, Crown, Settings, Bot, AlertCircle } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 
@@ -36,6 +36,7 @@ export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState("")
   const [showAddModal, setShowAddModal] = useState(false)
   const [addingServer, setAddingServer] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -52,12 +53,15 @@ export default function Dashboard() {
   const fetchData = async () => {
     try {
       setLoading(true)
+      setError(null)
 
       // Fetch user's configured servers
       const userServersResponse = await fetch("/api/user-servers")
       if (userServersResponse.ok) {
         const userServersData = await userServersResponse.json()
         setUserServers(userServersData.servers || [])
+      } else {
+        console.error("Failed to fetch user servers:", userServersResponse.status)
       }
 
       // Fetch available Discord guilds
@@ -65,11 +69,15 @@ export default function Dashboard() {
       if (guildsResponse.ok) {
         const guildsData = await guildsResponse.json()
         setAvailableGuilds(guildsData.guilds || [])
+        console.log("Available guilds:", guildsData.guilds?.length || 0)
       } else {
-        console.error("Failed to fetch guilds:", guildsResponse.status)
+        const errorData = await guildsResponse.json()
+        console.error("Failed to fetch guilds:", guildsResponse.status, errorData)
+        setError(errorData.error || "Failed to fetch Discord servers")
       }
     } catch (error) {
       console.error("Error fetching data:", error)
+      setError("Failed to load data")
     } finally {
       setLoading(false)
     }
@@ -95,10 +103,13 @@ export default function Dashboard() {
         setShowAddModal(false)
         router.push(`/dashboard/server/${guild.id}`)
       } else {
-        console.error("Failed to select server:", response.status)
+        const errorData = await response.json()
+        console.error("Failed to select server:", response.status, errorData)
+        setError(errorData.error || "Failed to add server")
       }
     } catch (error) {
       console.error("Error selecting server:", error)
+      setError("Failed to add server")
     } finally {
       setAddingServer(false)
     }
@@ -150,6 +161,22 @@ export default function Dashboard() {
       </header>
 
       <div className="container mx-auto px-4 py-8">
+        {/* Error Display */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-2">
+            <AlertCircle className="h-5 w-5 text-red-500" />
+            <span className="text-red-700">{error}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setError(null)}
+              className="ml-auto text-red-500 hover:text-red-700"
+            >
+              ×
+            </Button>
+          </div>
+        )}
+
         {/* Servers Grid */}
         {userServers.length === 0 ? (
           <div className="text-center py-12">
@@ -256,17 +283,33 @@ export default function Dashboard() {
                   />
                 </div>
 
-                {filteredGuilds.length === 0 ? (
+                {loading ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading servers...</p>
+                  </div>
+                ) : filteredGuilds.length === 0 ? (
                   <div className="text-center py-12">
                     <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      {searchTerm ? "No servers found" : "All servers configured"}
+                      {searchTerm
+                        ? "No servers found"
+                        : availableGuilds.length === 0
+                          ? "No servers available"
+                          : "All servers configured"}
                     </h3>
                     <p className="text-gray-600">
                       {searchTerm
                         ? "No servers match your search."
-                        : "You've already configured all your available servers."}
+                        : availableGuilds.length === 0
+                          ? "Make sure you have admin permissions in Discord servers."
+                          : "You've already configured all your available servers."}
                     </p>
+                    {availableGuilds.length === 0 && (
+                      <Button variant="outline" onClick={fetchData} className="mt-4 bg-transparent">
+                        Refresh
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3 max-h-96 overflow-y-auto">

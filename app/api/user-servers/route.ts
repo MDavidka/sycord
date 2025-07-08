@@ -18,7 +18,6 @@ export async function GET(request: NextRequest) {
 
     // Get bot servers to check which ones have the bot added
     const botServers = await db.collection("bot_servers").find({}).toArray()
-
     const botServerIds = new Set(botServers.map((server) => server.serverId))
 
     // Map user servers with bot status

@@ -14,29 +14,35 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
     const { serverId } = params
     const { db } = await connectToDatabase()
 
-    // Check if user owns this server
-    const server = await db.collection("servers").findOne({
-      serverId,
-      ownerId: session.user.id,
+    // Check if user has access to this server
+    const userServer = await db.collection("user_servers").findOne({
+      userId: session.user.id,
+      serverId: serverId,
     })
 
-    if (!server) {
+    if (!userServer) {
       return NextResponse.json({ error: "Server not found or access denied" }, { status: 404 })
     }
 
-    // Get bot settings
-    const botSettings = await db.collection("bot_settings").findOne({ serverId })
+    // Get bot settings for this server
+    let botSettings = await db.collection("bot_settings").findOne({ serverId })
 
-    const defaultSettings = {
-      name: "Dash",
-      avatar: "/bot-icon.png",
-      status: "online",
-      version: "2.1.0",
+    if (!botSettings) {
+      // Create default bot settings
+      const defaultSettings = {
+        serverId,
+        name: "Dash Bot",
+        avatar: "/bot-icon.png",
+        status: "online",
+        version: "1.0.0",
+        updatedAt: new Date(),
+      }
+
+      await db.collection("bot_settings").insertOne(defaultSettings)
+      botSettings = defaultSettings
     }
 
-    return NextResponse.json({
-      settings: botSettings || defaultSettings,
-    })
+    return NextResponse.json({ settings: botSettings })
   } catch (error) {
     console.error("Error fetching bot settings:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -52,16 +58,16 @@ export async function PUT(request: NextRequest, { params }: { params: { serverId
     }
 
     const { serverId } = params
-    const { settings } = await request.json()
+    const updates = await request.json()
     const { db } = await connectToDatabase()
 
-    // Check if user owns this server
-    const server = await db.collection("servers").findOne({
-      serverId,
-      ownerId: session.user.id,
+    // Check if user has access to this server
+    const userServer = await db.collection("user_servers").findOne({
+      userId: session.user.id,
+      serverId: serverId,
     })
 
-    if (!server) {
+    if (!userServer) {
       return NextResponse.json({ error: "Server not found or access denied" }, { status: 404 })
     }
 
@@ -70,8 +76,7 @@ export async function PUT(request: NextRequest, { params }: { params: { serverId
       { serverId },
       {
         $set: {
-          ...settings,
-          serverId,
+          ...updates,
           updatedAt: new Date(),
         },
       },

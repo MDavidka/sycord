@@ -1,15 +1,10 @@
 import type { NextAuthOptions } from "next-auth"
 import DiscordProvider from "next-auth/providers/discord"
 import { MongoDBAdapter } from "@auth/mongodb-adapter"
-import { connectToDatabase } from "./mongodb"
+import clientPromise from "./mongodb"
 
 export const authOptions: NextAuthOptions = {
-  adapter: MongoDBAdapter(
-    (async () => {
-      const { client } = await connectToDatabase()
-      return client
-    })(),
-  ),
+  adapter: MongoDBAdapter(clientPromise),
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID!,
@@ -22,17 +17,20 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async session({ session, token, user }) {
-      if (session.user) {
-        session.user.id = user.id
-      }
-      return session
-    },
-    async jwt({ token, account }) {
-      if (account) {
+    async jwt({ token, account, user }) {
+      if (account && user) {
         token.accessToken = account.access_token
+        token.refreshToken = account.refresh_token
+        token.userId = user.id
       }
       return token
+    },
+    async session({ session, token }) {
+      if (session.user && token) {
+        session.user.id = token.userId as string
+        session.accessToken = token.accessToken as string
+      }
+      return session
     },
   },
   pages: {

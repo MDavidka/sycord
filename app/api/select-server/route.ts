@@ -39,6 +39,8 @@ export async function POST(request: NextRequest) {
       addedAt: new Date(),
     })
 
+    console.log(`Server ${serverName} (${serverId}) added for user ${session.user.id}`)
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Error selecting server:", error)

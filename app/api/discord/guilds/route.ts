@@ -1,47 +1,44 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
-import { connectToDatabase } from "@/lib/mongodb"
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!session?.user || !session.accessToken) {
+      return NextResponse.json({ error: "Unauthorized - No access token" }, { status: 401 })
     }
 
-    // Get the user's access token from the database
-    const { db } = await connectToDatabase()
+    console.log("Fetching Discord guilds for user:", session.user.id)
 
-    const account = await db.collection("accounts").findOne({
-      userId: session.user.id,
-      provider: "discord",
-    })
-
-    if (!account?.access_token) {
-      return NextResponse.json({ error: "No Discord access token found" }, { status: 400 })
-    }
-
-    // Fetch user's Discord guilds
+    // Fetch user's Discord guilds using the access token from session
     const response = await fetch("https://discord.com/api/users/@me/guilds", {
       headers: {
-        Authorization: `Bearer ${account.access_token}`,
+        Authorization: `Bearer ${session.accessToken}`,
+        "User-Agent": "Dash-Bot/1.0",
       },
     })
 
     if (!response.ok) {
       console.error("Discord API error:", response.status, response.statusText)
-      return NextResponse.json({ error: "Failed to fetch Discord guilds" }, { status: 500 })
+      const errorText = await response.text()
+      console.error("Discord API error details:", errorText)
+      return NextResponse.json({ error: "Failed to fetch Discord guilds", details: errorText }, { status: 500 })
     }
 
     const guilds = await response.json()
+    console.log("Fetched guilds count:", guilds.length)
 
-    // Filter guilds where user has admin permissions
+    // Filter guilds where user has admin permissions (ADMINISTRATOR or MANAGE_GUILD)
     const adminGuilds = guilds.filter((guild: any) => {
-      const permissions = Number.parseInt(guild.permissions)
-      return (permissions & 0x8) === 0x8 || guild.owner // ADMINISTRATOR permission or owner
+      const permissions = BigInt(guild.permissions)
+      const hasAdmin = (permissions & BigInt(0x8)) === BigInt(0x8) // ADMINISTRATOR
+      const hasManageGuild = (permissions & BigInt(0x20)) === BigInt(0x20) // MANAGE_GUILD
+      return guild.owner || hasAdmin || hasManageGuild
     })
+
+    console.log("Admin guilds count:", adminGuilds.length)
 
     return NextResponse.json({ guilds: adminGuilds })
   } catch (error) {
