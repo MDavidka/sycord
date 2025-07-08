@@ -5,7 +5,25 @@ import { Bot, Shield, MessageSquare, Users, Zap, ArrowRight, Github, Twitter, Ch
 import Link from "next/link"
 import Image from "next/image"
 
-export default function LandingPage() {
+async function getServerCount() {
+  try {
+    const response = await fetch(`${process.env.NEXTAUTH_URL}/api/server-count`, {
+      cache: "no-store",
+    })
+    if (response.ok) {
+      const data = await response.json()
+      return data.count || 0
+    }
+  } catch (error) {
+    console.error("Failed to fetch server count:", error)
+  }
+  return 0
+}
+
+export default async function LandingPage() {
+  const serverCount = await getServerCount()
+  const formattedCount = serverCount > 1000 ? `${Math.floor(serverCount / 1000)}K+` : `${serverCount}+`
+
   return (
     <div className="min-h-screen bg-white text-gray-900">
       {/* Navigation */}
@@ -19,9 +37,6 @@ export default function LandingPage() {
             <div className="hidden md:flex items-center space-x-6 text-sm text-gray-600">
               <Link href="#features" className="hover:text-gray-900 transition-colors">
                 Features
-              </Link>
-              <Link href="#pricing" className="hover:text-gray-900 transition-colors">
-                Pricing
               </Link>
               <Link href="#support" className="hover:text-gray-900 transition-colors">
                 Support
@@ -44,7 +59,7 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto text-center">
           <Badge variant="secondary" className="mb-6 bg-gray-100 text-gray-700 border-gray-200">
             <Star className="w-4 h-4 mr-2" />
-            Trusted by 50,000+ servers
+            Trusted by {formattedCount} servers
           </Badge>
 
           <h1 className="text-4xl md:text-6xl font-bold mb-6 text-gray-900 leading-tight">
@@ -63,13 +78,6 @@ export default function LandingPage() {
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-gray-300 text-gray-700 hover:bg-gray-50 px-8 py-3 bg-transparent"
-            >
-              View Demo
-            </Button>
           </div>
 
           {/* Social Proof */}
@@ -80,7 +88,7 @@ export default function LandingPage() {
             </div>
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4" />
-              <span>50K+ Servers</span>
+              <span>{formattedCount} Servers</span>
             </div>
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4" />
@@ -264,7 +272,7 @@ export default function LandingPage() {
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
-            <p className="text-sm text-gray-500 mt-4">Free to start • No credit card required • Setup in 2 minutes</p>
+            <p className="text-sm text-gray-500 mt-4">Free forever • No credit card required • Setup in 2 minutes</p>
           </div>
         </div>
       </section>
@@ -272,7 +280,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-gray-200 bg-gray-50">
         <div className="container mx-auto px-4 py-12">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
+          <div className="grid md:grid-cols-3 gap-8 mb-8">
             <div>
               <div className="flex items-center space-x-3 mb-4">
                 <Image src="/bot-icon.png" alt="Dash Bot" width={24} height={24} className="rounded" />
@@ -285,18 +293,18 @@ export default function LandingPage() {
               <h3 className="text-gray-900 font-semibold mb-4">Product</h3>
               <ul className="space-y-2 text-sm text-gray-600">
                 <li>
-                  <Link href="#" className="hover:text-gray-900">
+                  <Link href="#features" className="hover:text-gray-900">
                     Features
                   </Link>
                 </li>
                 <li>
                   <Link href="#" className="hover:text-gray-900">
-                    Pricing
+                    Documentation
                   </Link>
                 </li>
                 <li>
-                  <Link href="#" className="hover:text-gray-900">
-                    Documentation
+                  <Link href="/login" className="hover:text-gray-900">
+                    Get Started
                   </Link>
                 </li>
               </ul>
@@ -318,27 +326,6 @@ export default function LandingPage() {
                 <li>
                   <Link href="#" className="hover:text-gray-900">
                     Contact
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-gray-900 font-semibold mb-4">Company</h3>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li>
-                  <Link href="#" className="hover:text-gray-900">
-                    About
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-gray-900">
-                    Privacy
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#" className="hover:text-gray-900">
-                    Terms
                   </Link>
                 </li>
               </ul>

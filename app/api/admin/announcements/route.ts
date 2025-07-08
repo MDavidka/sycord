@@ -1,21 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { connectToDatabase } from "@/lib/mongodb"
+import clientPromise from "@/lib/mongodb"
+import { ObjectId } from "mongodb"
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const announcements = db.collection("announcements")
 
-    if (!session || session.user?.email !== "dmarton336@gmail.com") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const result = await announcements.find({}).sort({ createdAt: -1 }).toArray()
 
-    const { db } = await connectToDatabase()
-
-    const announcements = await db.collection("announcements").find({}).sort({ created_at: -1 }).toArray()
-
-    return NextResponse.json({ announcements })
+    return NextResponse.json({ announcements: result })
   } catch (error) {
     console.error("Error fetching announcements:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -24,37 +19,44 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const body = await request.json()
+    const { title, message, type } = body
 
-    if (!session || session.user?.email !== "dmarton336@gmail.com") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const announcements = db.collection("announcements")
 
-    const { title, message, type } = await request.json()
-
-    if (!title || !message) {
-      return NextResponse.json({ error: "Title and message are required" }, { status: 400 })
-    }
-
-    const { db } = await connectToDatabase()
-
-    const announcement = {
+    const newAnnouncement = {
       title,
       message,
-      type: type || "info",
-      created_by: session.user.email,
-      created_at: new Date().toISOString(),
+      type,
       active: true,
+      createdAt: new Date(),
     }
 
-    const result = await db.collection("announcements").insertOne(announcement)
+    await announcements.insertOne(newAnnouncement)
 
-    return NextResponse.json({
-      success: true,
-      announcement: { ...announcement, _id: result.insertedId },
-    })
+    return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Error creating announcement:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { id, active } = body
+
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const announcements = db.collection("announcements")
+
+    await announcements.updateOne({ _id: new ObjectId(id) }, { $set: { active } })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("Error updating announcement:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

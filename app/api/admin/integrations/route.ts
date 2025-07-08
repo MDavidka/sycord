@@ -1,14 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { connectToDatabase } from "@/lib/mongodb"
+import clientPromise from "@/lib/mongodb"
+import { ObjectId } from "mongodb"
 
 export async function GET() {
   try {
-    const { db } = await connectToDatabase()
-    const integrations = await db.collection("integrations").find({}).sort({ created_at: -1 }).toArray()
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const integrations = db.collection("integrations")
 
-    return NextResponse.json({ integrations })
+    const result = await integrations.find({}).toArray()
+
+    return NextResponse.json({ integrations: result })
   } catch (error) {
     console.error("Error fetching integrations:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -17,38 +19,49 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const body = await request.json()
+    const { name, description, icon, enabled, config } = body
 
-    if (!session || session.user?.email !== "dmarton336@gmail.com") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const integrations = db.collection("integrations")
 
-    const { name, description, webhook_url, api_key } = await request.json()
-
-    if (!name || !description) {
-      return NextResponse.json({ error: "Name and description are required" }, { status: 400 })
-    }
-
-    const { db } = await connectToDatabase()
-
-    const integration = {
+    const newIntegration = {
       name,
       description,
-      webhook_url: webhook_url || null,
-      api_key: api_key || null,
-      created_by: session.user.email,
-      created_at: new Date().toISOString(),
-      active: true,
+      icon,
+      enabled: enabled || true,
+      config: config || {},
+      createdAt: new Date(),
     }
 
-    const result = await db.collection("integrations").insertOne(integration)
+    await integrations.insertOne(newIntegration)
 
-    return NextResponse.json({
-      success: true,
-      integration: { ...integration, _id: result.insertedId },
-    })
+    return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Error creating integration:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get("id")
+
+    if (!id) {
+      return NextResponse.json({ error: "ID required" }, { status: 400 })
+    }
+
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const integrations = db.collection("integrations")
+
+    await integrations.deleteOne({ _id: new ObjectId(id) })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("Error deleting integration:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

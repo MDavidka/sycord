@@ -33,23 +33,20 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <Card className="w-full max-w-md glass-card animate-fade-in">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md border-gray-200 bg-white shadow-lg">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <Image src="/bot-icon.png" alt="Dash Bot" width={48} height={48} className="rounded-xl" />
           </div>
-          <CardTitle className="text-2xl font-bold text-white">
-            Welcome to{" "}
-            <span className="bg-gradient-to-r from-blue-700 to-blue-900 bg-clip-text text-transparent">Dash</span>
-          </CardTitle>
-          <CardDescription className="text-gray-400">Sign in with Discord to access your bot dashboard</CardDescription>
+          <CardTitle className="text-2xl font-bold text-gray-900">Welcome to Dash</CardTitle>
+          <CardDescription className="text-gray-600">Sign in with Discord to access your bot dashboard</CardDescription>
         </CardHeader>
         <CardContent>
           <Button
             onClick={handleDiscordLogin}
             disabled={isLoading}
-            className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white hover-glow"
+            className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white"
             size="lg"
           >
             {isLoading ? (
