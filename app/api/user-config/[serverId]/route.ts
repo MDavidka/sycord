@@ -14,127 +14,50 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
     const { serverId } = params
     const { db } = await connectToDatabase()
 
-    // Check if user has access to this server
-    const userServer = await db.collection("user_servers").findOne({
-      userId: session.user.id,
-      serverId: serverId,
-    })
+    // Get user document with the specific server
+    const user = await db.collection("users").findOne(
+      {
+        discordId: session.user.id,
+        "servers.serverId": serverId,
+      },
+      {
+        projection: {
+          "servers.$": 1,
+          username: 1,
+          email: 1,
+          avatar: 1,
+          createdAt: 1,
+        },
+      },
+    )
 
-    if (!userServer) {
+    if (!user || !user.servers || user.servers.length === 0) {
       return NextResponse.json({ error: "Server not found or access denied" }, { status: 404 })
     }
 
-    // Get server configuration
-    let config = await db.collection("server_configs").findOne({ serverId })
+    const server = user.servers[0]
 
-    if (!config) {
-      // Create default config if none exists
-      const defaultConfig = {
-        serverId,
-        serverName: userServer.serverName,
-        serverIcon: userServer.serverIcon,
-        isBotAdded: false,
-        moderationLevel: "off",
-        rolesAndNames: {},
-        channels: {},
-        welcome: {
-          enabled: false,
-          channelId: "",
-          message: "Welcome to the server!",
-          dmEnabled: false,
-        },
-        moderation: {
-          linkFilter: {
-            enabled: false,
-            config: "phishing_only",
-            whitelist: [],
-          },
-          badWordFilter: {
-            enabled: false,
-            customWords: [],
-          },
-          raidProtection: {
-            enabled: false,
-            threshold: 10,
-          },
-          suspiciousAccounts: {
-            enabled: false,
-            minAgeDays: 7,
-          },
-          autoRole: {
-            enabled: false,
-            roleId: "",
-          },
-          permissionAbuse: {
-            enabled: false,
-            notifyOwnerOnRoleChange: true,
-            monitorAdminActions: true,
-          },
-          maliciousBotDetection: {
-            enabled: false,
-            newBotNotifications: true,
-            botActivityMonitoring: true,
-            botTimeoutThreshold: 300,
-          },
-          tokenWebhookAbuse: {
-            enabled: false,
-            webhookCreationMonitor: true,
-            webhookAutoRevoke: true,
-            webhookVerificationTimeout: 60,
-            leakedWebhookScanner: true,
-          },
-          inviteHijacking: {
-            enabled: false,
-            inviteLinkMonitor: true,
-            vanityUrlWatcher: true,
-          },
-          massPingProtection: {
-            enabled: false,
-            antiMentionFlood: true,
-            mentionRateLimit: 5,
-            messageCooldownOnRaid: true,
-            cooldownDuration: 300,
-          },
-          maliciousFileScanner: {
-            enabled: false,
-            suspiciousAttachmentBlocker: true,
-            autoFileFilter: true,
-            allowedFileTypes: ["jpg", "jpeg", "png", "gif", "pdf", "txt"],
-          },
-        },
-        support: {
-          ticketSystem: {
-            enabled: false,
-            channelId: "",
-            priorityRoleId: "",
-          },
-          autoAnswer: {
-            enabled: false,
-            qaPairs: "",
-          },
-        },
-        giveaway: {
-          enabled: false,
-          defaultChannelId: "",
-        },
-        logs: {
-          enabled: false,
-          channelId: "",
-          messageEdits: true,
-          modActions: true,
-          memberJoins: true,
-          memberLeaves: true,
-        },
-        lastUpdated: new Date(),
-      }
-
-      await db.collection("server_configs").insertOne(defaultConfig)
-      config = defaultConfig
+    // Format the response
+    const userData = {
+      name: user.username,
+      email: user.email,
+      joined_since: user.createdAt?.toISOString() || new Date().toISOString(),
     }
 
-    return NextResponse.json({ config })
+    return NextResponse.json({
+      user: userData,
+      server: {
+        server_id: server.serverId,
+        server_name: server.serverName,
+        server_icon: server.serverIcon,
+        is_bot_added: server.isBotAdded || false,
+        added_at: server.addedAt,
+        settings: server.settings,
+      },
+      isBotAdded: server.isBotAdded || false,
+    })
   } catch (error) {
-    console.error("Error fetching server config:", error)
+    console.error("Error fetching user config:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -148,34 +71,30 @@ export async function PUT(request: NextRequest, { params }: { params: { serverId
     }
 
     const { serverId } = params
-    const updates = await request.json()
+    const body = await request.json()
     const { db } = await connectToDatabase()
 
-    // Check if user has access to this server
-    const userServer = await db.collection("user_servers").findOne({
-      userId: session.user.id,
-      serverId: serverId,
-    })
+    // Update the server settings in the user document
+    const updateResult = await db.collection("users").updateOne(
+      {
+        discordId: session.user.id,
+        "servers.serverId": serverId,
+      },
+      {
+        $set: {
+          "servers.$.settings": body.settings,
+          "servers.$.lastUpdated": new Date(),
+        },
+      },
+    )
 
-    if (!userServer) {
+    if (updateResult.matchedCount === 0) {
       return NextResponse.json({ error: "Server not found or access denied" }, { status: 404 })
     }
 
-    // Update server configuration
-    await db.collection("server_configs").updateOne(
-      { serverId },
-      {
-        $set: {
-          ...updates,
-          lastUpdated: new Date(),
-        },
-      },
-      { upsert: true },
-    )
-
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Error updating server config:", error)
+    console.error("Error updating user config:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

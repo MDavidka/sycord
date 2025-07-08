@@ -15,34 +15,31 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
     const { db } = await connectToDatabase()
 
     // Check if user has access to this server
-    const userServer = await db.collection("user_servers").findOne({
-      userId: session.user.id,
-      serverId: serverId,
+    const user = await db.collection("users").findOne({
+      discordId: session.user.id,
+      "servers.serverId": serverId,
     })
 
-    if (!userServer) {
+    if (!user) {
       return NextResponse.json({ error: "Server not found or access denied" }, { status: 404 })
     }
 
-    // Get bot settings for this server
-    let botSettings = await db.collection("bot_settings").findOne({ serverId })
+    // Get bot settings
+    const botSettings = await db.collection("bot_settings").findOne({ serverId })
 
     if (!botSettings) {
-      // Create default bot settings
-      const defaultSettings = {
+      // Return default bot settings
+      return NextResponse.json({
         serverId,
-        name: "Dash Bot",
+        name: "DashBot",
         avatar: "/bot-icon.png",
         status: "online",
         version: "1.0.0",
         updatedAt: new Date(),
-      }
-
-      await db.collection("bot_settings").insertOne(defaultSettings)
-      botSettings = defaultSettings
+      })
     }
 
-    return NextResponse.json({ settings: botSettings })
+    return NextResponse.json(botSettings)
   } catch (error) {
     console.error("Error fetching bot settings:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -62,12 +59,12 @@ export async function PUT(request: NextRequest, { params }: { params: { serverId
     const { db } = await connectToDatabase()
 
     // Check if user has access to this server
-    const userServer = await db.collection("user_servers").findOne({
-      userId: session.user.id,
-      serverId: serverId,
+    const user = await db.collection("users").findOne({
+      discordId: session.user.id,
+      "servers.serverId": serverId,
     })
 
-    if (!userServer) {
+    if (!user) {
       return NextResponse.json({ error: "Server not found or access denied" }, { status: 404 })
     }
 

@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
+import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
-import clientPromise from "@/lib/mongodb"
+import { connectToDatabase } from "@/lib/mongodb"
 
 export async function GET(request: NextRequest, { params }: { params: { serverId: string } }) {
   try {
@@ -11,20 +11,44 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const client = await clientPromise
-    const db = client.db("dash-bot")
-    const botServers = db.collection("bot_servers")
+    const { serverId } = params
+    const { db } = await connectToDatabase()
 
-    // Check if bot is added to this server
-    const botServer = await botServers.findOne({
-      serverId: params.serverId,
-      isActive: true,
+    // Check if bot is in the server
+    // This would normally check against a bot API or database
+    // For now, we'll simulate this check
+
+    // First, check if user has this server
+    const user = await db.collection("users").findOne({
+      discordId: session.user.id,
+      "servers.serverId": serverId,
     })
 
-    return NextResponse.json({
-      botAdded: !!botServer,
-      serverInfo: botServer || null,
-    })
+    if (!user) {
+      return NextResponse.json({ error: "Server not found or access denied" }, { status: 404 })
+    }
+
+    // Check if bot is in server (simulated)
+    const botInServer = await db.collection("bot_servers").findOne({ serverId })
+
+    if (!botInServer) {
+      return NextResponse.json({ isBotInServer: false })
+    }
+
+    // Update user's server to mark bot as added
+    await db.collection("users").updateOne(
+      {
+        discordId: session.user.id,
+        "servers.serverId": serverId,
+      },
+      {
+        $set: {
+          "servers.$.isBotAdded": true,
+        },
+      },
+    )
+
+    return NextResponse.json({ isBotInServer: true })
   } catch (error) {
     console.error("Error verifying bot:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
