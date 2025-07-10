@@ -8,7 +8,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Users, MessageSquare, Package, LinkIcon, Plus, Trash2 } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Users, MessageSquare, Package, LinkIcon, Plus, Trash2, AlertTriangle, Settings } from "lucide-react"
 
 interface User {
   _id: string
@@ -17,6 +19,7 @@ interface User {
   discordId: string
   joined_since: string
   servers: any[]
+  is_tester?: boolean
 }
 
 interface Plugin {
@@ -185,6 +188,21 @@ export default function AdminPage() {
     }
   }
 
+  const toggleUserTester = async (userId: string, isTester: boolean) => {
+    try {
+      const response = await fetch("/api/admin/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, is_tester: isTester }),
+      })
+      if (response.ok) {
+        loadData()
+      }
+    } catch (error) {
+      console.error("Error updating user:", error)
+    }
+  }
+
   const deletePlugin = async (id: string) => {
     try {
       const response = await fetch(`/api/admin/plugins?id=${id}`, {
@@ -228,34 +246,30 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading admin panel...</p>
+          <div className="w-8 h-8 border-2 border-muted border-t-foreground rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground text-sm">Loading admin panel...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200">
+      <header className="border-b border-border bg-background/80 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
-              <p className="text-gray-600">Manage Dash Bot system</p>
+              <h1 className="text-2xl font-bold text-foreground">Admin Panel</h1>
+              <p className="text-muted-foreground">Manage Dash Bot system</p>
             </div>
             <div className="flex items-center space-x-4">
-              <Badge variant={maintenanceMode ? "destructive" : "secondary"}>
+              <Badge variant={maintenanceMode ? "destructive" : "secondary"} className="bg-muted text-muted-foreground">
                 {maintenanceMode ? "Maintenance Mode" : "Live"}
               </Badge>
-              <Button
-                onClick={toggleMaintenance}
-                variant={maintenanceMode ? "destructive" : "outline"}
-                className="border-gray-300"
-              >
+              <Button onClick={toggleMaintenance} variant={maintenanceMode ? "destructive" : "outline"} size="sm">
                 {maintenanceMode ? "Disable Maintenance" : "Enable Maintenance"}
               </Button>
             </div>
@@ -263,16 +277,26 @@ export default function AdminPage() {
         </div>
       </header>
 
+      {/* Maintenance Mode Alert */}
+      {maintenanceMode && (
+        <Alert className="mx-4 mt-4 border-destructive bg-destructive/10">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Maintenance Mode Active:</strong> The site is currently locked for all users except administrators.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="container mx-auto px-4 py-8">
         {/* Navigation Tabs */}
-        <div className="border-b border-gray-200 mb-8">
+        <div className="border-b border-border mb-8">
           <nav className="flex space-x-8">
             <button
               onClick={() => setActiveTab("users")}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === "users"
-                  ? "border-gray-900 text-gray-900"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  ? "border-foreground text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               <Users className="w-4 h-4 inline mr-2" />
@@ -280,10 +304,10 @@ export default function AdminPage() {
             </button>
             <button
               onClick={() => setActiveTab("announcements")}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === "announcements"
-                  ? "border-gray-900 text-gray-900"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  ? "border-foreground text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               <MessageSquare className="w-4 h-4 inline mr-2" />
@@ -291,10 +315,10 @@ export default function AdminPage() {
             </button>
             <button
               onClick={() => setActiveTab("plugins")}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === "plugins"
-                  ? "border-gray-900 text-gray-900"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  ? "border-foreground text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               <Package className="w-4 h-4 inline mr-2" />
@@ -302,14 +326,25 @@ export default function AdminPage() {
             </button>
             <button
               onClick={() => setActiveTab("integrations")}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === "integrations"
-                  ? "border-gray-900 text-gray-900"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  ? "border-foreground text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               <LinkIcon className="w-4 h-4 inline mr-2" />
               Integrations
+            </button>
+            <button
+              onClick={() => setActiveTab("system")}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === "system"
+                  ? "border-foreground text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Settings className="w-4 h-4 inline mr-2" />
+              System
             </button>
           </nav>
         </div>
@@ -317,28 +352,48 @@ export default function AdminPage() {
         {/* Users Tab */}
         {activeTab === "users" && (
           <div>
-            <Card className="border-gray-200 bg-white">
+            <Card className="border border-border">
               <CardHeader>
-                <CardTitle className="text-gray-900">All Users</CardTitle>
-                <CardDescription className="text-gray-600">Manage registered users</CardDescription>
+                <CardTitle className="text-foreground">All Users</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  Manage registered users and their permissions
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {users.map((user) => (
                     <div
                       key={user._id}
-                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
+                      className="flex items-center justify-between p-4 border border-border rounded-lg bg-muted/30"
                     >
-                      <div>
-                        <h3 className="font-medium text-gray-900">{user.name}</h3>
-                        <p className="text-sm text-gray-600">{user.email}</p>
-                        <p className="text-xs text-gray-500">
-                          {user.servers.length} servers • Joined {new Date(user.joined_since).toLocaleDateString()}
-                        </p>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-foreground rounded-full flex items-center justify-center">
+                            <span className="text-background font-medium text-sm">
+                              {user.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div>
+                            <h3 className="font-medium text-foreground">{user.name}</h3>
+                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {user.servers.length} servers • Joined {new Date(user.joined_since).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <Badge variant="secondary" className="bg-gray-100 text-gray-700">
-                        Active
-                      </Badge>
+                      <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            checked={user.is_tester || false}
+                            onCheckedChange={(checked) => toggleUserTester(user._id, checked)}
+                          />
+                          <Label className="text-sm text-muted-foreground">Beta Tester</Label>
+                        </div>
+                        <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                          Active
+                        </Badge>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -350,39 +405,39 @@ export default function AdminPage() {
         {/* Announcements Tab */}
         {activeTab === "announcements" && (
           <div className="space-y-6">
-            <Card className="border-gray-200 bg-white">
+            <Card className="border border-border">
               <CardHeader>
-                <CardTitle className="text-gray-900">Create Announcement</CardTitle>
-                <CardDescription className="text-gray-600">Send announcements to all users</CardDescription>
+                <CardTitle className="text-foreground">Create Announcement</CardTitle>
+                <CardDescription className="text-muted-foreground">Send announcements to all users</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label className="text-gray-900">Title</Label>
+                  <Label className="text-foreground">Title</Label>
                   <Input
                     value={newAnnouncement.title}
                     onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
                     placeholder="Announcement title"
-                    className="border-gray-300"
+                    className="border-border bg-background"
                   />
                 </div>
                 <div>
-                  <Label className="text-gray-900">Message</Label>
+                  <Label className="text-foreground">Message</Label>
                   <Textarea
                     value={newAnnouncement.message}
                     onChange={(e) => setNewAnnouncement({ ...newAnnouncement, message: e.target.value })}
                     placeholder="Announcement message"
-                    className="border-gray-300"
+                    className="border-border bg-background"
                   />
                 </div>
                 <div>
-                  <Label className="text-gray-900">Type</Label>
+                  <Label className="text-foreground">Type</Label>
                   <Select
                     value={newAnnouncement.type}
                     onValueChange={(value: "info" | "warning" | "success") =>
                       setNewAnnouncement({ ...newAnnouncement, type: value })
                     }
                   >
-                    <SelectTrigger className="border-gray-300">
+                    <SelectTrigger className="border-border bg-background">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -392,25 +447,25 @@ export default function AdminPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={createAnnouncement} className="bg-gray-900 text-white hover:bg-gray-800">
+                <Button onClick={createAnnouncement} className="bg-foreground text-background hover:bg-foreground/90">
                   <Plus className="w-4 h-4 mr-2" />
                   Create Announcement
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="border-gray-200 bg-white">
+            <Card className="border border-border">
               <CardHeader>
-                <CardTitle className="text-gray-900">Active Announcements</CardTitle>
+                <CardTitle className="text-foreground">Active Announcements</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {announcements.map((announcement) => (
-                    <div key={announcement._id} className="p-4 border border-gray-200 rounded-lg">
+                    <div key={announcement._id} className="p-4 border border-border rounded-lg bg-muted/30">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <h3 className="font-medium text-gray-900">{announcement.title}</h3>
+                            <h3 className="font-medium text-foreground">{announcement.title}</h3>
                             <Badge
                               variant={
                                 announcement.type === "info"
@@ -426,8 +481,8 @@ export default function AdminPage() {
                               {announcement.active ? "Active" : "Inactive"}
                             </Badge>
                           </div>
-                          <p className="text-gray-600 mb-2">{announcement.message}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-muted-foreground mb-2">{announcement.message}</p>
+                          <p className="text-xs text-muted-foreground">
                             Created {new Date(announcement.createdAt).toLocaleDateString()}
                           </p>
                         </div>
@@ -435,7 +490,6 @@ export default function AdminPage() {
                           onClick={() => toggleAnnouncementStatus(announcement._id, !announcement.active)}
                           variant="outline"
                           size="sm"
-                          className="border-gray-300"
                         >
                           {announcement.active ? "Deactivate" : "Activate"}
                         </Button>
@@ -451,49 +505,49 @@ export default function AdminPage() {
         {/* Plugins Tab */}
         {activeTab === "plugins" && (
           <div className="space-y-6">
-            <Card className="border-gray-200 bg-white">
+            <Card className="border border-border">
               <CardHeader>
-                <CardTitle className="text-gray-900">Create Plugin</CardTitle>
-                <CardDescription className="text-gray-600">Add new plugins to the system</CardDescription>
+                <CardTitle className="text-foreground">Create Plugin</CardTitle>
+                <CardDescription className="text-muted-foreground">Add new plugins to the system</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-gray-900">Name</Label>
+                    <Label className="text-foreground">Name</Label>
                     <Input
                       value={newPlugin.name}
                       onChange={(e) => setNewPlugin({ ...newPlugin, name: e.target.value })}
                       placeholder="Plugin name"
-                      className="border-gray-300"
+                      className="border-border bg-background"
                     />
                   </div>
                   <div>
-                    <Label className="text-gray-900">Version</Label>
+                    <Label className="text-foreground">Version</Label>
                     <Input
                       value={newPlugin.version}
                       onChange={(e) => setNewPlugin({ ...newPlugin, version: e.target.value })}
                       placeholder="1.0.0"
-                      className="border-gray-300"
+                      className="border-border bg-background"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-gray-900">Author</Label>
+                    <Label className="text-foreground">Author</Label>
                     <Input
                       value={newPlugin.author}
                       onChange={(e) => setNewPlugin({ ...newPlugin, author: e.target.value })}
                       placeholder="Author name"
-                      className="border-gray-300"
+                      className="border-border bg-background"
                     />
                   </div>
                   <div>
-                    <Label className="text-gray-900">Category</Label>
+                    <Label className="text-foreground">Category</Label>
                     <Select
                       value={newPlugin.category}
                       onValueChange={(value) => setNewPlugin({ ...newPlugin, category: value })}
                     >
-                      <SelectTrigger className="border-gray-300">
+                      <SelectTrigger className="border-border bg-background">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -506,51 +560,51 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <div>
-                  <Label className="text-gray-900">Description</Label>
+                  <Label className="text-foreground">Description</Label>
                   <Textarea
                     value={newPlugin.description}
                     onChange={(e) => setNewPlugin({ ...newPlugin, description: e.target.value })}
                     placeholder="Plugin description"
-                    className="border-gray-300"
+                    className="border-border bg-background"
                   />
                 </div>
-                <Button onClick={createPlugin} className="bg-gray-900 text-white hover:bg-gray-800">
+                <Button onClick={createPlugin} className="bg-foreground text-background hover:bg-foreground/90">
                   <Plus className="w-4 h-4 mr-2" />
                   Create Plugin
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="border-gray-200 bg-white">
+            <Card className="border border-border">
               <CardHeader>
-                <CardTitle className="text-gray-900">Available Plugins</CardTitle>
+                <CardTitle className="text-foreground">Available Plugins</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {plugins.map((plugin) => (
-                    <div key={plugin._id} className="p-4 border border-gray-200 rounded-lg">
+                    <div key={plugin._id} className="p-4 border border-border rounded-lg bg-muted/30">
                       <div className="flex items-start justify-between mb-2">
                         <div>
-                          <h3 className="font-medium text-gray-900">{plugin.name}</h3>
-                          <p className="text-sm text-gray-600">
+                          <h3 className="font-medium text-foreground">{plugin.name}</h3>
+                          <p className="text-sm text-muted-foreground">
                             v{plugin.version} by {plugin.author}
                           </p>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Badge variant="secondary" className="bg-gray-100 text-gray-700">
+                          <Badge variant="secondary" className="bg-muted text-muted-foreground">
                             {plugin.category}
                           </Badge>
                           <Button
                             onClick={() => deletePlugin(plugin._id)}
                             variant="outline"
                             size="sm"
-                            className="border-red-300 text-red-600 hover:bg-red-50"
+                            className="border-destructive text-destructive hover:bg-destructive/10"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-600">{plugin.description}</p>
+                      <p className="text-sm text-muted-foreground">{plugin.description}</p>
                     </div>
                   ))}
                 </div>
@@ -562,54 +616,54 @@ export default function AdminPage() {
         {/* Integrations Tab */}
         {activeTab === "integrations" && (
           <div className="space-y-6">
-            <Card className="border-gray-200 bg-white">
+            <Card className="border border-border">
               <CardHeader>
-                <CardTitle className="text-gray-900">Add Integration</CardTitle>
-                <CardDescription className="text-gray-600">Add new third-party integrations</CardDescription>
+                <CardTitle className="text-foreground">Add Integration</CardTitle>
+                <CardDescription className="text-muted-foreground">Add new third-party integrations</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label className="text-gray-900">Name</Label>
+                  <Label className="text-foreground">Name</Label>
                   <Input
                     value={newIntegration.name}
                     onChange={(e) => setNewIntegration({ ...newIntegration, name: e.target.value })}
                     placeholder="Integration name"
-                    className="border-gray-300"
+                    className="border-border bg-background"
                   />
                 </div>
                 <div>
-                  <Label className="text-gray-900">Description</Label>
+                  <Label className="text-foreground">Description</Label>
                   <Textarea
                     value={newIntegration.description}
                     onChange={(e) => setNewIntegration({ ...newIntegration, description: e.target.value })}
                     placeholder="Integration description"
-                    className="border-gray-300"
+                    className="border-border bg-background"
                   />
                 </div>
                 <div>
-                  <Label className="text-gray-900">Icon URL</Label>
+                  <Label className="text-foreground">Icon URL</Label>
                   <Input
                     value={newIntegration.icon}
                     onChange={(e) => setNewIntegration({ ...newIntegration, icon: e.target.value })}
                     placeholder="https://example.com/icon.png"
-                    className="border-gray-300"
+                    className="border-border bg-background"
                   />
                 </div>
-                <Button onClick={createIntegration} className="bg-gray-900 text-white hover:bg-gray-800">
+                <Button onClick={createIntegration} className="bg-foreground text-background hover:bg-foreground/90">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Integration
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="border-gray-200 bg-white">
+            <Card className="border border-border">
               <CardHeader>
-                <CardTitle className="text-gray-900">Available Integrations</CardTitle>
+                <CardTitle className="text-foreground">Available Integrations</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {integrations.map((integration) => (
-                    <div key={integration._id} className="p-4 border border-gray-200 rounded-lg">
+                    <div key={integration._id} className="p-4 border border-border rounded-lg bg-muted/30">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center space-x-3">
                           {integration.icon && (
@@ -620,7 +674,7 @@ export default function AdminPage() {
                             />
                           )}
                           <div>
-                            <h3 className="font-medium text-gray-900">{integration.name}</h3>
+                            <h3 className="font-medium text-foreground">{integration.name}</h3>
                             <Badge variant={integration.enabled ? "default" : "secondary"}>
                               {integration.enabled ? "Enabled" : "Disabled"}
                             </Badge>
@@ -630,14 +684,61 @@ export default function AdminPage() {
                           onClick={() => deleteIntegration(integration._id)}
                           variant="outline"
                           size="sm"
-                          className="border-red-300 text-red-600 hover:bg-red-50"
+                          className="border-destructive text-destructive hover:bg-destructive/10"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
-                      <p className="text-sm text-gray-600">{integration.description}</p>
+                      <p className="text-sm text-muted-foreground">{integration.description}</p>
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* System Tab */}
+        {activeTab === "system" && (
+          <div className="space-y-6">
+            <Card className="border border-border">
+              <CardHeader>
+                <CardTitle className="text-foreground">System Settings</CardTitle>
+                <CardDescription className="text-muted-foreground">Configure system-wide settings</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-muted/30">
+                  <div>
+                    <h3 className="font-medium text-foreground">Maintenance Mode</h3>
+                    <p className="text-sm text-muted-foreground">
+                      When enabled, only administrators can access the site
+                    </p>
+                  </div>
+                  <Switch checked={maintenanceMode} onCheckedChange={toggleMaintenance} />
+                </div>
+
+                <div className="p-4 border border-border rounded-lg bg-muted/30">
+                  <h3 className="font-medium text-foreground mb-2">System Statistics</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-foreground">{users.length}</div>
+                      <div className="text-sm text-muted-foreground">Total Users</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-foreground">{plugins.length}</div>
+                      <div className="text-sm text-muted-foreground">Plugins</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-foreground">{integrations.length}</div>
+                      <div className="text-sm text-muted-foreground">Integrations</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-foreground">
+                        {announcements.filter((a) => a.active).length}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Active Announcements</div>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -1,264 +1,351 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
+import { signIn, useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Bot, Users, Shield, MessageSquare, Star, ArrowRight, Zap, CheckCircle } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import {
+  ArrowRight,
+  Bot,
+  Shield,
+  Zap,
+  Users,
+  MessageSquare,
+  Settings,
+  ChevronRight,
+  Github,
+  Twitter,
+} from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
 
 export default function HomePage() {
+  const { data: session } = useSession()
   const [serverCount, setServerCount] = useState(0)
+  const [userCount, setUserCount] = useState(0)
+  const [announcements, setAnnouncements] = useState<any[]>([])
 
   useEffect(() => {
+    // Fetch server count
     fetch("/api/server-count")
       .then((res) => res.json())
-      .then((data) => setServerCount(data.count))
+      .then((data) => setServerCount(data.count || 0))
       .catch(() => setServerCount(0))
+
+    // Fetch announcements
+    fetch("/api/announcements")
+      .then((res) => res.json())
+      .then((data) => setAnnouncements(data.announcements || []))
+      .catch(() => setAnnouncements([]))
   }, [])
+
+  const features = [
+    {
+      icon: Bot,
+      title: "Advanced Automation",
+      description: "Powerful automation tools to streamline your Discord server management with intelligent workflows.",
+    },
+    {
+      icon: Shield,
+      title: "Enhanced Security",
+      description: "Comprehensive moderation and security features to keep your community safe and well-managed.",
+    },
+    {
+      icon: Zap,
+      title: "Lightning Fast",
+      description: "Optimized performance with minimal latency for seamless user experience across all features.",
+    },
+    {
+      icon: Users,
+      title: "Community Tools",
+      description: "Rich set of community engagement tools including polls, events, and member management systems.",
+    },
+    {
+      icon: MessageSquare,
+      title: "Smart Messaging",
+      description: "Intelligent message handling with auto-responses, templates, and advanced filtering capabilities.",
+    },
+    {
+      icon: Settings,
+      title: "Easy Configuration",
+      description: "Intuitive dashboard with granular controls for customizing every aspect of your bot's behavior.",
+    },
+  ]
+
+  const stats = [
+    { label: "Active Servers", value: serverCount.toLocaleString() },
+    { label: "Happy Users", value: "50K+" },
+    { label: "Commands", value: "100+" },
+    { label: "Uptime", value: "99.9%" },
+  ]
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto mobile-optimized py-3 sm:py-4">
+      {/* Navigation */}
+      <nav className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 sm:space-x-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary flex items-center justify-center">
-                <Image src="/bot-icon.png" alt="Dash Bot" width={32} height={32} className="rounded-lg" />
-              </div>
-              <span className="text-lg sm:text-xl font-bold text-foreground">Dash</span>
+            <div className="flex items-center space-x-2">
+              <Bot className="h-8 w-8 text-foreground" />
+              <span className="text-xl font-bold text-foreground">Dash Bot</span>
             </div>
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              <Link href="/login">
+            <div className="hidden md:flex items-center space-x-8">
+              <Link href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
+                Features
+              </Link>
+              <Link href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">
+                Pricing
+              </Link>
+              <Link href="#docs" className="text-muted-foreground hover:text-foreground transition-colors">
+                Documentation
+              </Link>
+              <Link href="#support" className="text-muted-foreground hover:text-foreground transition-colors">
+                Support
+              </Link>
+            </div>
+            <div className="flex items-center space-x-4">
+              {session ? (
+                <Link href="/dashboard">
+                  <Button className="bg-foreground text-background hover:bg-foreground/90">
+                    Dashboard
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              ) : (
                 <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-border text-foreground hover:bg-accent bg-transparent"
+                  onClick={() => signIn("discord")}
+                  className="bg-foreground text-background hover:bg-foreground/90"
                 >
-                  Login
-                </Button>
-              </Link>
-              <Link href="/login">
-                <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
                   Get Started
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
-              </Link>
+              )}
             </div>
           </div>
         </div>
-      </header>
+      </nav>
+
+      {/* Announcements */}
+      {announcements.length > 0 && (
+        <div className="bg-muted/50 border-b border-border">
+          <div className="container mx-auto px-4 py-2">
+            {announcements.slice(0, 1).map((announcement) => (
+              <div key={announcement._id} className="flex items-center justify-center text-center">
+                <Badge variant="secondary" className="mr-2 bg-foreground text-background">
+                  {announcement.type.toUpperCase()}
+                </Badge>
+                <span className="text-sm text-foreground">{announcement.message}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Hero Section */}
-      <section className="py-12 sm:py-20 gradient-bg">
-        <div className="container mx-auto mobile-optimized text-center">
-          <div className="max-w-4xl mx-auto animate-fade-in">
-            {/* Hero Illustration */}
-            <div className="mb-8 sm:mb-12">
-              <div className="relative mx-auto w-32 h-32 sm:w-48 sm:h-48 mb-6 sm:mb-8">
-                <div className="absolute inset-0 bg-primary/10 rounded-full animate-pulse"></div>
-                <div className="absolute inset-4 bg-primary/20 rounded-full animate-bounce-in"></div>
-                <div className="absolute inset-8 bg-primary rounded-full flex items-center justify-center">
-                  <Bot className="w-12 h-12 sm:w-16 sm:h-16 text-primary-foreground" />
-                </div>
-              </div>
-            </div>
-
-            <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold text-foreground mb-4 sm:mb-6 leading-tight">
-              The Ultimate Discord Bot
-              <br />
-              <span className="text-primary">For Your Server</span>
+      <section className="py-20 md:py-32">
+        <div className="container mx-auto px-4 text-center">
+          <div className="max-w-4xl mx-auto">
+            <Badge variant="secondary" className="mb-6 bg-muted text-muted-foreground">
+              Trusted by {serverCount.toLocaleString()}+ Discord servers
+            </Badge>
+            <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
+              The most powerful
+              <span className="block text-muted-foreground">Discord bot platform</span>
             </h1>
-            <p className="text-lg sm:text-xl text-muted-foreground mb-6 sm:mb-8 max-w-2xl mx-auto">
-              Powerful moderation, engaging features, and seamless management. Everything you need to build an amazing
-              Discord community.
+            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
+              Transform your Discord server with advanced automation, moderation, and community tools. Built for scale,
+              designed for simplicity.
             </p>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-8 sm:mb-12">
-              <Link href="/login">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              {session ? (
+                <Link href="/dashboard">
+                  <Button size="lg" className="bg-foreground text-background hover:bg-foreground/90 px-8">
+                    Open Dashboard
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
+              ) : (
                 <Button
                   size="lg"
-                  className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4"
+                  onClick={() => signIn("discord")}
+                  className="bg-foreground text-background hover:bg-foreground/90 px-8"
                 >
-                  Add to Discord
-                  <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+                  Start Free Trial
+                  <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
-              </Link>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-8 text-sm text-muted-foreground">
-              <div className="flex items-center space-x-2">
-                <Users className="h-4 w-4" />
-                <span>{serverCount.toLocaleString()} servers</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Star className="h-4 w-4" />
-                <span>Free forever</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Zap className="h-4 w-4" />
-                <span>Instant setup</span>
-              </div>
+              )}
+              <Button
+                variant="outline"
+                size="lg"
+                className="border-border text-foreground hover:bg-muted/50 bg-transparent"
+              >
+                View Documentation
+                <ChevronRight className="ml-2 h-5 w-5" />
+              </Button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-12 sm:py-20 bg-muted/30">
-        <div className="container mx-auto mobile-optimized">
-          <div className="text-center mb-12 sm:mb-16 animate-slide-up">
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3 sm:mb-4">Everything you need</h2>
-            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
-              Powerful features to manage and grow your Discord community
+      {/* Stats Section */}
+      <section className="py-16 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            {stats.map((stat, index) => (
+              <div key={index} className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-foreground mb-2">{stat.value}</div>
+                <div className="text-muted-foreground">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section id="features" className="py-20">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <Badge variant="secondary" className="mb-4 bg-muted text-muted-foreground">
+              Features
+            </Badge>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+              Everything you need to manage your Discord server
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Comprehensive tools and features designed to enhance your community experience
             </p>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
-            <Card className="modern-card group hover:scale-105 transition-transform duration-200">
-              <CardContent className="p-4 sm:p-6 text-center">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 dark:bg-blue-900 rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4 group-hover:scale-110 transition-transform">
-                  <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 dark:text-blue-400" />
-                </div>
-                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">AI Moderation</h3>
-                <p className="text-sm text-muted-foreground">
-                  Advanced auto-moderation with customizable filters and actions
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="modern-card group hover:scale-105 transition-transform duration-200">
-              <CardContent className="p-4 sm:p-6 text-center">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 dark:bg-green-900 rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4 group-hover:scale-110 transition-transform">
-                  <Users className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 dark:text-green-400" />
-                </div>
-                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">Welcome System</h3>
-                <p className="text-sm text-muted-foreground">Greet new members with custom messages and auto-roles</p>
-              </CardContent>
-            </Card>
-
-            <Card className="modern-card group hover:scale-105 transition-transform duration-200">
-              <CardContent className="p-4 sm:p-6 text-center">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 dark:bg-purple-900 rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4 group-hover:scale-110 transition-transform">
-                  <MessageSquare className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 dark:text-purple-400" />
-                </div>
-                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">Support Tickets</h3>
-                <p className="text-sm text-muted-foreground">Professional ticket system for member support</p>
-              </CardContent>
-            </Card>
-
-            <Card className="modern-card group hover:scale-105 transition-transform duration-200">
-              <CardContent className="p-4 sm:p-6 text-center">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 dark:bg-orange-900 rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4 group-hover:scale-110 transition-transform">
-                  <Bot className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600 dark:text-orange-400" />
-                </div>
-                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">Custom Commands</h3>
-                <p className="text-sm text-muted-foreground">Create custom commands and automated responses</p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Benefits Section */}
-      <section className="py-12 sm:py-20">
-        <div className="container mx-auto mobile-optimized">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-            <div className="animate-slide-up">
-              <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4 sm:mb-6">Why choose Dash?</h2>
-              <div className="space-y-4 sm:space-y-6">
-                <div className="flex items-start space-x-3 sm:space-x-4">
-                  <div className="w-6 h-6 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                    <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <Card key={index} className="border border-border bg-background hover:bg-muted/30 transition-colors">
+                <CardHeader>
+                  <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center mb-4">
+                    <feature.icon className="h-6 w-6 text-foreground" />
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">Quick Setup</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Deploy in minutes, no programming knowledge required
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3 sm:space-x-4">
-                  <div className="w-6 h-6 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                    <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">24/7 Uptime</h3>
-                    <p className="text-sm text-muted-foreground">Reliable service with 99.9% uptime guarantee</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3 sm:space-x-4">
-                  <div className="w-6 h-6 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                    <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">Continuous Updates</h3>
-                    <p className="text-sm text-muted-foreground">Regular updates and new features</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="relative">
-              <div className="bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-2xl p-6 sm:p-8">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-card rounded-xl p-4 text-center">
-                    <Users className="w-8 h-8 text-primary mx-auto mb-2" />
-                    <div className="text-xl sm:text-2xl font-bold text-foreground">10K+</div>
-                    <div className="text-xs text-muted-foreground">Happy users</div>
-                  </div>
-                  <div className="bg-card rounded-xl p-4 text-center">
-                    <Shield className="w-8 h-8 text-primary mx-auto mb-2" />
-                    <div className="text-xl sm:text-2xl font-bold text-foreground">99.9%</div>
-                    <div className="text-xs text-muted-foreground">Uptime</div>
-                  </div>
-                  <div className="bg-card rounded-xl p-4 text-center">
-                    <Star className="w-8 h-8 text-primary mx-auto mb-2" />
-                    <div className="text-xl sm:text-2xl font-bold text-foreground">4.9/5</div>
-                    <div className="text-xs text-muted-foreground">Rating</div>
-                  </div>
-                  <div className="bg-card rounded-xl p-4 text-center">
-                    <Bot className="w-8 h-8 text-primary mx-auto mb-2" />
-                    <div className="text-xl sm:text-2xl font-bold text-foreground">24/7</div>
-                    <div className="text-xs text-muted-foreground">Support</div>
-                  </div>
-                </div>
-              </div>
-            </div>
+                  <CardTitle className="text-foreground">{feature.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-muted-foreground">{feature.description}</CardDescription>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-12 sm:py-20 bg-primary/5">
-        <div className="container mx-auto mobile-optimized text-center">
-          <div className="max-w-3xl mx-auto animate-fade-in">
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3 sm:mb-4">Ready to get started?</h2>
-            <p className="text-base sm:text-lg text-muted-foreground mb-6 sm:mb-8">
-              Join thousands of Discord servers using Dash to create amazing communities.
+      <section className="py-20 bg-muted/30">
+        <div className="container mx-auto px-4 text-center">
+          <div className="max-w-2xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+              Ready to transform your Discord server?
+            </h2>
+            <p className="text-xl text-muted-foreground mb-8">
+              Join thousands of communities already using Dash Bot to enhance their Discord experience.
             </p>
-            <Link href="/login">
+            {session ? (
+              <Link href="/dashboard">
+                <Button size="lg" className="bg-foreground text-background hover:bg-foreground/90 px-8">
+                  Go to Dashboard
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+            ) : (
               <Button
                 size="lg"
-                className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4"
+                onClick={() => signIn("discord")}
+                className="bg-foreground text-background hover:bg-foreground/90 px-8"
               >
-                Add to Discord
-                <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+                Get Started Now
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-            </Link>
+            )}
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-6 sm:py-8 bg-card">
-        <div className="container mx-auto mobile-optimized">
-          <div className="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
-            <div className="flex items-center space-x-2 sm:space-x-3">
-              <Image src="/bot-icon.png" alt="Dash Bot" width={24} height={24} className="rounded" />
-              <span className="font-semibold text-foreground">Dash</span>
+      <footer className="border-t border-border bg-background">
+        <div className="container mx-auto px-4 py-12">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="col-span-1 md:col-span-2">
+              <div className="flex items-center space-x-2 mb-4">
+                <Bot className="h-8 w-8 text-foreground" />
+                <span className="text-xl font-bold text-foreground">Dash Bot</span>
+              </div>
+              <p className="text-muted-foreground mb-4 max-w-md">
+                The most powerful Discord bot platform for communities of all sizes. Built with modern technology and
+                designed for reliability.
+              </p>
+              <div className="flex space-x-4">
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                  <Github className="h-5 w-5" />
+                </Button>
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                  <Twitter className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
-            <div className="text-sm text-muted-foreground text-center sm:text-right">
-              © 2024 Dash Bot. Free forever.
+            <div>
+              <h3 className="font-semibold text-foreground mb-4">Product</h3>
+              <ul className="space-y-2">
+                <li>
+                  <Link href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Features
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Pricing
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Dashboard
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#docs" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Documentation
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground mb-4">Support</h3>
+              <ul className="space-y-2">
+                <li>
+                  <Link href="#help" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Help Center
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#contact" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Contact
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#status" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Status
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#community" className="text-muted-foreground hover:text-foreground transition-colors">
+                    Community
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-border mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+            <p className="text-muted-foreground text-sm">© 2024 Dash Bot. All rights reserved.</p>
+            <div className="flex space-x-6 mt-4 md:mt-0">
+              <Link href="#privacy" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+                Privacy Policy
+              </Link>
+              <Link href="#terms" className="text-muted-foreground hover:text-foreground text-sm transition-colors">
+                Terms of Service
+              </Link>
             </div>
           </div>
         </div>

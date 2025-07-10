@@ -2,47 +2,39 @@
 
 import { useState, useEffect } from "react"
 import { useSession, signOut } from "next-auth/react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  Loader2Icon,
-  PlusIcon,
-  SettingsIcon,
-  ExternalLinkIcon,
-  LogOutIcon,
-  ServerIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  MenuIcon,
-} from "lucide-react"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import Image from "next/image"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Bot, Users, BarChart3, LogOut, Bell, Zap, Crown, AlertTriangle } from "lucide-react"
+import Link from "next/link"
+import { ServerCard } from "@/components/server-card"
+import { PluginsTab } from "@/components/plugins-tab"
 
-interface DiscordGuild {
+interface Server {
   id: string
   name: string
   icon: string | null
   owner: boolean
   permissions: string
+  features: string[]
+  member_count?: number
+  bot_in_server?: boolean
 }
 
-interface UserServer {
-  serverId: string
-  serverName: string
-  isBotAdded: boolean
-  addedAt: string
+interface UserData {
+  servers: Server[]
+  user_plugins: any[]
+  announcements: any[]
 }
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
-  const router = useRouter()
-  const [discordServers, setDiscordServers] = useState<DiscordGuild[]>([])
-  const [userServers, setUserServers] = useState<UserServer[]>([])
+  const [userData, setUserData] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [addingServer, setAddingServer] = useState<string | null>(null)
+  const [selectedServer, setSelectedServer] = useState<string | null>(null)
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -51,14 +43,11 @@ export default function DashboardPage() {
   }, [status])
 
   const fetchUserData = async () => {
-    setLoading(true)
     try {
       const response = await fetch("/api/user-data")
-      const data = await response.json()
-
       if (response.ok) {
-        setDiscordServers(data.discordServers || [])
-        setUserServers(data.userServers || [])
+        const data = await response.json()
+        setUserData(data)
       }
     } catch (error) {
       console.error("Error fetching user data:", error)
@@ -67,61 +56,26 @@ export default function DashboardPage() {
     }
   }
 
-  const handleAddServer = async (server: DiscordGuild) => {
-    setAddingServer(server.id)
+  const addBotToServer = async (serverId: string) => {
     try {
       const response = await fetch("/api/add-server", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          serverId: server.id,
-          serverName: server.name,
-          serverIcon: server.icon,
-        }),
-      })
-
-      if (response.ok) {
-        await fetchUserData()
-      }
-    } catch (error) {
-      console.error("Error adding server:", error)
-    } finally {
-      setAddingServer(null)
-    }
-  }
-
-  const handleToggleBotStatus = async (serverId: string) => {
-    try {
-      const response = await fetch("/api/toggle-bot", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ serverId }),
       })
-
       if (response.ok) {
-        await fetchUserData()
+        fetchUserData()
       }
     } catch (error) {
-      console.error("Error toggling bot status:", error)
+      console.error("Error adding bot to server:", error)
     }
-  }
-
-  const getInviteLink = (serverId: string) => {
-    const clientId = process.env.NEXT_PUBLIC_DISCORD_BOT_CLIENT_ID
-    return `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot&guild_id=${serverId}`
   }
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center animate-fade-in">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-            <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
-          </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-muted border-t-foreground rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading dashboard...</p>
         </div>
       </div>
@@ -129,65 +83,53 @@ export default function DashboardPage() {
   }
 
   if (status === "unauthenticated") {
-    router.push("/login")
-    return null
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="w-full max-w-md border border-border">
+          <CardHeader className="text-center">
+            <Bot className="h-12 w-12 text-foreground mx-auto mb-4" />
+            <CardTitle className="text-foreground">Access Required</CardTitle>
+            <CardDescription className="text-muted-foreground">Please sign in to access your dashboard</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/">
+              <Button className="w-full bg-foreground text-background hover:bg-foreground/90">Go to Home</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
-  const adminServers = discordServers.filter((server) => (BigInt(server.permissions) & BigInt(0x8)) === BigInt(0x8))
+  const serversWithBot = userData?.servers?.filter((server) => server.bot_in_server) || []
+  const serversWithoutBot = userData?.servers?.filter((server) => !server.bot_in_server) || []
+  const activeAnnouncements = userData?.announcements?.filter((a) => a.active) || []
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-card shadow-sm border-b border-border sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto mobile-optimized py-3 sm:py-4">
+      <header className="border-b border-border bg-background/80 backdrop-blur-sm">
+        <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3 sm:space-x-4">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary flex items-center justify-center overflow-hidden">
-                <Image src="/bot-icon.png" alt="Dash Bot" width={40} height={40} className="object-cover" />
-              </div>
-              <div>
-                <h1 className="text-lg sm:text-2xl font-bold text-foreground">Dash Dashboard</h1>
-                <p className="text-xs text-muted-foreground hidden sm:block">Manage your Discord servers</p>
-              </div>
+            <div className="flex items-center space-x-4">
+              <Link href="/" className="flex items-center space-x-2">
+                <Bot className="h-8 w-8 text-foreground" />
+                <span className="text-xl font-bold text-foreground">Dash Bot</span>
+              </Link>
+              <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                Dashboard
+              </Badge>
             </div>
-
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              {/* Mobile Menu */}
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm" className="sm:hidden">
-                    <MenuIcon className="h-4 w-4" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-80">
-                  <div className="flex flex-col h-full">
-                    <div className="flex items-center space-x-3 mb-6">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={session?.user?.image || ""} alt={session?.user?.name || ""} />
-                        <AvatarFallback>{session?.user?.name?.charAt(0) || "U"}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium text-foreground">{session?.user?.name}</p>
-                        <p className="text-xs text-muted-foreground">{session?.user?.email}</p>
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      onClick={() => signOut()}
-                      className="justify-start text-muted-foreground hover:text-foreground mt-auto"
-                    >
-                      <LogOutIcon className="h-4 w-4 mr-2" />
-                      Sign Out
-                    </Button>
-                  </div>
-                </SheetContent>
-              </Sheet>
-
-              {/* Desktop User Info */}
-              <div className="hidden sm:flex items-center space-x-3">
+            <div className="flex items-center space-x-4">
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                <Bell className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center space-x-3">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={session?.user?.image || ""} alt={session?.user?.name || ""} />
-                  <AvatarFallback>{session?.user?.name?.charAt(0) || "U"}</AvatarFallback>
+                  <AvatarImage src={session?.user?.image || ""} />
+                  <AvatarFallback className="bg-muted text-foreground">
+                    {session?.user?.name?.charAt(0) || "U"}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="hidden md:block">
                   <p className="text-sm font-medium text-foreground">{session?.user?.name}</p>
@@ -198,181 +140,218 @@ export default function DashboardPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => signOut()}
-                className="hidden sm:flex text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground"
               >
-                <LogOutIcon className="h-4 w-4" />
+                <LogOut className="h-4 w-4" />
               </Button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto py-6 sm:py-8 mobile-optimized">
-        {/* Available Servers */}
-        {adminServers.length > 0 && (
-          <section className="mb-8 sm:mb-12 animate-slide-up">
-            <div className="flex items-center space-x-2 mb-4 sm:mb-6">
-              <ServerIcon className="h-5 w-5 text-primary" />
-              <h2 className="text-lg sm:text-xl font-semibold text-foreground">Available Servers</h2>
-              <Badge variant="secondary" className="text-xs">
-                {adminServers.length}
-              </Badge>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {adminServers.map((server) => {
-                const isAdded = userServers.some((us) => us.serverId === server.id)
-
-                return (
-                  <Card key={server.id} className="modern-card group hover:scale-105 transition-all duration-200">
-                    <CardContent className="p-3 sm:p-4">
-                      <div className="flex items-center space-x-3 mb-3 sm:mb-4">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-muted flex items-center justify-center">
-                          {server.icon ? (
-                            <Image
-                              src={`https://cdn.discordapp.com/icons/${server.id}/${server.icon}.png?size=64`}
-                              alt={server.name}
-                              width={48}
-                              height={48}
-                              className="object-cover rounded-full"
-                            />
-                          ) : (
-                            <ServerIcon className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-foreground truncate text-sm sm:text-base">{server.name}</h3>
-                          <p className="text-xs text-muted-foreground">ID: {server.id.slice(0, 8)}...</p>
-                        </div>
-                      </div>
-
-                      {!isAdded ? (
-                        <Button
-                          onClick={() => handleAddServer(server)}
-                          disabled={addingServer === server.id}
-                          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-8 sm:h-9 text-xs sm:text-sm"
-                        >
-                          {addingServer === server.id ? (
-                            <>
-                              <Loader2Icon className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                              Adding...
-                            </>
-                          ) : (
-                            <>
-                              <PlusIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                              Add Server
-                            </>
-                          )}
-                        </Button>
-                      ) : (
-                        <Badge className="w-full justify-center bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100 hover:bg-green-100 dark:hover:bg-green-900 text-xs">
-                          <CheckCircleIcon className="mr-1 h-3 w-3" />
-                          Added
-                        </Badge>
-                      )}
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* My Servers */}
-        {userServers.length > 0 && (
-          <section className="animate-slide-up">
-            <div className="flex items-center space-x-2 mb-4 sm:mb-6">
-              <SettingsIcon className="h-5 w-5 text-primary" />
-              <h2 className="text-lg sm:text-xl font-semibold text-foreground">My Servers</h2>
-              <Badge variant="secondary" className="text-xs">
-                {userServers.length}
-              </Badge>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {userServers.map((server) => (
-                <Card key={server.serverId} className="modern-card group hover:scale-105 transition-all duration-200">
-                  <CardContent className="p-3 sm:p-4">
-                    <div className="flex items-center space-x-3 mb-3 sm:mb-4">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-muted flex items-center justify-center">
-                        <ServerIcon className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-foreground truncate text-sm sm:text-base">
-                          {server.serverName}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">
-                          Added: {new Date(server.addedAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex items-center">
-                        {server.isBotAdded ? (
-                          <Badge className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100 text-xs">
-                            <CheckCircleIcon className="mr-1 h-3 w-3" />
-                            Bot Active
-                          </Badge>
-                        ) : (
-                          <Badge variant="destructive" className="text-xs">
-                            <XCircleIcon className="mr-1 h-3 w-3" />
-                            Bot Missing
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                      {server.isBotAdded ? (
-                        <Button
-                          onClick={() => router.push(`/dashboard/server/${server.serverId}`)}
-                          className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground h-8 sm:h-9 text-xs sm:text-sm"
-                        >
-                          <SettingsIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                          Configure
-                        </Button>
-                      ) : (
-                        <>
-                          <Button
-                            onClick={() => window.open(getInviteLink(server.serverId), "_blank")}
-                            variant="outline"
-                            className="flex-1 h-8 sm:h-9 text-xs sm:text-sm"
-                          >
-                            <ExternalLinkIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                            Invite Bot
-                          </Button>
-                          <Button
-                            onClick={() => handleToggleBotStatus(server.serverId)}
-                            variant="outline"
-                            size="sm"
-                            className="h-8 sm:h-9 px-2 sm:px-3"
-                          >
-                            <CheckCircleIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Empty State */}
-        {adminServers.length === 0 && userServers.length === 0 && (
-          <div className="text-center py-12 sm:py-16 animate-fade-in">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
-              <ServerIcon className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground" />
-            </div>
-            <h3 className="text-lg sm:text-xl font-medium text-foreground mb-2">No servers found</h3>
-            <p className="text-muted-foreground mb-6 sm:mb-8 max-w-md mx-auto text-sm sm:text-base">
-              You need administrator permissions on a Discord server to add it here.
-            </p>
-            <Button onClick={fetchUserData} variant="outline" className="text-sm sm:text-base bg-transparent">
-              Refresh
-            </Button>
+      {/* Announcements */}
+      {activeAnnouncements.length > 0 && (
+        <div className="bg-muted/50 border-b border-border">
+          <div className="container mx-auto px-4 py-3">
+            {activeAnnouncements.slice(0, 1).map((announcement) => (
+              <Alert key={announcement._id} className="border-0 bg-transparent p-0">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-foreground">
+                  <strong>{announcement.title}:</strong> {announcement.message}
+                </AlertDescription>
+              </Alert>
+            ))}
           </div>
-        )}
-      </main>
+        </div>
+      )}
+
+      <div className="container mx-auto px-4 py-8">
+        {/* Welcome Section */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            Welcome back, {session?.user?.name?.split(" ")[0]}
+          </h1>
+          <p className="text-muted-foreground">
+            Manage your Discord servers and bot configurations from your dashboard.
+          </p>
+        </div>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card className="border border-border">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Active Servers</p>
+                  <p className="text-2xl font-bold text-foreground">{serversWithBot.length}</p>
+                </div>
+                <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
+                  <Bot className="h-6 w-6 text-foreground" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border border-border">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Servers</p>
+                  <p className="text-2xl font-bold text-foreground">{userData?.servers?.length || 0}</p>
+                </div>
+                <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
+                  <Users className="h-6 w-6 text-foreground" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border border-border">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Active Plugins</p>
+                  <p className="text-2xl font-bold text-foreground">{userData?.user_plugins?.length || 0}</p>
+                </div>
+                <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
+                  <Zap className="h-6 w-6 text-foreground" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border border-border">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Premium Status</p>
+                  <p className="text-2xl font-bold text-foreground">Free</p>
+                </div>
+                <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
+                  <Crown className="h-6 w-6 text-foreground" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Content */}
+        <Tabs defaultValue="servers" className="space-y-6">
+          <TabsList className="bg-muted border border-border">
+            <TabsTrigger
+              value="servers"
+              className="data-[state=active]:bg-background data-[state=active]:text-foreground"
+            >
+              <Bot className="h-4 w-4 mr-2" />
+              Servers
+            </TabsTrigger>
+            <TabsTrigger
+              value="plugins"
+              className="data-[state=active]:bg-background data-[state=active]:text-foreground"
+            >
+              <Zap className="h-4 w-4 mr-2" />
+              Plugins
+            </TabsTrigger>
+            <TabsTrigger
+              value="analytics"
+              className="data-[state=active]:bg-background data-[state=active]:text-foreground"
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Analytics
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="servers" className="space-y-6">
+            {/* Active Servers */}
+            {serversWithBot.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-foreground">Active Servers</h2>
+                  <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                    {serversWithBot.length} servers
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {serversWithBot.map((server) => (
+                    <ServerCard
+                      key={server.id}
+                      server={server}
+                      onManage={() => setSelectedServer(server.id)}
+                      hasBot={true}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Available Servers */}
+            {serversWithoutBot.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-foreground">Available Servers</h2>
+                  <Badge variant="outline" className="border-border text-muted-foreground">
+                    {serversWithoutBot.length} servers
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {serversWithoutBot.map((server) => (
+                    <ServerCard
+                      key={server.id}
+                      server={server}
+                      onAddBot={() => addBotToServer(server.id)}
+                      hasBot={false}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* No Servers */}
+            {(!userData?.servers || userData.servers.length === 0) && (
+              <Card className="border border-border">
+                <CardContent className="p-12 text-center">
+                  <Bot className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">No servers found</h3>
+                  <p className="text-muted-foreground mb-6">
+                    You don't have access to any Discord servers, or you need to refresh your permissions.
+                  </p>
+                  <Button
+                    onClick={fetchUserData}
+                    variant="outline"
+                    className="border-border text-foreground hover:bg-muted/50 bg-transparent"
+                  >
+                    Refresh Servers
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="plugins">
+            <PluginsTab userPlugins={userData?.user_plugins || []} />
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <Card className="border border-border">
+              <CardHeader>
+                <CardTitle className="text-foreground">Analytics Dashboard</CardTitle>
+                <CardDescription className="text-muted-foreground">
+                  View detailed analytics for your servers and bot usage
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <BarChart3 className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Analytics Coming Soon</h3>
+                  <p className="text-muted-foreground">
+                    Detailed analytics and insights will be available in a future update.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   )
 }
