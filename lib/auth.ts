@@ -1,10 +1,8 @@
 import type { NextAuthOptions } from "next-auth"
 import DiscordProvider from "next-auth/providers/discord"
-import { MongoDBAdapter } from "@auth/mongodb-adapter"
-import clientPromise from "./mongodb"
+import { connectToDatabase } from "./mongodb"
 
 export const authOptions: NextAuthOptions = {
-  adapter: MongoDBAdapter(clientPromise),
   providers: [
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID!,
@@ -17,23 +15,6 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, account, user }) {
-      // Persist the OAuth access_token and user ID to the token right after sign-in
-      if (account) {
-        token.accessToken = account.access_token
-        token.refreshToken = account.refresh_token
-        token.userId = user?.id // Store the user ID from the database
-      }
-      return token
-    },
-    async session({ session, token }) {
-      // Send properties to the client, such as an access_token and user id from a provider.
-      if (session.user) {
-        session.user.id = token.userId as string
-        session.accessToken = token.accessToken as string
-      }
-      return session
-    },
     async signIn({ user, account, profile }) {
       if (account?.provider === "discord" && account.access_token) {
         try {
@@ -44,41 +25,61 @@ export const authOptions: NextAuthOptions = {
             },
           })
 
-          if (guildsResponse.ok) {
-            const guilds = await guildsResponse.json()
+          const guilds = await guildsResponse.json()
 
-            // Store guilds in user document
-            const client = await clientPromise
-            const db = client.db("dash-bot")
+          // Filter guilds where user has MANAGE_GUILD permission
+          const manageableGuilds = guilds.filter((guild: any) => {
+            const permissions = Number.parseInt(guild.permissions)
+            return (permissions & 0x20) === 0x20 || guild.owner // MANAGE_GUILD permission or owner
+          })
 
-            await db.collection("users").updateOne(
-              { email: user.email },
-              {
-                $set: {
-                  discordGuilds: guilds,
-                  accessToken: account.access_token,
-                  refreshToken: account.refresh_token,
-                  updatedAt: new Date(),
-                },
-                $setOnInsert: {
-                  servers: [],
-                  createdAt: new Date(),
-                },
+          // Connect to database and save/update user
+          const { db } = await connectToDatabase()
+
+          await db.collection("users").updateOne(
+            { discordId: user.id },
+            {
+              $set: {
+                discordId: user.id,
+                name: user.name,
+                email: user.email,
+                image: user.image,
+                discordGuilds: manageableGuilds,
+                lastLogin: new Date(),
               },
-              { upsert: true },
-            )
-          }
+              $setOnInsert: {
+                createdAt: new Date(),
+                servers: [],
+              },
+            },
+            { upsert: true },
+          )
+
+          return true
         } catch (error) {
-          console.error("Error fetching Discord guilds during sign in:", error)
+          console.error("Error saving user data:", error)
+          return false
         }
       }
       return true
     },
-  },
-  session: {
-    strategy: "jwt", // Use JWT for session management
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.sub!
+      }
+      return session
+    },
+    async jwt({ token, account, profile }) {
+      if (account) {
+        token.accessToken = account.access_token
+      }
+      return token
+    },
   },
   pages: {
     signIn: "/login",
+  },
+  session: {
+    strategy: "jwt",
   },
 }
