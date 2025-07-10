@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
-import { connectToDatabase } from "@/lib/mongodb"
+import clientPromise from "@/lib/mongodb"
 
 export async function GET(request: NextRequest, { params }: { params: { serverId: string } }) {
   try {
@@ -10,11 +10,13 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { db } = await connectToDatabase()
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const settings = db.collection("server_settings")
     const { serverId } = params
 
     // Get server settings from database
-    let serverSettings = await db.collection("serverSettings").findOne({
+    let serverSettings = await settings.findOne({
       serverId,
       userId: session.user.id,
     })
@@ -25,11 +27,24 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
         serverId,
         userId: session.user.id,
         serverName: `Server ${serverId}`,
+        botStatus: "online" as const,
+        serverStats: {
+          totalMembers: 156,
+          totalBots: 3,
+          totalAdmins: 8,
+        },
+        changelog: {
+          visible: true,
+          title: "Új Sentinel AI funkciók",
+          content: "Fejlett moderációs algoritmusok, automatikus spam védelem és intelligens tartalom szűrés.",
+          version: "v2.1.0",
+          date: "2024. január 15.",
+        },
         settings: {
-          moderationLevel: "off",
+          moderationLevel: "off" as const,
           linkFilter: {
             enabled: false,
-            config: "all_links",
+            config: "phishing_only" as const,
             whitelist: [],
           },
           badWordFilter: {
@@ -51,7 +66,7 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
           welcome: {
             enabled: false,
             channelId: "",
-            message: "Welcome {user} to {server}!",
+            message: "Üdvözlünk {user} a {server} szerveren!",
             dmEnabled: false,
           },
           support: {
@@ -59,10 +74,33 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
               enabled: false,
               channelId: "",
               priorityRoleId: "",
+              categories: ["Általános támogatás", "Technikai probléma", "Jelentés", "Egyéb"],
             },
             autoAnswer: {
               enabled: false,
               qaPairs: "",
+            },
+          },
+          events: {
+            dailyMessages: {
+              enabled: false,
+              time: "09:00",
+              channelId: "",
+              message: "Jó reggelt mindenkinek! 🌅",
+            },
+            joinLeave: {
+              enabled: false,
+              joinChannelId: "",
+              leaveChannelId: "",
+              joinMessage: "🎉 {user} csatlakozott a szerverhez!",
+              leaveMessage: "👋 {user} elhagyta a szervert.",
+            },
+            keywordReactions: {
+              enabled: false,
+              keywords: [
+                { word: "hello", reaction: "👋" },
+                { word: "thanks", reaction: "❤️" },
+              ],
             },
           },
           giveaway: {
@@ -82,7 +120,7 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
         updatedAt: new Date(),
       }
 
-      await db.collection("serverSettings").insertOne(defaultSettings)
+      await settings.insertOne(defaultSettings)
       serverSettings = defaultSettings
     }
 
@@ -100,12 +138,14 @@ export async function PUT(request: NextRequest, { params }: { params: { serverId
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { db } = await connectToDatabase()
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const settings = db.collection("server_settings")
     const { serverId } = params
     const body = await request.json()
 
     // Update server settings
-    const result = await db.collection("serverSettings").updateOne(
+    const result = await settings.updateOne(
       { serverId, userId: session.user.id },
       {
         $set: {
