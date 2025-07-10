@@ -12,22 +12,29 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
 
     const client = await clientPromise
     const db = client.db("dash-bot")
-    const settings = db.collection("server_settings")
     const { serverId } = params
 
-    // Get server settings from database
-    let serverSettings = await settings.findOne({
-      serverId,
-      userId: session.user.id,
-    })
+    // Get user folder structure: users/[userId]/servers/[serverId]/
+    const userCollection = db.collection("users")
+    let userData = await userCollection.findOne({ userId: session.user.id })
 
-    // If no settings exist, create default ones
-    if (!serverSettings) {
-      const defaultSettings = {
-        serverId,
+    if (!userData) {
+      // Create user folder structure
+      userData = {
         userId: session.user.id,
+        servers: {},
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+      await userCollection.insertOne(userData)
+    }
+
+    // Check if server exists in user's folder
+    if (!userData.servers || !userData.servers[serverId]) {
+      // Create default server settings in user folder structure
+      const defaultServerData = {
         serverName: `Server ${serverId}`,
-        botStatus: "online" as const,
+        botStatus: "online",
         serverStats: {
           totalMembers: 156,
           totalBots: 3,
@@ -40,11 +47,11 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
           version: "v2.1.0",
           date: "2024. január 15.",
         },
-        settings: {
-          moderationLevel: "off" as const,
+        moderation: {
+          moderationLevel: "off",
           linkFilter: {
             enabled: false,
-            config: "phishing_only" as const,
+            config: "phishing_only",
             whitelist: [],
           },
           badWordFilter: {
@@ -63,50 +70,58 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
             enabled: false,
             roleId: "",
           },
+        },
+        support: {
           welcome: {
             enabled: false,
             channelId: "",
             message: "Üdvözlünk {user} a {server} szerveren!",
             dmEnabled: false,
           },
-          support: {
-            ticketSystem: {
-              enabled: false,
-              channelId: "",
-              priorityRoleId: "",
-              categories: ["Általános támogatás", "Technikai probléma", "Jelentés", "Egyéb"],
-            },
-            autoAnswer: {
-              enabled: false,
-              qaPairs: "",
-            },
+          ticketSystem: {
+            enabled: false,
+            channelId: "",
+            priorityRoleId: "",
+            categories: ["Általános támogatás", "Technikai probléma", "Jelentés", "Egyéb"],
           },
-          events: {
-            dailyMessages: {
-              enabled: false,
-              time: "09:00",
-              channelId: "",
-              message: "Jó reggelt mindenkinek! 🌅",
-            },
-            joinLeave: {
-              enabled: false,
-              joinChannelId: "",
-              leaveChannelId: "",
-              joinMessage: "🎉 {user} csatlakozott a szerverhez!",
-              leaveMessage: "👋 {user} elhagyta a szervert.",
-            },
-            keywordReactions: {
-              enabled: false,
-              keywords: [
-                { word: "hello", reaction: "👋" },
-                { word: "thanks", reaction: "❤️" },
-              ],
-            },
+          autoAnswer: {
+            enabled: false,
+            qaPairs: "",
           },
+        },
+        events: {
+          dailyMessages: {
+            enabled: false,
+            time: "09:00",
+            channelId: "",
+            message: "Jó reggelt mindenkinek! 🌅",
+          },
+          joinLeave: {
+            enabled: false,
+            joinChannelId: "",
+            leaveChannelId: "",
+            joinMessage: "🎉 {user} csatlakozott a szerverhez!",
+            leaveMessage: "👋 {user} elhagyta a szervert.",
+          },
+          keywordReactions: {
+            enabled: false,
+            keywords: [
+              { word: "hello", reaction: "👋" },
+              { word: "thanks", reaction: "❤️" },
+            ],
+          },
+        },
+        integrations: {
           giveaway: {
             enabled: false,
             defaultChannelId: "",
           },
+        },
+        plugins: {
+          enabled: [],
+          available: [],
+        },
+        settings: {
           logs: {
             enabled: false,
             channelId: "",
@@ -120,11 +135,26 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
         updatedAt: new Date(),
       }
 
-      await settings.insertOne(defaultSettings)
-      serverSettings = defaultSettings
+      // Update user document with new server
+      await userCollection.updateOne(
+        { userId: session.user.id },
+        {
+          $set: {
+            [`servers.${serverId}`]: defaultServerData,
+            updatedAt: new Date(),
+          },
+        },
+      )
+
+      userData.servers = userData.servers || {}
+      userData.servers[serverId] = defaultServerData
     }
 
-    return NextResponse.json(serverSettings)
+    return NextResponse.json({
+      serverId,
+      userId: session.user.id,
+      ...userData.servers[serverId],
+    })
   } catch (error) {
     console.error("Error fetching server settings:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -140,20 +170,25 @@ export async function PUT(request: NextRequest, { params }: { params: { serverId
 
     const client = await clientPromise
     const db = client.db("dash-bot")
-    const settings = db.collection("server_settings")
     const { serverId } = params
     const body = await request.json()
 
-    // Update server settings
-    const result = await settings.updateOne(
-      { serverId, userId: session.user.id },
+    // Remove userId and serverId from body to avoid overwriting
+    const { userId, serverId: _, ...serverData } = body
+
+    // Update server settings in user folder structure
+    const userCollection = db.collection("users")
+    const result = await userCollection.updateOne(
+      { userId: session.user.id },
       {
         $set: {
-          ...body,
+          [`servers.${serverId}`]: {
+            ...serverData,
+            updatedAt: new Date(),
+          },
           updatedAt: new Date(),
         },
       },
-      { upsert: true },
     )
 
     if (result.acknowledged) {
