@@ -112,7 +112,7 @@ export default function DashboardPage() {
 
       if (response.ok) {
         setIsAddServerDialogOpen(false)
-        await fetchUserData()
+        await fetchUserData() // Refresh data to show the newly added server
       } else {
         setError(data.error || "Failed to add server.")
       }
@@ -131,13 +131,16 @@ export default function DashboardPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ serverId }),
+        body: JSON.stringify({ serverId, isBotAdded: true }), // Explicitly set to true
       })
 
       if (response.ok) {
-        await fetchUserData()
+        await fetchUserData() // Refresh data to update bot status
+      } else {
+        setError("Failed to update bot status.")
       }
     } catch (error) {
+      setError("An unexpected error occurred while updating bot status.")
       console.error("Toggle bot error:", error)
     }
   }
@@ -162,7 +165,7 @@ export default function DashboardPage() {
   }
 
   if (status === "unauthenticated") {
-    return null
+    return null // Redirect handled by useEffect
   }
 
   return (
@@ -172,8 +175,8 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <BotIcon className="h-6 w-6 text-white" />
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden">
+                <Image src="/bot-icon.png" alt="Dash Bot" width={40} height={40} className="object-cover" />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Dash</h1>
@@ -255,14 +258,14 @@ export default function DashboardPage() {
                         key={guild.id}
                         className="flex items-center p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
                       >
-                        <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center mr-3">
+                        <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center mr-3 overflow-hidden">
                           {getGuildIcon(guild) ? (
                             <Image
                               src={getGuildIcon(guild)! || "/placeholder.svg"}
                               alt={guild.name}
                               width={40}
                               height={40}
-                              className="rounded-lg"
+                              className="rounded-lg object-cover"
                             />
                           ) : (
                             <ServerIcon className="h-5 w-5 text-gray-500" />
@@ -301,13 +304,11 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[...Array(3)].map((_, i) => (
               <Card key={i} className="modern-card">
-                <CardContent className="p-6">
-                  <div className="flex flex-col items-center text-center">
-                    <Skeleton className="h-16 w-16 rounded-xl mb-4" />
-                    <Skeleton className="h-5 w-32 mb-2" />
-                    <Skeleton className="h-4 w-20 mb-4" />
-                    <Skeleton className="h-9 w-full" />
-                  </div>
+                <CardContent className="p-4 flex flex-col items-center text-center">
+                  <Skeleton className="h-12 w-12 rounded-xl mb-3" />
+                  <Skeleton className="h-4 w-24 mb-1" />
+                  <Skeleton className="h-3 w-16 mb-3" />
+                  <Skeleton className="h-8 w-full" />
                 </CardContent>
               </Card>
             ))}
@@ -326,68 +327,66 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {userServers.map((server) => (
               <Card key={server.serverId} className="modern-card group">
-                <CardContent className="p-6">
-                  <div className="flex flex-col items-center text-center">
-                    <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center mb-4">
-                      {server.serverIcon ? (
-                        <Image
-                          src={server.serverIcon || "/placeholder.svg"}
-                          alt={server.serverName}
-                          width={64}
-                          height={64}
-                          className="rounded-xl"
-                        />
-                      ) : (
-                        <ServerIcon className="h-8 w-8 text-gray-500" />
-                      )}
-                    </div>
-
-                    <h3 className="font-semibold text-gray-900 mb-2 truncate w-full">{server.serverName}</h3>
-
-                    <div className="flex items-center mb-4">
-                      {server.isBotAdded ? (
-                        <div className="flex items-center text-green-600 bg-green-50 px-2 py-1 rounded-full">
-                          <CheckCircleIcon className="h-4 w-4 mr-1" />
-                          <span className="text-xs font-medium">Active</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
-                          <XCircleIcon className="h-4 w-4 mr-1" />
-                          <span className="text-xs font-medium">Pending</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {server.isBotAdded ? (
-                      <Button asChild className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                        <Link href={`/dashboard/server/${server.serverId}`}>
-                          <SettingsIcon className="mr-2 h-4 w-4" />
-                          Configure
-                        </Link>
-                      </Button>
+                <CardContent className="p-4 flex flex-col items-center text-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center mb-3 overflow-hidden">
+                    {server.serverIcon ? (
+                      <Image
+                        src={server.serverIcon || "/placeholder.svg"}
+                        alt={server.serverName}
+                        width={48}
+                        height={48}
+                        className="rounded-xl object-cover"
+                      />
                     ) : (
-                      <div className="w-full space-y-2">
-                        <Button
-                          asChild
-                          variant="outline"
-                          className="w-full border-blue-200 text-blue-600 hover:bg-blue-50 bg-transparent"
-                        >
-                          <a href={getBotInviteLink(server.serverId)} target="_blank" rel="noopener noreferrer">
-                            <ExternalLinkIcon className="mr-2 h-4 w-4" />
-                            Invite Bot
-                          </a>
-                        </Button>
-                        <Button
-                          onClick={() => markBotAsAdded(server.serverId)}
-                          size="sm"
-                          variant="ghost"
-                          className="w-full text-xs text-gray-500 hover:text-gray-700"
-                        >
-                          Mark as Added
-                        </Button>
+                      <ServerIcon className="h-6 w-6 text-gray-500" />
+                    )}
+                  </div>
+
+                  <h3 className="font-semibold text-gray-900 mb-1 truncate w-full text-base">{server.serverName}</h3>
+
+                  <div className="flex items-center mb-3">
+                    {server.isBotAdded ? (
+                      <div className="flex items-center text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                        <CheckCircleIcon className="h-3 w-3 mr-1" />
+                        <span className="text-xs font-medium">Active</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
+                        <XCircleIcon className="h-3 w-3 mr-1" />
+                        <span className="text-xs font-medium">Pending</span>
                       </div>
                     )}
                   </div>
+
+                  {server.isBotAdded ? (
+                    <Button asChild className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm h-9">
+                      <Link href={`/dashboard/server/${server.serverId}`}>
+                        <SettingsIcon className="mr-2 h-4 w-4" />
+                        Configure
+                      </Link>
+                    </Button>
+                  ) : (
+                    <div className="w-full space-y-2">
+                      <Button
+                        asChild
+                        variant="outline"
+                        className="w-full border-blue-200 text-blue-600 hover:bg-blue-50 bg-transparent text-sm h-9"
+                      >
+                        <a href={getBotInviteLink(server.serverId)} target="_blank" rel="noopener noreferrer">
+                          <ExternalLinkIcon className="mr-2 h-4 w-4" />
+                          Invite Bot
+                        </a>
+                      </Button>
+                      <Button
+                        onClick={() => markBotAsAdded(server.serverId)}
+                        size="sm"
+                        variant="ghost"
+                        className="w-full text-xs text-gray-500 hover:text-gray-700 h-8"
+                      >
+                        Mark as Added
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}

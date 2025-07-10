@@ -34,17 +34,19 @@ export default function ServerConfigPage() {
 
   useEffect(() => {
     if (status === "authenticated" && serverId) {
-      fetchServerConfig()
-      fetchBotSettings()
-      fetchDiscordGuildInfo()
+      // Ensure serverId is a string before passing
+      const id = Array.isArray(serverId) ? serverId[0] : serverId
+      fetchServerConfig(id)
+      fetchBotSettings(id)
+      fetchDiscordGuildInfo(id)
     }
-  }, [status, serverId])
+  }, [status, serverId]) // Add serverId to dependency array
 
-  const fetchServerConfig = async () => {
+  const fetchServerConfig = async (id: string) => {
     setLoadingConfig(true)
     setConfigError(null)
     try {
-      const response = await fetch(`/api/user-config/${serverId}`)
+      const response = await fetch(`/api/user-config/${id}`)
       const data = await response.json()
       if (response.ok) {
         setConfig(data.config)
@@ -60,11 +62,11 @@ export default function ServerConfigPage() {
     }
   }
 
-  const fetchBotSettings = async () => {
+  const fetchBotSettings = async (id: string) => {
     setLoadingBotSettings(true)
     setBotSettingsError(null)
     try {
-      const response = await fetch(`/api/bot-settings/${serverId}`)
+      const response = await fetch(`/api/bot-settings/${id}`)
       const data = await response.json()
       if (response.ok) {
         setBotSettings(data.botSettings)
@@ -80,14 +82,15 @@ export default function ServerConfigPage() {
     }
   }
 
-  const fetchDiscordGuildInfo = async () => {
+  const fetchDiscordGuildInfo = async (id: string) => {
     setLoadingDiscordGuild(true)
     setDiscordGuildError(null)
     try {
-      const response = await fetch(`/api/discord/guilds`) // Fetch all guilds, then find the specific one
+      // Fetch all guilds, then find the specific one
+      const response = await fetch(`/api/discord/guilds`)
       const data = await response.json()
       if (response.ok && data.guilds) {
-        const guild = data.guilds.find((g: DiscordGuild) => g.id === serverId)
+        const guild = data.guilds.find((g: DiscordGuild) => g.id === id)
         if (guild) {
           setDiscordGuild(guild)
         } else {
@@ -128,14 +131,15 @@ export default function ServerConfigPage() {
   }
 
   const handleSaveConfig = async () => {
-    if (!config) return
+    if (!config || !serverId) return
 
     setSaving(true)
     setSaveError(null)
     setSaveSuccess(false)
 
     try {
-      const response = await fetch(`/api/user-config/${serverId}`, {
+      const id = Array.isArray(serverId) ? serverId[0] : serverId
+      const response = await fetch(`/api/user-config/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -146,7 +150,7 @@ export default function ServerConfigPage() {
       if (response.ok) {
         setSaveSuccess(true)
         // Optionally refetch config to ensure consistency
-        fetchServerConfig()
+        fetchServerConfig(id)
       } else {
         setSaveError(data.error || "Failed to save configuration.")
         console.error("Error saving config:", data.error)
@@ -159,14 +163,16 @@ export default function ServerConfigPage() {
     }
   }
 
-  if (status === "loading" || loadingConfig || loadingBotSettings || loadingDiscordGuild) {
+  // Show loading state if any data is still being fetched or if serverId is not yet available
+  if (status === "loading" || !serverId || loadingConfig || loadingBotSettings || loadingDiscordGuild) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2Icon className="h-8 w-8 animate-spin text-gray-500" />
+        <Loader2Icon className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     )
   }
 
+  // Show error state if any data failed to load or if essential data is null
   if (configError || botSettingsError || discordGuildError || !config || !botSettings || !discordGuild) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
@@ -180,9 +186,10 @@ export default function ServerConfigPage() {
         </p>
         <Button
           onClick={() => {
-            fetchServerConfig()
-            fetchBotSettings()
-            fetchDiscordGuildInfo()
+            const id = Array.isArray(serverId) ? serverId[0] : serverId
+            fetchServerConfig(id)
+            fetchBotSettings(id)
+            fetchDiscordGuildInfo(id)
           }}
           variant="outline"
         >
@@ -196,7 +203,9 @@ export default function ServerConfigPage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm py-4 px-6 flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Image src="/bot-icon.png" alt="Dash Bot" width={40} height={40} className="rounded-full" />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden">
+            <Image src="/bot-icon.png" alt="Dash Bot" width={40} height={40} className="object-cover" />
+          </div>
           <h1 className="text-xl font-bold text-gray-900">Dash</h1>
         </div>
         <div className="flex items-center space-x-4">

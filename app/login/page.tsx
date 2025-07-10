@@ -5,7 +5,8 @@ import { signIn, useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BotIcon, Loader2Icon } from "lucide-react"
+import { Loader2Icon, ServerIcon } from "lucide-react" // Added ServerIcon for subtle visual
+import Image from "next/image"
 
 export default function LoginPage() {
   const { data: session, status } = useSession()
@@ -40,8 +41,8 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <BotIcon className="h-8 w-8 text-white" />
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 overflow-hidden">
+            <Image src="/bot-icon.png" alt="Dash Bot" width={64} height={64} className="object-cover" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to Dash</h1>
           <p className="text-gray-600">Manage your Discord servers with ease</p>
@@ -49,7 +50,10 @@ export default function LoginPage() {
 
         <Card className="modern-card animate-fade-in">
           <CardHeader className="text-center pb-4">
-            <CardTitle className="text-xl">Sign In</CardTitle>
+            <CardTitle className="text-xl flex items-center justify-center gap-2">
+              <ServerIcon className="h-5 w-5 text-gray-700" />
+              Sign In
+            </CardTitle>
             <CardDescription>Connect with Discord to manage your servers</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
