@@ -52,13 +52,10 @@ import {
   TrendingUpIcon,
   ActivityIcon,
   ClockIcon,
-  AlertTriangleIcon,
   InfoIcon,
   ShieldCheckIcon,
   MenuIcon,
-  SparklesIcon,
-  ZapIcon,
-  MessageSquareIcon,
+  ServerIcon,
 } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Image from "next/image"
@@ -261,7 +258,7 @@ export default function ServerConfigPage() {
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
             <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
           </div>
-          <p className="text-muted-foreground">Szerver konfiguráció betöltése...</p>
+          <p className="text-muted-foreground">Loading server configuration...</p>
         </div>
       </div>
     )
@@ -274,12 +271,12 @@ export default function ServerConfigPage() {
           <div className="w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-6">
             <XCircleIcon className="h-10 w-10 text-destructive" />
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">Konfiguráció nem található</h2>
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">Configuration not found</h2>
           <p className="text-muted-foreground text-center mb-6 text-sm sm:text-base max-w-md">
-            Nem sikerült betölteni a szerver konfigurációt. Kérjük próbálja újra.
+            Failed to load server configuration. Please try again.
           </p>
           <Button onClick={() => router.push("/dashboard")} variant="outline">
-            <ArrowLeftIcon className="mr-2 h-4 w-4" /> Vissza a vezérlőpulthoz
+            <ArrowLeftIcon className="mr-2 h-4 w-4" /> Back to Dashboard
           </Button>
         </div>
       </div>
@@ -296,7 +293,7 @@ export default function ServerConfigPage() {
               <Image src="/bot-icon.png" alt="Dash Bot" width={32} height={32} className="rounded-full" />
               <div>
                 <h1 className="text-lg sm:text-xl font-bold text-foreground">Dash</h1>
-                <p className="text-xs text-muted-foreground hidden sm:block">Szerver Konfiguráció</p>
+                <p className="text-xs text-muted-foreground hidden sm:block">Server Configuration</p>
               </div>
             </div>
 
@@ -311,16 +308,12 @@ export default function ServerConfigPage() {
                 <SheetContent side="right" className="w-80">
                   <div className="flex flex-col h-full">
                     <div className="flex items-center space-x-3 mb-6">
-                      <Image
-                        src="/placeholder-logo.svg"
-                        alt={config.serverName}
-                        width={32}
-                        height={32}
-                        className="rounded-full"
-                      />
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                        <ServerIcon className="h-4 w-4 text-muted-foreground" />
+                      </div>
                       <div>
                         <p className="font-medium text-foreground">{config.serverName}</p>
-                        <p className="text-xs text-muted-foreground">Szerver ID: {config.serverId.slice(0, 8)}...</p>
+                        <p className="text-xs text-muted-foreground">Server ID: {config.serverId.slice(0, 8)}...</p>
                       </div>
                     </div>
 
@@ -336,7 +329,7 @@ export default function ServerConfigPage() {
 
                     <Button onClick={() => router.push("/dashboard")} variant="ghost" className="justify-start mb-2">
                       <ArrowLeftIcon className="mr-2 h-4 w-4" />
-                      Vissza a vezérlőpulthoz
+                      Back to Dashboard
                     </Button>
 
                     <Button
@@ -345,7 +338,7 @@ export default function ServerConfigPage() {
                       className="justify-start text-muted-foreground hover:text-foreground mt-auto"
                     >
                       <LogOutIcon className="h-4 w-4 mr-2" />
-                      Kijelentkezés
+                      Sign Out
                     </Button>
                   </div>
                 </SheetContent>
@@ -355,23 +348,19 @@ export default function ServerConfigPage() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="hidden sm:flex items-center space-x-2 bg-transparent">
-                    <Image
-                      src="/placeholder-logo.svg"
-                      alt={config.serverName}
-                      width={20}
-                      height={20}
-                      className="rounded-full"
-                    />
+                    <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center">
+                      <ServerIcon className="h-3 w-3 text-muted-foreground" />
+                    </div>
                     <span className="font-medium text-sm max-w-32 truncate">{config.serverName}</span>
                     <ChevronDownIcon className="h-3 w-3" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-48">
-                  <DropdownMenuLabel className="text-xs">Szerver váltás</DropdownMenuLabel>
+                  <DropdownMenuLabel className="text-xs">Switch Server</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => router.push("/dashboard")} className="text-xs">
                     <ArrowLeftIcon className="mr-2 h-3 w-3" />
-                    Vissza a vezérlőpulthoz
+                    Back to Dashboard
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -409,11 +398,11 @@ export default function ServerConfigPage() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="text-xs" onClick={() => router.push("/settings")}>
                     <SettingsIcon className="mr-2 h-3 w-3" />
-                    Beállítások
+                    Settings
                   </DropdownMenuItem>
                   <DropdownMenuItem className="text-xs" onClick={() => signOut({ callbackUrl: "/login" })}>
                     <LogOutIcon className="mr-2 h-3 w-3" />
-                    Kijelentkezés
+                    Sign Out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -425,35 +414,47 @@ export default function ServerConfigPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-4 sm:py-6 mobile-optimized">
         <Tabs defaultValue="home" className="w-full">
-          {/* Scrollable Tabs - All Visible */}
+          {/* Optimized Tabs */}
           <div className="mb-4 sm:mb-6">
             <ScrollArea className="w-full whitespace-nowrap">
-              <TabsList className="inline-flex h-8 sm:h-9 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
-                <TabsTrigger value="home" className="text-xs px-2 sm:px-3 py-1 h-6 sm:h-7">
+              <TabsList className="inline-flex h-7 sm:h-8 items-center justify-center rounded-md bg-muted p-0.5 text-muted-foreground">
+                <TabsTrigger value="home" className="text-xs px-2 py-1 h-6 sm:h-7 data-[state=active]:bg-background">
                   <HomeIcon className="mr-1 h-3 w-3" />
-                  <span className="hidden sm:inline">Főoldal</span>
+                  <span className="hidden sm:inline">Home</span>
                 </TabsTrigger>
-                <TabsTrigger value="sentinel" className="text-xs px-2 sm:px-3 py-1 h-6 sm:h-7">
+                <TabsTrigger
+                  value="sentinel"
+                  className="text-xs px-2 py-1 h-6 sm:h-7 data-[state=active]:bg-background"
+                >
                   <ShieldIcon className="mr-1 h-3 w-3" />
                   <span className="hidden sm:inline">Sentinel</span>
                 </TabsTrigger>
-                <TabsTrigger value="helpdesk" className="text-xs px-2 sm:px-3 py-1 h-6 sm:h-7">
+                <TabsTrigger
+                  value="helpdesk"
+                  className="text-xs px-2 py-1 h-6 sm:h-7 data-[state=active]:bg-background"
+                >
                   <HeadphonesIcon className="mr-1 h-3 w-3" />
                   <span className="hidden sm:inline">Helpdesk</span>
                 </TabsTrigger>
-                <TabsTrigger value="events" className="text-xs px-2 sm:px-3 py-1 h-6 sm:h-7">
+                <TabsTrigger value="events" className="text-xs px-2 py-1 h-6 sm:h-7 data-[state=active]:bg-background">
                   <CalendarIcon className="mr-1 h-3 w-3" />
                   <span className="hidden sm:inline">Events</span>
                 </TabsTrigger>
-                <TabsTrigger value="integrations" className="text-xs px-2 sm:px-3 py-1 h-6 sm:h-7">
+                <TabsTrigger
+                  value="integrations"
+                  className="text-xs px-2 py-1 h-6 sm:h-7 data-[state=active]:bg-background"
+                >
                   <PuzzleIcon className="mr-1 h-3 w-3" />
                   <span className="hidden sm:inline">Integrations</span>
                 </TabsTrigger>
-                <TabsTrigger value="plugins" className="text-xs px-2 sm:px-3 py-1 h-6 sm:h-7">
+                <TabsTrigger value="plugins" className="text-xs px-2 py-1 h-6 sm:h-7 data-[state=active]:bg-background">
                   <PlugIcon className="mr-1 h-3 w-3" />
                   <span className="hidden sm:inline">Plugins</span>
                 </TabsTrigger>
-                <TabsTrigger value="settings" className="text-xs px-2 sm:px-3 py-1 h-6 sm:h-7">
+                <TabsTrigger
+                  value="settings"
+                  className="text-xs px-2 py-1 h-6 sm:h-7 data-[state=active]:bg-background"
+                >
                   <SettingsIcon className="mr-1 h-3 w-3" />
                   <span className="hidden sm:inline">Settings</span>
                 </TabsTrigger>
@@ -461,7 +462,7 @@ export default function ServerConfigPage() {
                 {isAdmin && (
                   <TabsTrigger
                     value="admin"
-                    className="text-xs px-2 sm:px-3 py-1 h-6 sm:h-7 bg-destructive/10 text-destructive"
+                    className="text-xs px-2 py-1 h-6 sm:h-7 bg-destructive/10 text-destructive data-[state=active]:bg-destructive/20"
                   >
                     <ShieldCheckIcon className="mr-1 h-3 w-3" />
                     <span className="hidden sm:inline">Admin</span>
@@ -471,58 +472,37 @@ export default function ServerConfigPage() {
             </ScrollArea>
           </div>
 
-          {/* Home Tab - Főoldal */}
+          {/* Home Tab */}
           <TabsContent value="home" className="mt-4 animate-fade-in">
             <div className="space-y-3 sm:space-y-4">
-              {/* Hero Illustration */}
-              <Card className="modern-card bg-gradient-to-br from-primary/5 to-purple-500/5 border-primary/20">
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
-                    <div className="relative">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-primary/10 rounded-full flex items-center justify-center animate-pulse">
-                        <BotIcon className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />
-                      </div>
-                      <div className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-green-500 rounded-full border-2 border-background animate-bounce"></div>
-                    </div>
-                    <div className="text-center sm:text-left flex-1">
-                      <h2 className="text-lg sm:text-xl font-bold text-foreground mb-1 sm:mb-2">
-                        Üdvözöl a {config.serverName} konfigurációjában!
-                      </h2>
-                      <p className="text-sm text-muted-foreground mb-3 sm:mb-4">
-                        Itt kezelheted a bot összes funkcióját és beállítását.
-                      </p>
-                      <div className="flex flex-wrap justify-center sm:justify-start gap-2">
-                        <Badge variant="secondary" className="text-xs">
-                          <SparklesIcon className="mr-1 h-3 w-3" />
-                          AI Moderáció
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs">
-                          <ZapIcon className="mr-1 h-3 w-3" />
-                          Gyors Beállítás
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs">
-                          <MessageSquareIcon className="mr-1 h-3 w-3" />
-                          24/7 Támogatás
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Bot Status - Smaller */}
+              {/* Server Stats in Big Box */}
               <Card className="modern-card">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center space-x-2 text-sm">
-                    <BotIcon className="h-4 w-4" />
-                    <span>Bot Státusz</span>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center space-x-2 text-lg">
+                    <TrendingUpIcon className="h-5 w-5" />
+                    <span>Server Overview</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <div className="flex items-center space-x-3">
-                    <div className="flex items-center space-x-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="text-center p-4 bg-muted rounded-lg">
+                      <UsersIcon className="h-6 w-6 text-primary mx-auto mb-2" />
+                      <h3 className="text-2xl font-bold text-foreground">{config.serverStats.totalMembers}</h3>
+                      <p className="text-muted-foreground text-sm">Members</p>
+                    </div>
+                    <div className="text-center p-4 bg-muted rounded-lg">
+                      <CrownIcon className="h-6 w-6 text-primary mx-auto mb-2" />
+                      <h3 className="text-2xl font-bold text-foreground">{config.serverStats.totalAdmins}</h3>
+                      <p className="text-muted-foreground text-sm">Admins</p>
+                    </div>
+                    <div className="text-center p-4 bg-muted rounded-lg">
+                      <BotIcon className="h-6 w-6 text-primary mx-auto mb-2" />
+                      <h3 className="text-2xl font-bold text-foreground">{config.serverStats.totalBots}</h3>
+                      <p className="text-muted-foreground text-sm">Bots</p>
+                    </div>
+                    <div className="text-center p-4 bg-muted rounded-lg">
                       <div
-                        className={`w-2 h-2 rounded-full ${
+                        className={`w-3 h-3 rounded-full mx-auto mb-2 ${
                           config.botStatus === "online"
                             ? "bg-green-500 animate-pulse"
                             : config.botStatus === "maintenance"
@@ -530,70 +510,20 @@ export default function ServerConfigPage() {
                               : "bg-red-500"
                         }`}
                       />
-                      <span className="font-medium text-sm">
+                      <h3 className="text-sm font-bold text-foreground">
                         {config.botStatus === "online"
-                          ? "Elérhető"
+                          ? "Online"
                           : config.botStatus === "maintenance"
-                            ? "Karbantartás"
-                            : "Nem elérhető"}
-                      </span>
-                    </div>
-                    <Badge
-                      variant={config.botStatus === "online" ? "default" : "secondary"}
-                      className={`text-xs ${
-                        config.botStatus === "online"
-                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                          : config.botStatus === "maintenance"
-                            ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"
-                            : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100"
-                      }`}
-                    >
-                      {config.botStatus === "online"
-                        ? "Aktív"
-                        : config.botStatus === "maintenance"
-                          ? "Karbantartás"
-                          : "Offline"}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Server Statistics - Smaller */}
-              <Card className="modern-card">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center space-x-2 text-sm">
-                    <TrendingUpIcon className="h-4 w-4" />
-                    <span>Szerver Statisztikák</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="text-center p-3 bg-blue-50 dark:bg-blue-950 rounded-md border border-blue-200 dark:border-blue-800">
-                      <UsersIcon className="h-5 w-5 text-blue-600 dark:text-blue-400 mx-auto mb-1" />
-                      <h3 className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                        {config.serverStats.totalMembers}
+                            ? "Maintenance"
+                            : "Offline"}
                       </h3>
-                      <p className="text-muted-foreground text-xs">Tagok</p>
-                    </div>
-                    <div className="text-center p-3 bg-purple-50 dark:bg-purple-950 rounded-md border border-purple-200 dark:border-purple-800">
-                      <CrownIcon className="h-5 w-5 text-purple-600 dark:text-purple-400 mx-auto mb-1" />
-                      <h3 className="text-lg font-bold text-purple-600 dark:text-purple-400">
-                        {config.serverStats.totalAdmins}
-                      </h3>
-                      <p className="text-muted-foreground text-xs">Adminok</p>
-                    </div>
-                    <div className="text-center p-3 bg-green-50 dark:bg-green-950 rounded-md border border-green-200 dark:border-green-800">
-                      <BotIcon className="h-5 w-5 text-green-600 dark:text-green-400 mx-auto mb-1" />
-                      <h3 className="text-lg font-bold text-green-600 dark:text-green-400">
-                        {config.serverStats.totalBots}
-                      </h3>
-                      <p className="text-muted-foreground text-xs">Botok</p>
+                      <p className="text-muted-foreground text-sm">Bot Status</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Changelog - Smaller */}
+              {/* Changelog */}
               {config.changelog.visible && (
                 <Card className="modern-card border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950">
                   <CardHeader className="pb-2">
@@ -604,7 +534,7 @@ export default function ServerConfigPage() {
                         variant="secondary"
                         className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 text-xs"
                       >
-                        Új
+                        New
                       </Badge>
                     </CardTitle>
                   </CardHeader>
@@ -623,12 +553,12 @@ export default function ServerConfigPage() {
                 </Card>
               )}
 
-              {/* Quick Stats - Smaller */}
+              {/* Quick Stats */}
               <Card className="modern-card">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center space-x-2 text-sm">
                     <ActivityIcon className="h-4 w-4" />
-                    <span>Gyors Áttekintés</span>
+                    <span>Quick Overview</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
@@ -639,23 +569,25 @@ export default function ServerConfigPage() {
                           Object.values(config.support).filter((setting: any) => setting.enabled).length +
                           Object.values(config.events).filter((setting: any) => setting.enabled).length}
                       </h4>
-                      <p className="text-xs text-muted-foreground">Aktív funkció</p>
+                      <p className="text-xs text-muted-foreground">Active Features</p>
                     </div>
                     <div className="text-center p-2 bg-muted rounded-md">
-                      <h4 className="text-sm font-bold text-foreground">{config.moderation.moderationLevel}</h4>
-                      <p className="text-xs text-muted-foreground">Moderációs szint</p>
+                      <h4 className="text-sm font-bold text-foreground capitalize">
+                        {config.moderation.moderationLevel}
+                      </h4>
+                      <p className="text-xs text-muted-foreground">Moderation Level</p>
                     </div>
                     <div className="text-center p-2 bg-muted rounded-md">
                       <h4 className="text-sm font-bold text-foreground">
-                        {config.support.ticketSystem.enabled ? "Aktív" : "Inaktív"}
+                        {config.support.ticketSystem.enabled ? "Active" : "Inactive"}
                       </h4>
-                      <p className="text-xs text-muted-foreground">Ticket rendszer</p>
+                      <p className="text-xs text-muted-foreground">Ticket System</p>
                     </div>
                     <div className="text-center p-2 bg-muted rounded-md">
                       <h4 className="text-sm font-bold text-foreground">
-                        {config.settings.logs.enabled ? "Aktív" : "Inaktív"}
+                        {config.settings.logs.enabled ? "Active" : "Inactive"}
                       </h4>
-                      <p className="text-xs text-muted-foreground">Naplózás</p>
+                      <p className="text-xs text-muted-foreground">Logging</p>
                     </div>
                   </div>
                 </CardContent>
@@ -663,23 +595,21 @@ export default function ServerConfigPage() {
             </div>
           </TabsContent>
 
-          {/* Sentinel Tab - Moderációs rendszer */}
+          {/* Sentinel Tab */}
           <TabsContent value="sentinel" className="mt-4 animate-fade-in">
             <div className="space-y-3 sm:space-y-4">
-              {/* Info Block with Info Button and Illustration */}
-              <Card className="modern-card border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950">
+              {/* Moderation Level with 3-way switch and info button */}
+              <Card className="modern-card">
                 <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center space-x-2 text-blue-800 dark:text-blue-200 text-sm">
-                    <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                      <ShieldIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <span>Sentinel AI Moderátor</span>
+                  <CardTitle className="flex items-center space-x-2 text-sm">
+                    <ShieldIcon className="h-4 w-4" />
+                    <span>Sentinel AI Moderator</span>
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 w-6 p-0 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-800"
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                         >
                           <InfoIcon className="h-3 w-3" />
                         </Button>
@@ -688,38 +618,38 @@ export default function ServerConfigPage() {
                         <DialogHeader>
                           <DialogTitle className="text-sm flex items-center space-x-2">
                             <ShieldIcon className="h-4 w-4 text-primary" />
-                            <span>Hogyan lett betanítva a bot?</span>
+                            <span>How was the bot trained?</span>
                           </DialogTitle>
                           <DialogDescription className="text-xs space-y-2">
                             <div className="bg-muted p-3 rounded-lg">
                               <p className="font-medium mb-2">
-                                A Sentinel AI több mint 10,000 valós moderációs eset alapján lett betanítva:
+                                Sentinel AI was trained on over 10,000 real moderation cases:
                               </p>
                               <div className="space-y-1">
                                 <div className="flex justify-between">
-                                  <span>• Spam üzenet elemzése</span>
+                                  <span>• Spam message analysis</span>
                                   <span className="font-mono">3,500</span>
                                 </div>
                                 <div className="flex justify-between">
-                                  <span>• Káros link azonosítása</span>
+                                  <span>• Malicious link detection</span>
                                   <span className="font-mono">2,800</span>
                                 </div>
                                 <div className="flex justify-between">
-                                  <span>• Toxikus viselkedés mintája</span>
+                                  <span>• Toxic behavior patterns</span>
                                   <span className="font-mono">1,900</span>
                                 </div>
                                 <div className="flex justify-between">
-                                  <span>• Raid támadás elemzése</span>
+                                  <span>• Raid attack analysis</span>
                                   <span className="font-mono">1,200</span>
                                 </div>
                                 <div className="flex justify-between">
-                                  <span>• Phishing kísérlet</span>
+                                  <span>• Phishing attempts</span>
                                   <span className="font-mono">600</span>
                                 </div>
                               </div>
                             </div>
                             <p className="text-center text-muted-foreground">
-                              Az AI folyamatosan tanul és fejlődik minden új esetből.
+                              The AI continuously learns and improves from every new case.
                             </p>
                           </DialogDescription>
                         </DialogHeader>
@@ -727,51 +657,43 @@ export default function ServerConfigPage() {
                     </Dialog>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-0">
-                  <p className="text-blue-800 dark:text-blue-200 text-xs mb-2">
-                    A Sentinel több ezer valós moderációs eset alapján lett betanítva, hogy automatikusan kezelje a
-                    szerver biztonságát és rendjét.
-                  </p>
-                  <div className="flex items-center space-x-2">
-                    <AlertTriangleIcon className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                    <span className="text-xs text-blue-700 dark:text-blue-300">
-                      A magasabb moderációs szintek szigorúbb szabályokat alkalmaznak.
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Moderation Level - Smaller */}
-              <Card className="modern-card">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Moderációs Szint</CardTitle>
-                </CardHeader>
                 <CardContent className="pt-0 space-y-3">
                   <div>
-                    <Label htmlFor="moderationLevel" className="text-xs">
-                      Válasszon moderációs szintet
+                    <Label htmlFor="moderationLevel" className="text-xs mb-2 block">
+                      Choose moderation level
                     </Label>
-                    <Select
-                      value={config.moderation.moderationLevel}
-                      onValueChange={(value: "off" | "basic" | "advanced") =>
-                        handleSettingChange("moderation.moderationLevel", value)
-                      }
-                    >
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Válasszon moderációs szintet" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="off" className="text-xs">
-                          Kikapcsolva - Nincs automatikus moderáció
-                        </SelectItem>
-                        <SelectItem value="basic" className="text-xs">
-                          Basic - Alapvető spam és káros tartalom szűrés
-                        </SelectItem>
-                        <SelectItem value="advanced" className="text-xs">
-                          Advanced - Teljes AI moderáció minden funkcióval
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center space-x-1 bg-muted rounded-lg p-1">
+                      <button
+                        onClick={() => handleSettingChange("moderation.moderationLevel", "off")}
+                        className={`flex-1 px-3 py-2 text-xs rounded-md transition-colors ${
+                          config.moderation.moderationLevel === "off"
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Off
+                      </button>
+                      <button
+                        onClick={() => handleSettingChange("moderation.moderationLevel", "basic")}
+                        className={`flex-1 px-3 py-2 text-xs rounded-md transition-colors ${
+                          config.moderation.moderationLevel === "basic"
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Basic
+                      </button>
+                      <button
+                        onClick={() => handleSettingChange("moderation.moderationLevel", "advanced")}
+                        className={`flex-1 px-3 py-2 text-xs rounded-md transition-colors ${
+                          config.moderation.moderationLevel === "advanced"
+                            ? "bg-destructive/20 text-destructive shadow-sm border border-destructive/30"
+                            : "text-muted-foreground hover:text-destructive"
+                        }`}
+                      >
+                        Advanced
+                      </button>
+                    </div>
                   </div>
 
                   {config.moderation.moderationLevel !== "off" && (
@@ -779,18 +701,18 @@ export default function ServerConfigPage() {
                       <InfoIcon className="h-3 w-3" />
                       <AlertDescription className="text-xs">
                         {config.moderation.moderationLevel === "basic"
-                          ? "Alapvető moderáció aktív: spam védelem, káros linkek szűrése."
-                          : "Fejlett moderáció aktív: teljes AI elemzés, proaktív védelem, részletes naplózás."}
+                          ? "Basic moderation active: spam protection, malicious link filtering."
+                          : "Advanced moderation active: full AI analysis, proactive protection, detailed logging."}
                       </AlertDescription>
                     </Alert>
                   )}
                 </CardContent>
               </Card>
 
-              {/* Link Filter - Smaller */}
+              {/* Link Filter */}
               <Card className="modern-card">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Link Szűrő</CardTitle>
+                  <CardTitle className="text-sm">Link Filter</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0 space-y-3">
                   <div className="flex items-center space-x-2">
@@ -800,7 +722,7 @@ export default function ServerConfigPage() {
                       onCheckedChange={(checked) => handleSettingChange("moderation.linkFilter.enabled", checked)}
                     />
                     <Label htmlFor="linkFilterEnabled" className="text-xs">
-                      Link szűrő engedélyezése
+                      Enable link filter
                     </Label>
                   </div>
 
@@ -808,7 +730,7 @@ export default function ServerConfigPage() {
                     <>
                       <div>
                         <Label htmlFor="linkFilterConfig" className="text-xs">
-                          Szűrő típusa
+                          Filter type
                         </Label>
                         <Select
                           value={config.moderation.linkFilter.config}
@@ -819,13 +741,13 @@ export default function ServerConfigPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all_links" className="text-xs">
-                              Minden link blokkolása
+                              Block all links
                             </SelectItem>
                             <SelectItem value="whitelist_only" className="text-xs">
-                              Csak engedélyezett linkek
+                              Allow only whitelisted links
                             </SelectItem>
                             <SelectItem value="phishing_only" className="text-xs">
-                              Csak káros linkek blokkolása
+                              Block only malicious links
                             </SelectItem>
                           </SelectContent>
                         </Select>
@@ -834,7 +756,7 @@ export default function ServerConfigPage() {
                       {config.moderation.linkFilter.config === "whitelist_only" && (
                         <div>
                           <Label htmlFor="whitelist" className="text-xs">
-                            Engedélyezett domainek (soronként egy)
+                            Allowed domains (one per line)
                           </Label>
                           <Textarea
                             id="whitelist"
@@ -856,10 +778,10 @@ export default function ServerConfigPage() {
                 </CardContent>
               </Card>
 
-              {/* Bad Word Filter - Smaller */}
+              {/* Bad Word Filter */}
               <Card className="modern-card">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Káromkodás Szűrő</CardTitle>
+                  <CardTitle className="text-sm">Bad Word Filter</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0 space-y-3">
                   <div className="flex items-center space-x-2">
@@ -869,14 +791,14 @@ export default function ServerConfigPage() {
                       onCheckedChange={(checked) => handleSettingChange("moderation.badWordFilter.enabled", checked)}
                     />
                     <Label htmlFor="badWordFilterEnabled" className="text-xs">
-                      Káromkodás szűrő engedélyezése
+                      Enable bad word filter
                     </Label>
                   </div>
 
                   {config.moderation.badWordFilter.enabled && (
                     <div>
                       <Label htmlFor="customWords" className="text-xs">
-                        Egyedi tiltott szavak (soronként egy)
+                        Custom banned words (one per line)
                       </Label>
                       <Textarea
                         id="customWords"
@@ -887,7 +809,7 @@ export default function ServerConfigPage() {
                             e.target.value.split("\n").filter(Boolean),
                           )
                         }
-                        placeholder="tiltott_szó1&#10;tiltott_szó2"
+                        placeholder="banned_word1&#10;banned_word2"
                         rows={4}
                         className="text-xs"
                       />
@@ -896,10 +818,10 @@ export default function ServerConfigPage() {
                 </CardContent>
               </Card>
 
-              {/* Raid Protection - Smaller */}
+              {/* Raid Protection */}
               <Card className="modern-card">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Raid Védelem</CardTitle>
+                  <CardTitle className="text-sm">Raid Protection</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0 space-y-3">
                   <div className="flex items-center space-x-2">
@@ -909,14 +831,14 @@ export default function ServerConfigPage() {
                       onCheckedChange={(checked) => handleSettingChange("moderation.raidProtection.enabled", checked)}
                     />
                     <Label htmlFor="raidProtectionEnabled" className="text-xs">
-                      Raid védelem engedélyezése
+                      Enable raid protection
                     </Label>
                   </div>
 
                   {config.moderation.raidProtection.enabled && (
                     <div>
                       <Label htmlFor="raidThreshold" className="text-xs">
-                        Raid küszöb (csatlakozó tagok percenként)
+                        Raid threshold (joining members per minute)
                       </Label>
                       <Input
                         id="raidThreshold"
@@ -934,7 +856,7 @@ export default function ServerConfigPage() {
                 </CardContent>
               </Card>
 
-              {/* Auto Role - Smaller */}
+              {/* Auto Role */}
               <Card className="modern-card">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm">Auto Role</CardTitle>
@@ -947,20 +869,20 @@ export default function ServerConfigPage() {
                       onCheckedChange={(checked) => handleSettingChange("moderation.autoRole.enabled", checked)}
                     />
                     <Label htmlFor="autoRoleEnabled" className="text-xs">
-                      Auto szerepkör hozzárendelés belépéskor
+                      Auto assign role on join
                     </Label>
                   </div>
 
                   {config.moderation.autoRole.enabled && (
                     <div>
                       <Label htmlFor="autoRoleId" className="text-xs">
-                        Szerepkör ID
+                        Role ID
                       </Label>
                       <Input
                         id="autoRoleId"
                         value={config.moderation.autoRole.roleId}
                         onChange={(e) => handleSettingChange("moderation.autoRole.roleId", e.target.value)}
-                        placeholder="Szerepkör ID megadása"
+                        placeholder="Enter role ID"
                         className="h-8 text-xs"
                       />
                     </div>
@@ -970,32 +892,13 @@ export default function ServerConfigPage() {
             </div>
           </TabsContent>
 
-          {/* Helpdesk Tab - Smaller */}
+          {/* Helpdesk Tab */}
           <TabsContent value="helpdesk" className="mt-4 animate-fade-in">
             <div className="space-y-3 sm:space-y-4">
-              {/* Helpdesk Illustration */}
-              <Card className="modern-card bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-950 dark:to-blue-950 border-green-200 dark:border-green-800">
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
-                      <HeadphonesIcon className="w-8 h-8 sm:w-10 sm:h-10 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div className="text-center sm:text-left flex-1">
-                      <h2 className="text-lg sm:text-xl font-bold text-foreground mb-1 sm:mb-2">
-                        Helpdesk & Támogatás
-                      </h2>
-                      <p className="text-sm text-muted-foreground">
-                        Professzionális ticket rendszer és üdvözlő üzenetek kezelése.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Ticket System - Smaller */}
+              {/* Ticket System */}
               <Card className="modern-card">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Ticket Rendszer</CardTitle>
+                  <CardTitle className="text-sm">Ticket System</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0 space-y-3">
                   <div className="flex items-center space-x-2">
@@ -1005,7 +908,7 @@ export default function ServerConfigPage() {
                       onCheckedChange={(checked) => handleSettingChange("support.ticketSystem.enabled", checked)}
                     />
                     <Label htmlFor="ticketSystemEnabled" className="text-xs">
-                      Ticket rendszer engedélyezése
+                      Enable ticket system
                     </Label>
                   </div>
 
@@ -1013,31 +916,31 @@ export default function ServerConfigPage() {
                     <>
                       <div>
                         <Label htmlFor="ticketChannel" className="text-xs">
-                          Ticket csatorna ID
+                          Ticket channel ID
                         </Label>
                         <Input
                           id="ticketChannel"
                           value={config.support.ticketSystem.channelId}
                           onChange={(e) => handleSettingChange("support.ticketSystem.channelId", e.target.value)}
-                          placeholder="Csatorna ID megadása"
+                          placeholder="Enter channel ID"
                           className="h-8 text-xs"
                         />
                       </div>
                       <div>
                         <Label htmlFor="supportRole" className="text-xs">
-                          Support szerepkör ID
+                          Support role ID
                         </Label>
                         <Input
                           id="supportRole"
                           value={config.support.ticketSystem.priorityRoleId}
                           onChange={(e) => handleSettingChange("support.ticketSystem.priorityRoleId", e.target.value)}
-                          placeholder="Support csapat szerepkör ID"
+                          placeholder="Support team role ID"
                           className="h-8 text-xs"
                         />
                       </div>
                       <div>
                         <Label htmlFor="ticketCategories" className="text-xs">
-                          Ticket kategóriák (soronként egy)
+                          Ticket categories (one per line)
                         </Label>
                         <Textarea
                           id="ticketCategories"
@@ -1048,7 +951,7 @@ export default function ServerConfigPage() {
                               e.target.value.split("\n").filter(Boolean),
                             )
                           }
-                          placeholder="Általános támogatás&#10;Technikai probléma&#10;Jelentés&#10;Egyéb"
+                          placeholder="General Support&#10;Technical Issue&#10;Report&#10;Other"
                           rows={3}
                           className="text-xs"
                         />
@@ -1058,10 +961,10 @@ export default function ServerConfigPage() {
                 </CardContent>
               </Card>
 
-              {/* Welcome Messages - Smaller */}
+              {/* Welcome Messages */}
               <Card className="modern-card">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Üdvözlő Üzenetek</CardTitle>
+                  <CardTitle className="text-sm">Welcome Messages</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0 space-y-3">
                   <div className="flex items-center space-x-2">
@@ -1071,7 +974,7 @@ export default function ServerConfigPage() {
                       onCheckedChange={(checked) => handleSettingChange("support.welcome.enabled", checked)}
                     />
                     <Label htmlFor="welcomeEnabled" className="text-xs">
-                      Üdvözlő üzenetek engedélyezése
+                      Enable welcome messages
                     </Label>
                   </div>
 
@@ -1079,30 +982,30 @@ export default function ServerConfigPage() {
                     <>
                       <div>
                         <Label htmlFor="welcomeChannel" className="text-xs">
-                          Üdvözlő csatorna ID
+                          Welcome channel ID
                         </Label>
                         <Input
                           id="welcomeChannel"
                           value={config.support.welcome.channelId}
                           onChange={(e) => handleSettingChange("support.welcome.channelId", e.target.value)}
-                          placeholder="Csatorna ID megadása"
+                          placeholder="Enter channel ID"
                           className="h-8 text-xs"
                         />
                       </div>
                       <div>
                         <Label htmlFor="welcomeMessage" className="text-xs">
-                          Üdvözlő üzenet
+                          Welcome message
                         </Label>
                         <Textarea
                           id="welcomeMessage"
                           value={config.support.welcome.message}
                           onChange={(e) => handleSettingChange("support.welcome.message", e.target.value)}
-                          placeholder="Üdvözlünk {user} a {server} szerveren!"
+                          placeholder="Welcome {user} to {server}!"
                           rows={2}
                           className="text-xs"
                         />
                         <p className="text-xs text-muted-foreground mt-1">
-                          Használható változók: {"{user}"} - felhasználó neve, {"{server}"} - szerver neve
+                          Available variables: {"{user}"} - user name, {"{server}"} - server name
                         </p>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -1112,7 +1015,7 @@ export default function ServerConfigPage() {
                           onCheckedChange={(checked) => handleSettingChange("support.welcome.dmEnabled", checked)}
                         />
                         <Label htmlFor="welcomeDmEnabled" className="text-xs">
-                          Üdvözlő üzenet küldése privát üzenetben is
+                          Also send welcome message via DM
                         </Label>
                       </div>
                     </>
@@ -1122,32 +1025,13 @@ export default function ServerConfigPage() {
             </div>
           </TabsContent>
 
-          {/* Events Tab - Smaller */}
+          {/* Events Tab */}
           <TabsContent value="events" className="mt-4 animate-fade-in">
             <div className="space-y-3 sm:space-y-4">
-              {/* Events Illustration */}
-              <Card className="modern-card bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950 border-purple-200 dark:border-purple-800">
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center">
-                      <CalendarIcon className="w-8 h-8 sm:w-10 sm:h-10 text-purple-600 dark:text-purple-400" />
-                    </div>
-                    <div className="text-center sm:text-left flex-1">
-                      <h2 className="text-lg sm:text-xl font-bold text-foreground mb-1 sm:mb-2">
-                        Események & Automatizáció
-                      </h2>
-                      <p className="text-sm text-muted-foreground">
-                        Időzített üzenetek, belépés/kilépés események és kulcsszavas reakciók.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Daily Messages - Smaller */}
+              {/* Daily Messages */}
               <Card className="modern-card">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Napi Időzített Üzenetek</CardTitle>
+                  <CardTitle className="text-sm">Daily Scheduled Messages</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0 space-y-3">
                   <div className="flex items-center space-x-2">
@@ -1157,7 +1041,7 @@ export default function ServerConfigPage() {
                       onCheckedChange={(checked) => handleSettingChange("events.dailyMessages.enabled", checked)}
                     />
                     <Label htmlFor="dailyMessagesEnabled" className="text-xs">
-                      Napi üzenetek engedélyezése
+                      Enable daily messages
                     </Label>
                   </div>
 
@@ -1165,7 +1049,7 @@ export default function ServerConfigPage() {
                     <>
                       <div>
                         <Label htmlFor="dailyTime" className="text-xs">
-                          Időpont (HH:MM formátumban)
+                          Time (HH:MM format)
                         </Label>
                         <Input
                           id="dailyTime"
@@ -1177,25 +1061,25 @@ export default function ServerConfigPage() {
                       </div>
                       <div>
                         <Label htmlFor="dailyChannel" className="text-xs">
-                          Csatorna ID
+                          Channel ID
                         </Label>
                         <Input
                           id="dailyChannel"
                           value={config.events.dailyMessages.channelId}
                           onChange={(e) => handleSettingChange("events.dailyMessages.channelId", e.target.value)}
-                          placeholder="Csatorna ID megadása"
+                          placeholder="Enter channel ID"
                           className="h-8 text-xs"
                         />
                       </div>
                       <div>
                         <Label htmlFor="dailyMessage" className="text-xs">
-                          Napi üzenet
+                          Daily message
                         </Label>
                         <Textarea
                           id="dailyMessage"
                           value={config.events.dailyMessages.message}
                           onChange={(e) => handleSettingChange("events.dailyMessages.message", e.target.value)}
-                          placeholder="Jó reggelt mindenkinek! 🌅"
+                          placeholder="Good morning everyone! 🌅"
                           rows={2}
                           className="text-xs"
                         />
@@ -1205,10 +1089,10 @@ export default function ServerConfigPage() {
                 </CardContent>
               </Card>
 
-              {/* Join/Leave Events - Smaller */}
+              {/* Join/Leave Events */}
               <Card className="modern-card">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Belépés/Kilépés Események</CardTitle>
+                  <CardTitle className="text-sm">Join/Leave Events</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0 space-y-3">
                   <div className="flex items-center space-x-2">
@@ -1218,7 +1102,7 @@ export default function ServerConfigPage() {
                       onCheckedChange={(checked) => handleSettingChange("events.joinLeave.enabled", checked)}
                     />
                     <Label htmlFor="joinLeaveEnabled" className="text-xs">
-                      Belépés/kilépés események engedélyezése
+                      Enable join/leave events
                     </Label>
                   </div>
 
@@ -1227,51 +1111,51 @@ export default function ServerConfigPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <Label htmlFor="joinChannelId" className="text-xs">
-                            Belépés csatorna ID
+                            Join channel ID
                           </Label>
                           <Input
                             id="joinChannelId"
                             value={config.events.joinLeave.joinChannelId}
                             onChange={(e) => handleSettingChange("events.joinLeave.joinChannelId", e.target.value)}
-                            placeholder="Csatorna ID"
+                            placeholder="Channel ID"
                             className="h-8 text-xs"
                           />
                         </div>
                         <div>
                           <Label htmlFor="leaveChannelId" className="text-xs">
-                            Kilépés csatorna ID
+                            Leave channel ID
                           </Label>
                           <Input
                             id="leaveChannelId"
                             value={config.events.joinLeave.leaveChannelId}
                             onChange={(e) => handleSettingChange("events.joinLeave.leaveChannelId", e.target.value)}
-                            placeholder="Csatorna ID"
+                            placeholder="Channel ID"
                             className="h-8 text-xs"
                           />
                         </div>
                       </div>
                       <div>
                         <Label htmlFor="joinMessage" className="text-xs">
-                          Belépés üzenet
+                          Join message
                         </Label>
                         <Textarea
                           id="joinMessage"
                           value={config.events.joinLeave.joinMessage}
                           onChange={(e) => handleSettingChange("events.joinLeave.joinMessage", e.target.value)}
-                          placeholder="🎉 {user} csatlakozott a szerverhez!"
+                          placeholder="🎉 {user} joined the server!"
                           rows={1}
                           className="text-xs"
                         />
                       </div>
                       <div>
                         <Label htmlFor="leaveMessage" className="text-xs">
-                          Kilépés üzenet
+                          Leave message
                         </Label>
                         <Textarea
                           id="leaveMessage"
                           value={config.events.joinLeave.leaveMessage}
                           onChange={(e) => handleSettingChange("events.joinLeave.leaveMessage", e.target.value)}
-                          placeholder="👋 {user} elhagyta a szervert."
+                          placeholder="👋 {user} left the server."
                           rows={1}
                           className="text-xs"
                         />
@@ -1283,30 +1167,12 @@ export default function ServerConfigPage() {
             </div>
           </TabsContent>
 
-          {/* Integrations Tab - Smaller */}
+          {/* Integrations Tab */}
           <TabsContent value="integrations" className="mt-4 animate-fade-in">
             <div className="space-y-3 sm:space-y-4">
-              {/* Integrations Illustration */}
-              <Card className="modern-card bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950 dark:to-re-950 border-orange-200 dark:border-orange-800">
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center">
-                      <PuzzleIcon className="w-8 h-8 sm:w-10 sm:h-10 text-orange-600 dark:text-orange-400" />
-                    </div>
-                    <div className="text-center sm:text-left flex-1">
-                      <h2 className="text-lg sm:text-xl font-bold text-foreground mb-1 sm:mb-2">Integrációk</h2>
-                      <p className="text-sm text-muted-foreground">
-                        Külső szolgáltatások és speciális funkciók integrálása.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Giveaway Integration - Smaller */}
               <Card className="modern-card">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Giveaway Rendszer</CardTitle>
+                  <CardTitle className="text-sm">Giveaway Integration</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0 space-y-3">
                   <div className="flex items-center space-x-2">
@@ -1316,20 +1182,20 @@ export default function ServerConfigPage() {
                       onCheckedChange={(checked) => handleSettingChange("integrations.giveaway.enabled", checked)}
                     />
                     <Label htmlFor="giveawayEnabled" className="text-xs">
-                      Giveaway rendszer engedélyezése
+                      Enable giveaway system
                     </Label>
                   </div>
 
                   {config.integrations.giveaway.enabled && (
                     <div>
                       <Label htmlFor="giveawayChannel" className="text-xs">
-                        Alapértelmezett giveaway csatorna ID
+                        Default giveaway channel ID
                       </Label>
                       <Input
                         id="giveawayChannel"
                         value={config.integrations.giveaway.defaultChannelId}
                         onChange={(e) => handleSettingChange("integrations.giveaway.defaultChannelId", e.target.value)}
-                        placeholder="Csatorna ID megadása"
+                        placeholder="Enter channel ID"
                         className="h-8 text-xs"
                       />
                     </div>
@@ -1339,81 +1205,51 @@ export default function ServerConfigPage() {
             </div>
           </TabsContent>
 
-          {/* Plugins Tab - Smaller */}
+          {/* Plugins Tab */}
           <TabsContent value="plugins" className="mt-4 animate-fade-in">
             <div className="space-y-3 sm:space-y-4">
-              {/* Plugins Illustration */}
-              <Card className="modern-card bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-950 dark:to-blue-950 border-cyan-200 dark:border-cyan-800">
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-cyan-100 dark:bg-cyan-900 rounded-full flex items-center justify-center">
-                      <PlugIcon className="w-8 h-8 sm:w-10 sm:h-10 text-cyan-600 dark:text-cyan-400" />
-                    </div>
-                    <div className="text-center sm:text-left flex-1">
-                      <h2 className="text-lg sm:text-xl font-bold text-foreground mb-1 sm:mb-2">Plugin Rendszer</h2>
-                      <p className="text-sm text-muted-foreground">Kiegészítő funkciók és modulok kezelése.</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Available Plugins - Smaller */}
               <Card className="modern-card">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Elérhető Pluginok</CardTitle>
+                  <CardTitle className="text-sm">Plugin Manager</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
+                  <p className="text-muted-foreground text-xs mb-3">
+                    Manage server plugins here. Plugins add additional functionality to the bot.
+                  </p>
                   <div className="space-y-2">
-                    {config.plugins.available.map((plugin) => (
-                      <div
-                        key={plugin}
-                        className="flex items-center justify-between p-2 border border-border rounded-md"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <PlugIcon className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs font-medium">{plugin}</span>
+                    {config.plugins.available.length > 0 ? (
+                      config.plugins.available.map((plugin) => (
+                        <div key={plugin} className="flex items-center justify-between p-2 border rounded-md">
+                          <div>
+                            <h4 className="font-medium text-sm">{plugin}</h4>
+                            <p className="text-xs text-muted-foreground">Plugin description</p>
+                          </div>
+                          <Switch
+                            checked={config.plugins.enabled.includes(plugin)}
+                            onCheckedChange={(checked) => {
+                              const newEnabled = checked
+                                ? [...config.plugins.enabled, plugin]
+                                : config.plugins.enabled.filter((p) => p !== plugin)
+                              handleSettingChange("plugins.enabled", newEnabled)
+                            }}
+                          />
                         </div>
-                        <Switch
-                          checked={config.plugins.enabled.includes(plugin)}
-                          onCheckedChange={(checked) => {
-                            const newEnabled = checked
-                              ? [...config.plugins.enabled, plugin]
-                              : config.plugins.enabled.filter((p) => p !== plugin)
-                            handleSettingChange("plugins.enabled", newEnabled)
-                          }}
-                        />
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground text-xs">No plugins available.</p>
+                    )}
                   </div>
                 </CardContent>
               </Card>
             </div>
           </TabsContent>
 
-          {/* Settings Tab - Smaller */}
+          {/* Settings Tab */}
           <TabsContent value="settings" className="mt-4 animate-fade-in">
             <div className="space-y-3 sm:space-y-4">
-              {/* Settings Illustration */}
-              <Card className="modern-card bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-950 dark:to-slate-950 border-gray-200 dark:border-gray-800">
-                <CardContent className="p-4 sm:p-6">
-                  <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 dark:bg-gray-900 rounded-full flex items-center justify-center">
-                      <SettingsIcon className="w-8 h-8 sm:w-10 sm:h-10 text-gray-600 dark:text-gray-400" />
-                    </div>
-                    <div className="text-center sm:text-left flex-1">
-                      <h2 className="text-lg sm:text-xl font-bold text-foreground mb-1 sm:mb-2">
-                        Általános Beállítások
-                      </h2>
-                      <p className="text-sm text-muted-foreground">Naplózás és egyéb rendszerbeállítások.</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Logging Settings - Smaller */}
               <Card className="modern-card">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Naplózási Beállítások</CardTitle>
+                  <CardTitle className="text-sm">Logging Settings</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0 space-y-3">
                   <div className="flex items-center space-x-2">
@@ -1423,7 +1259,7 @@ export default function ServerConfigPage() {
                       onCheckedChange={(checked) => handleSettingChange("settings.logs.enabled", checked)}
                     />
                     <Label htmlFor="logsEnabled" className="text-xs">
-                      Naplózás engedélyezése
+                      Enable logging
                     </Label>
                   </div>
 
@@ -1431,18 +1267,18 @@ export default function ServerConfigPage() {
                     <>
                       <div>
                         <Label htmlFor="logChannel" className="text-xs">
-                          Napló csatorna ID
+                          Log channel ID
                         </Label>
                         <Input
                           id="logChannel"
                           value={config.settings.logs.channelId}
                           onChange={(e) => handleSettingChange("settings.logs.channelId", e.target.value)}
-                          placeholder="Csatorna ID megadása"
+                          placeholder="Enter channel ID"
                           className="h-8 text-xs"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-xs">Naplózandó események</Label>
+                        <Label className="text-xs">What should the bot log?</Label>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <div className="flex items-center space-x-2">
                             <Switch
@@ -1451,7 +1287,7 @@ export default function ServerConfigPage() {
                               onCheckedChange={(checked) => handleSettingChange("settings.logs.messageEdits", checked)}
                             />
                             <Label htmlFor="logMessageEdits" className="text-xs">
-                              Üzenet szerkesztések
+                              Message edits
                             </Label>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -1461,7 +1297,7 @@ export default function ServerConfigPage() {
                               onCheckedChange={(checked) => handleSettingChange("settings.logs.modActions", checked)}
                             />
                             <Label htmlFor="logModActions" className="text-xs">
-                              Moderációs műveletek
+                              Moderation actions
                             </Label>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -1471,7 +1307,7 @@ export default function ServerConfigPage() {
                               onCheckedChange={(checked) => handleSettingChange("settings.logs.memberJoins", checked)}
                             />
                             <Label htmlFor="logMemberJoins" className="text-xs">
-                              Tag belépések
+                              Member joins
                             </Label>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -1481,7 +1317,7 @@ export default function ServerConfigPage() {
                               onCheckedChange={(checked) => handleSettingChange("settings.logs.memberLeaves", checked)}
                             />
                             <Label htmlFor="logMemberLeaves" className="text-xs">
-                              Tag kilépések
+                              Member leaves
                             </Label>
                           </div>
                         </div>
@@ -1501,38 +1337,38 @@ export default function ServerConfigPage() {
                 <Alert className="border-destructive bg-destructive/10">
                   <ShieldCheckIcon className="h-4 w-4" />
                   <AlertDescription className="text-xs">
-                    <strong>Admin Panel:</strong> Ez a panel csak rendszergazdák számára látható. Itt található a
-                    rendszer és hibakeresési információk.
+                    <strong>Admin Panel:</strong> This panel is only visible to system administrators. Here you can find
+                    system and debug information.
                   </AlertDescription>
                 </Alert>
 
                 {/* System Information */}
                 <Card className="modern-card">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-destructive">Rendszer Információk</CardTitle>
+                    <CardTitle className="text-sm text-destructive">System Information</CardTitle>
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       <div className="space-y-1">
                         <p>
-                          <strong>Szerver ID:</strong> {config.serverId}
+                          <strong>Server ID:</strong> {config.serverId}
                         </p>
                         <p>
-                          <strong>Felhasználó ID:</strong> {config.userId}
+                          <strong>User ID:</strong> {config.userId}
                         </p>
                         <p>
-                          <strong>Bot Státusz:</strong> {config.botStatus}
+                          <strong>Bot Status:</strong> {config.botStatus}
                         </p>
                       </div>
                       <div className="space-y-1">
                         <p>
-                          <strong>Moderációs Szint:</strong> {config.moderation.moderationLevel}
+                          <strong>Moderation Level:</strong> {config.moderation.moderationLevel}
                         </p>
                         <p>
-                          <strong>Aktív Pluginok:</strong> {config.plugins.enabled.length}
+                          <strong>Active Plugins:</strong> {config.plugins.enabled.length}
                         </p>
                         <p>
-                          <strong>Naplózás:</strong> {config.settings.logs.enabled ? "Aktív" : "Inaktív"}
+                          <strong>Logging:</strong> {config.settings.logs.enabled ? "Active" : "Inactive"}
                         </p>
                       </div>
                     </div>
@@ -1542,7 +1378,7 @@ export default function ServerConfigPage() {
                 {/* Debug Information */}
                 <Card className="modern-card">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-destructive">Debug Információk</CardTitle>
+                    <CardTitle className="text-sm text-destructive">Debug Information</CardTitle>
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="bg-muted p-3 rounded-md">
@@ -1586,12 +1422,12 @@ export default function ServerConfigPage() {
               {saving ? (
                 <>
                   <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                  Mentés...
+                  Saving...
                 </>
               ) : (
                 <>
                   <SaveIcon className="mr-2 h-4 w-4" />
-                  Konfiguráció Mentése
+                  Save Configuration
                 </>
               )}
             </Button>
@@ -1599,7 +1435,7 @@ export default function ServerConfigPage() {
             {saveSuccess && (
               <div className="flex items-center space-x-2 text-green-600 dark:text-green-400 text-sm animate-fade-in">
                 <CheckCircleIcon className="h-4 w-4" />
-                <span>Sikeresen mentve!</span>
+                <span>Successfully saved!</span>
               </div>
             )}
 

@@ -16,8 +16,6 @@ import {
   ServerIcon,
   CheckCircleIcon,
   XCircleIcon,
-  TrendingUpIcon,
-  BotIcon,
   MenuIcon,
 } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -124,7 +122,7 @@ export default function DashboardPage() {
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
             <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
           </div>
-          <p className="text-muted-foreground">Vezérlőpult betöltése...</p>
+          <p className="text-muted-foreground">Loading dashboard...</p>
         </div>
       </div>
     )
@@ -148,8 +146,8 @@ export default function DashboardPage() {
                 <Image src="/bot-icon.png" alt="Dash Bot" width={40} height={40} className="object-cover" />
               </div>
               <div>
-                <h1 className="text-lg sm:text-2xl font-bold text-foreground">Dash Vezérlőpult</h1>
-                <p className="text-xs text-muted-foreground hidden sm:block">Kezeld a Discord szervereidet</p>
+                <h1 className="text-lg sm:text-2xl font-bold text-foreground">Dash Dashboard</h1>
+                <p className="text-xs text-muted-foreground hidden sm:block">Manage your Discord servers</p>
               </div>
             </div>
 
@@ -179,7 +177,7 @@ export default function DashboardPage() {
                       className="justify-start text-muted-foreground hover:text-foreground mt-auto"
                     >
                       <LogOutIcon className="h-4 w-4 mr-2" />
-                      Kijelentkezés
+                      Sign Out
                     </Button>
                   </div>
                 </SheetContent>
@@ -210,73 +208,12 @@ export default function DashboardPage() {
       </header>
 
       <main className="max-w-7xl mx-auto py-6 sm:py-8 mobile-optimized">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <Card className="modern-card">
-            <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                  <ServerIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <p className="text-lg sm:text-2xl font-bold text-foreground">{adminServers.length}</p>
-                  <p className="text-xs text-muted-foreground">Elérhető szerver</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="modern-card">
-            <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                  <CheckCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
-                </div>
-                <div>
-                  <p className="text-lg sm:text-2xl font-bold text-foreground">{userServers.length}</p>
-                  <p className="text-xs text-muted-foreground">Aktív szerver</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="modern-card">
-            <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                  <BotIcon className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-lg sm:text-2xl font-bold text-foreground">
-                    {userServers.filter((s) => s.isBotAdded).length}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Bot hozzáadva</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="modern-card">
-            <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
-                  <TrendingUpIcon className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 dark:text-orange-400" />
-                </div>
-                <div>
-                  <p className="text-lg sm:text-2xl font-bold text-foreground">100%</p>
-                  <p className="text-xs text-muted-foreground">Üzemidő</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Available Servers */}
         {adminServers.length > 0 && (
           <section className="mb-8 sm:mb-12 animate-slide-up">
             <div className="flex items-center space-x-2 mb-4 sm:mb-6">
               <ServerIcon className="h-5 w-5 text-primary" />
-              <h2 className="text-lg sm:text-xl font-semibold text-foreground">Elérhető Szerverek</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground">Available Servers</h2>
               <Badge variant="secondary" className="text-xs">
                 {adminServers.length}
               </Badge>
@@ -293,11 +230,11 @@ export default function DashboardPage() {
                         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-muted flex items-center justify-center">
                           {server.icon ? (
                             <Image
-                              src={`https://cdn.discordapp.com/icons/${server.id}/${server.icon}.png`}
+                              src={`https://cdn.discordapp.com/icons/${server.id}/${server.icon}.png?size=64`}
                               alt={server.name}
                               width={48}
                               height={48}
-                              className="object-cover"
+                              className="object-cover rounded-full"
                             />
                           ) : (
                             <ServerIcon className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
@@ -318,19 +255,19 @@ export default function DashboardPage() {
                           {addingServer === server.id ? (
                             <>
                               <Loader2Icon className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                              Hozzáadás...
+                              Adding...
                             </>
                           ) : (
                             <>
                               <PlusIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                              Szerver Hozzáadása
+                              Add Server
                             </>
                           )}
                         </Button>
                       ) : (
                         <Badge className="w-full justify-center bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100 hover:bg-green-100 dark:hover:bg-green-900 text-xs">
                           <CheckCircleIcon className="mr-1 h-3 w-3" />
-                          Hozzáadva
+                          Added
                         </Badge>
                       )}
                     </CardContent>
@@ -346,7 +283,7 @@ export default function DashboardPage() {
           <section className="animate-slide-up">
             <div className="flex items-center space-x-2 mb-4 sm:mb-6">
               <SettingsIcon className="h-5 w-5 text-primary" />
-              <h2 className="text-lg sm:text-xl font-semibold text-foreground">Saját Szervereim</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground">My Servers</h2>
               <Badge variant="secondary" className="text-xs">
                 {userServers.length}
               </Badge>
@@ -365,19 +302,19 @@ export default function DashboardPage() {
                           {server.serverName}
                         </h3>
                         <p className="text-xs text-muted-foreground">
-                          Hozzáadva: {new Date(server.addedAt).toLocaleDateString()}
+                          Added: {new Date(server.addedAt).toLocaleDateString()}
                         </p>
                       </div>
                       <div className="flex items-center">
                         {server.isBotAdded ? (
                           <Badge className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100 text-xs">
                             <CheckCircleIcon className="mr-1 h-3 w-3" />
-                            Bot Aktív
+                            Bot Active
                           </Badge>
                         ) : (
                           <Badge variant="destructive" className="text-xs">
                             <XCircleIcon className="mr-1 h-3 w-3" />
-                            Bot Hiányzik
+                            Bot Missing
                           </Badge>
                         )}
                       </div>
@@ -390,7 +327,7 @@ export default function DashboardPage() {
                           className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground h-8 sm:h-9 text-xs sm:text-sm"
                         >
                           <SettingsIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                          Konfigurálás
+                          Configure
                         </Button>
                       ) : (
                         <>
@@ -400,7 +337,7 @@ export default function DashboardPage() {
                             className="flex-1 h-8 sm:h-9 text-xs sm:text-sm"
                           >
                             <ExternalLinkIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                            Bot Meghívása
+                            Invite Bot
                           </Button>
                           <Button
                             onClick={() => handleToggleBotStatus(server.serverId)}
@@ -426,12 +363,12 @@ export default function DashboardPage() {
             <div className="w-20 h-20 sm:w-24 sm:h-24 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
               <ServerIcon className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground" />
             </div>
-            <h3 className="text-lg sm:text-xl font-medium text-foreground mb-2">Nincsenek szerverek</h3>
+            <h3 className="text-lg sm:text-xl font-medium text-foreground mb-2">No servers found</h3>
             <p className="text-muted-foreground mb-6 sm:mb-8 max-w-md mx-auto text-sm sm:text-base">
-              Adminisztrátori jogosultságra van szükséged egy Discord szerveren a hozzáadáshoz.
+              You need administrator permissions on a Discord server to add it here.
             </p>
             <Button onClick={fetchUserData} variant="outline" className="text-sm sm:text-base bg-transparent">
-              Frissítés
+              Refresh
             </Button>
           </div>
         )}

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Bot, Users, Shield, MessageSquare, Star, ArrowRight, Zap, Clock, CheckCircle } from "lucide-react"
+import { Bot, Users, Shield, MessageSquare, Star, ArrowRight, Zap, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 
@@ -36,12 +36,12 @@ export default function HomePage() {
                   size="sm"
                   className="border-border text-foreground hover:bg-accent bg-transparent"
                 >
-                  Bejelentkezés
+                  Login
                 </Button>
               </Link>
               <Link href="/login">
                 <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
-                  Kezdés
+                  Get Started
                 </Button>
               </Link>
             </div>
@@ -65,13 +65,13 @@ export default function HomePage() {
             </div>
 
             <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold text-foreground mb-4 sm:mb-6 leading-tight">
-              A Legjobb Discord Bot
+              The Ultimate Discord Bot
               <br />
-              <span className="text-primary">A Te Szerveredhez</span>
+              <span className="text-primary">For Your Server</span>
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground mb-6 sm:mb-8 max-w-2xl mx-auto">
-              Hatékony moderáció, izgalmas funkciók és zökkenőmentes kezelés. Minden, amire szükséged van egy
-              fantasztikus Discord közösség építéséhez.
+              Powerful moderation, engaging features, and seamless management. Everything you need to build an amazing
+              Discord community.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-8 sm:mb-12">
@@ -80,31 +80,24 @@ export default function HomePage() {
                   size="lg"
                   className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4"
                 >
-                  Discord-hoz Hozzáadás
+                  Add to Discord
                   <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </Link>
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-full sm:w-auto border-border text-foreground hover:bg-accent text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 bg-transparent"
-              >
-                Demó Megtekintése
-              </Button>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-8 text-sm text-muted-foreground">
               <div className="flex items-center space-x-2">
                 <Users className="h-4 w-4" />
-                <span>{serverCount.toLocaleString()} szerver</span>
+                <span>{serverCount.toLocaleString()} servers</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Star className="h-4 w-4" />
-                <span>Ingyenes örökre</span>
+                <span>Free forever</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Zap className="h-4 w-4" />
-                <span>Azonnali beállítás</span>
+                <span>Instant setup</span>
               </div>
             </div>
           </div>
@@ -115,9 +108,9 @@ export default function HomePage() {
       <section className="py-12 sm:py-20 bg-muted/30">
         <div className="container mx-auto mobile-optimized">
           <div className="text-center mb-12 sm:mb-16 animate-slide-up">
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3 sm:mb-4">Minden, amire szükséged van</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3 sm:mb-4">Everything you need</h2>
             <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
-              Hatékony funkciók a Discord közösséged kezeléséhez és növeléséhez
+              Powerful features to manage and grow your Discord community
             </p>
           </div>
 
@@ -127,9 +120,9 @@ export default function HomePage() {
                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 dark:bg-blue-900 rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4 group-hover:scale-110 transition-transform">
                   <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 dark:text-blue-400" />
                 </div>
-                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">AI Moderáció</h3>
+                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">AI Moderation</h3>
                 <p className="text-sm text-muted-foreground">
-                  Fejlett automatikus moderáció testreszabható szűrőkkel és műveletekkel
+                  Advanced auto-moderation with customizable filters and actions
                 </p>
               </CardContent>
             </Card>
@@ -139,10 +132,8 @@ export default function HomePage() {
                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 dark:bg-green-900 rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4 group-hover:scale-110 transition-transform">
                   <Users className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 dark:text-green-400" />
                 </div>
-                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">Üdvözlő Rendszer</h3>
-                <p className="text-sm text-muted-foreground">
-                  Köszöntsd az új tagokat egyedi üzenetekkel és automatikus szerepkörökkel
-                </p>
+                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">Welcome System</h3>
+                <p className="text-sm text-muted-foreground">Greet new members with custom messages and auto-roles</p>
               </CardContent>
             </Card>
 
@@ -151,8 +142,8 @@ export default function HomePage() {
                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 dark:bg-purple-900 rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4 group-hover:scale-110 transition-transform">
                   <MessageSquare className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 dark:text-purple-400" />
                 </div>
-                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">Ticket Rendszer</h3>
-                <p className="text-sm text-muted-foreground">Professzionális ticket rendszer a tagok támogatásához</p>
+                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">Support Tickets</h3>
+                <p className="text-sm text-muted-foreground">Professional ticket system for member support</p>
               </CardContent>
             </Card>
 
@@ -161,8 +152,8 @@ export default function HomePage() {
                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 dark:bg-orange-900 rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4 group-hover:scale-110 transition-transform">
                   <Bot className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600 dark:text-orange-400" />
                 </div>
-                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">Egyedi Parancsok</h3>
-                <p className="text-sm text-muted-foreground">Hozz létre egyedi parancsokat és automatikus válaszokat</p>
+                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">Custom Commands</h3>
+                <p className="text-sm text-muted-foreground">Create custom commands and automated responses</p>
               </CardContent>
             </Card>
           </div>
@@ -174,16 +165,16 @@ export default function HomePage() {
         <div className="container mx-auto mobile-optimized">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             <div className="animate-slide-up">
-              <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4 sm:mb-6">Miért válaszd a Dash-t?</h2>
+              <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4 sm:mb-6">Why choose Dash?</h2>
               <div className="space-y-4 sm:space-y-6">
                 <div className="flex items-start space-x-3 sm:space-x-4">
                   <div className="w-6 h-6 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                     <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground mb-1">Gyors Beállítás</h3>
+                    <h3 className="font-semibold text-foreground mb-1">Quick Setup</h3>
                     <p className="text-sm text-muted-foreground">
-                      Percek alatt üzembe helyezhető, nincs szükség programozási tudásra
+                      Deploy in minutes, no programming knowledge required
                     </p>
                   </div>
                 </div>
@@ -192,8 +183,8 @@ export default function HomePage() {
                     <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground mb-1">24/7 Működés</h3>
-                    <p className="text-sm text-muted-foreground">Megbízható szolgáltatás 99.9% üzemidővel</p>
+                    <h3 className="font-semibold text-foreground mb-1">24/7 Uptime</h3>
+                    <p className="text-sm text-muted-foreground">Reliable service with 99.9% uptime guarantee</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-3 sm:space-x-4">
@@ -201,8 +192,8 @@ export default function HomePage() {
                     <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground mb-1">Folyamatos Fejlesztés</h3>
-                    <p className="text-sm text-muted-foreground">Rendszeres frissítések és új funkciók</p>
+                    <h3 className="font-semibold text-foreground mb-1">Continuous Updates</h3>
+                    <p className="text-sm text-muted-foreground">Regular updates and new features</p>
                   </div>
                 </div>
               </div>
@@ -211,24 +202,24 @@ export default function HomePage() {
               <div className="bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-2xl p-6 sm:p-8">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-card rounded-xl p-4 text-center">
-                    <Clock className="w-8 h-8 text-primary mx-auto mb-2" />
-                    <div className="text-xl sm:text-2xl font-bold text-foreground">5 perc</div>
-                    <div className="text-xs text-muted-foreground">Beállítási idő</div>
-                  </div>
-                  <div className="bg-card rounded-xl p-4 text-center">
                     <Users className="w-8 h-8 text-primary mx-auto mb-2" />
                     <div className="text-xl sm:text-2xl font-bold text-foreground">10K+</div>
-                    <div className="text-xs text-muted-foreground">Elégedett felhasználó</div>
+                    <div className="text-xs text-muted-foreground">Happy users</div>
                   </div>
                   <div className="bg-card rounded-xl p-4 text-center">
                     <Shield className="w-8 h-8 text-primary mx-auto mb-2" />
                     <div className="text-xl sm:text-2xl font-bold text-foreground">99.9%</div>
-                    <div className="text-xs text-muted-foreground">Üzemidő</div>
+                    <div className="text-xs text-muted-foreground">Uptime</div>
                   </div>
                   <div className="bg-card rounded-xl p-4 text-center">
                     <Star className="w-8 h-8 text-primary mx-auto mb-2" />
                     <div className="text-xl sm:text-2xl font-bold text-foreground">4.9/5</div>
-                    <div className="text-xs text-muted-foreground">Értékelés</div>
+                    <div className="text-xs text-muted-foreground">Rating</div>
+                  </div>
+                  <div className="bg-card rounded-xl p-4 text-center">
+                    <Bot className="w-8 h-8 text-primary mx-auto mb-2" />
+                    <div className="text-xl sm:text-2xl font-bold text-foreground">24/7</div>
+                    <div className="text-xs text-muted-foreground">Support</div>
                   </div>
                 </div>
               </div>
@@ -241,29 +232,19 @@ export default function HomePage() {
       <section className="py-12 sm:py-20 bg-primary/5">
         <div className="container mx-auto mobile-optimized text-center">
           <div className="max-w-3xl mx-auto animate-fade-in">
-            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3 sm:mb-4">Készen állsz a kezdésre?</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3 sm:mb-4">Ready to get started?</h2>
             <p className="text-base sm:text-lg text-muted-foreground mb-6 sm:mb-8">
-              Csatlakozz a több ezer Discord szerverhez, amelyek a Dash-t használják fantasztikus közösségek
-              létrehozásához.
+              Join thousands of Discord servers using Dash to create amazing communities.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
-              <Link href="/login">
-                <Button
-                  size="lg"
-                  className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4"
-                >
-                  Discord-hoz Hozzáadás
-                  <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
-                </Button>
-              </Link>
+            <Link href="/login">
               <Button
-                variant="outline"
                 size="lg"
-                className="w-full sm:w-auto border-border text-foreground hover:bg-accent text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 bg-transparent"
+                className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4"
               >
-                Dokumentáció
+                Add to Discord
+                <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
-            </div>
+            </Link>
           </div>
         </div>
       </section>
@@ -277,7 +258,7 @@ export default function HomePage() {
               <span className="font-semibold text-foreground">Dash</span>
             </div>
             <div className="text-sm text-muted-foreground text-center sm:text-right">
-              © 2024 Dash Bot. Ingyenes örökre.
+              © 2024 Dash Bot. Free forever.
             </div>
           </div>
         </div>
