@@ -15,9 +15,14 @@ export default function LoginPage() {
 
   useEffect(() => {
     const checkSession = async () => {
-      const session = await getSession()
-      if (session) {
-        router.push("/dashboard")
+      try {
+        const session = await getSession()
+        if (session) {
+          router.push("/dashboard")
+          return
+        }
+      } catch (error) {
+        console.error("Session check error:", error)
       }
       setIsCheckingSession(false)
     }
@@ -27,7 +32,17 @@ export default function LoginPage() {
   const handleDiscordLogin = async () => {
     setIsLoading(true)
     try {
-      await signIn("discord", { callbackUrl: "/dashboard" })
+      const result = await signIn("discord", {
+        callbackUrl: "/dashboard",
+        redirect: false,
+      })
+
+      if (result?.error) {
+        console.error("Login error:", result.error)
+        setIsLoading(false)
+      } else if (result?.url) {
+        window.location.href = result.url
+      }
     } catch (error) {
       console.error("Login error:", error)
       setIsLoading(false)
@@ -39,32 +54,30 @@ export default function LoginPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <Loader2Icon className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Checking your session...</p>
+          <p className="text-gray-600">Checking session...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8">
-        <Card className="bg-white shadow-lg border border-gray-200">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4">
+      <div className="w-full max-w-md">
+        <Card className="shadow-lg">
           <CardHeader className="text-center space-y-4">
             <div className="mx-auto">
               <Image src="/bot-icon.png" alt="Dash Bot" width={80} height={80} className="rounded-full shadow-md" />
             </div>
             <div className="space-y-2">
-              <CardTitle className="text-3xl font-bold text-gray-900">Welcome to Dash</CardTitle>
-              <CardDescription className="text-gray-600 text-lg">
-                Sign in with Discord to manage your servers
-              </CardDescription>
+              <CardTitle className="text-3xl font-bold">Welcome to Dash</CardTitle>
+              <CardDescription className="text-lg">Sign in with Discord to manage your servers</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
             <Button
               onClick={handleDiscordLogin}
               disabled={isLoading}
-              className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white shadow-md transition-all duration-200"
+              className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white text-lg py-3"
               size="lg"
             >
               {isLoading ? (
@@ -83,7 +96,7 @@ export default function LoginPage() {
             </Button>
 
             <div className="text-center text-sm text-gray-500">
-              <p>By signing in, you agree to our terms of service</p>
+              <p>Simple server management dashboard</p>
             </div>
           </CardContent>
         </Card>

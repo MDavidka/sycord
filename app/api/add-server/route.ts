@@ -14,63 +14,42 @@ export async function POST(request: NextRequest) {
     const { serverId, serverName, serverIcon } = await request.json()
 
     if (!serverId || !serverName) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+      return NextResponse.json({ error: "Server ID and name are required" }, { status: 400 })
     }
 
     const { db } = await connectToDatabase()
 
-    // Check if server already exists in server_configs
-    const existingConfig = await db.collection("server_configs").findOne({ serverId })
+    // Check if server already exists for user
+    const user = await db.collection("users").findOne({ discordId: session.user.id })
 
-    let isBotAdded = false
-
-    if (existingConfig) {
-      // Server config exists, check if bot is added
-      isBotAdded = existingConfig.isBotAdded || false
-    } else {
-      // Create new server config
-      await db.collection("server_configs").insertOne({
-        serverId,
-        serverName,
-        serverIcon,
-        isBotAdded: false,
-        createdAt: new Date(),
-        settings: {
-          welcomeChannel: null,
-          welcomeMessage: "Welcome to the server!",
-          autoRole: null,
-          modLogChannel: null,
-          prefix: "!",
-          enabledPlugins: [],
-        },
-      })
+    if (user?.servers?.some((server: any) => server.serverId === serverId)) {
+      return NextResponse.json({ error: "Server already added" }, { status: 400 })
     }
 
-    // Add server to user's servers list
-    const serverData = {
+    // Add server to user's servers
+    const newServer = {
       serverId,
       serverName,
       serverIcon,
-      isBotAdded,
+      isBotAdded: false, // Default to false, can be updated later
       addedAt: new Date(),
     }
 
     await db.collection("users").updateOne(
       { discordId: session.user.id },
       {
-        $addToSet: {
-          servers: serverData,
-        },
+        $push: { servers: newServer },
+        $set: { updatedAt: new Date() },
       },
     )
 
     return NextResponse.json({
       success: true,
-      isBotAdded,
-      message: isBotAdded ? "Server added and bot is ready!" : "Server added. Please invite the bot to continue.",
+      server: newServer,
+      isBotAdded: false,
     })
   } catch (error) {
     console.error("Error adding server:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ error: "Failed to add server" }, { status: 500 })
   }
 }

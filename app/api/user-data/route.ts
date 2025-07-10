@@ -13,28 +13,41 @@ export async function GET(request: NextRequest) {
 
     const { db } = await connectToDatabase()
 
-    // Get user document
-    const user = await db.collection("users").findOne({
-      discordId: session.user.id,
-    })
+    // Get user's servers from database
+    const user = await db.collection("users").findOne({ discordId: session.user.id })
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Get user's added servers
     const userServers = user.servers || []
 
-    // Get available guilds (exclude already added servers)
-    const addedServerIds = userServers.map((server: any) => server.serverId)
-    const availableGuilds = (user.discordGuilds || []).filter((guild: any) => !addedServerIds.includes(guild.id))
+    // Return mock available servers for demo purposes
+    const mockAvailableServers = [
+      {
+        id: "123456789",
+        name: "My Discord Server",
+        icon: null,
+        owner: true,
+        permissions: "8",
+        approximate_member_count: 150,
+      },
+      {
+        id: "987654321",
+        name: "Gaming Community",
+        icon: null,
+        owner: false,
+        permissions: "32",
+        approximate_member_count: 500,
+      },
+    ]
 
     return NextResponse.json({
-      availableGuilds,
+      availableGuilds: mockAvailableServers,
       userServers,
     })
   } catch (error) {
     console.error("Error fetching user data:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ error: "Failed to fetch user data" }, { status: 500 })
   }
 }
