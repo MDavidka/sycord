@@ -1,54 +1,45 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth/next"
+import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import clientPromise from "@/lib/mongodb"
+import { connectToDatabase } from "@/lib/mongodb"
 
 export async function GET(request: NextRequest, { params }: { params: { serverId: string } }) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const client = await clientPromise
-    const db = client.db("dash-bot")
+    const { db } = await connectToDatabase()
     const { serverId } = params
 
-    // Get user folder structure: users/[userId]/servers/[serverId]/
-    const userCollection = db.collection("users")
-    let userData = await userCollection.findOne({ userId: session.user.id })
+    // Get user ID from session
+    const userId = session.user.email.replace(/[^a-zA-Z0-9]/g, "_")
 
-    if (!userData) {
-      // Create user folder structure
-      userData = {
-        userId: session.user.id,
-        servers: {},
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-      await userCollection.insertOne(userData)
-    }
+    // Try to find existing settings in new structure
+    const userDoc = await db.collection("users").findOne({ userId })
+    const serverSettings = userDoc?.servers?.[serverId]
 
-    // Check if server exists in user's folder
-    if (!userData.servers || !userData.servers[serverId]) {
-      // Create default server settings in user folder structure
-      const defaultServerData = {
-        serverName: `Server ${serverId}`,
-        botStatus: "online",
-        serverStats: {
-          totalMembers: 156,
-          totalBots: 3,
-          totalAdmins: 8,
+    if (serverSettings) {
+      return NextResponse.json({
+        serverId,
+        serverName: serverSettings.serverName || "Unknown Server",
+        userId,
+        botStatus: serverSettings.botStatus || "online",
+        serverStats: serverSettings.serverStats || {
+          totalMembers: 0,
+          totalBots: 0,
+          totalAdmins: 0,
         },
-        changelog: {
+        changelog: serverSettings.changelog || {
           visible: true,
-          title: "Új Sentinel AI funkciók",
-          content: "Fejlett moderációs algoritmusok, automatikus spam védelem és intelligens tartalom szűrés.",
+          title: "Új funkciók érkeztek!",
+          content: "Frissítettük a moderációs rendszert és hozzáadtunk új beállításokat.",
           version: "v2.1.0",
-          date: "2024. január 15.",
+          date: "2024-01-15",
         },
-        moderation: {
-          moderationLevel: "off",
+        moderation: serverSettings.moderation || {
+          moderationLevel: "basic",
           linkFilter: {
             enabled: false,
             config: "phishing_only",
@@ -64,14 +55,14 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
           },
           suspiciousAccounts: {
             enabled: false,
-            minAgeDays: 30,
+            minAgeDays: 7,
           },
           autoRole: {
             enabled: false,
             roleId: "",
           },
         },
-        support: {
+        support: serverSettings.support || {
           welcome: {
             enabled: false,
             channelId: "",
@@ -89,7 +80,7 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
             qaPairs: "",
           },
         },
-        events: {
+        events: serverSettings.events || {
           dailyMessages: {
             enabled: false,
             time: "09:00",
@@ -105,23 +96,20 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
           },
           keywordReactions: {
             enabled: false,
-            keywords: [
-              { word: "hello", reaction: "👋" },
-              { word: "thanks", reaction: "❤️" },
-            ],
+            keywords: [],
           },
         },
-        integrations: {
+        integrations: serverSettings.integrations || {
           giveaway: {
             enabled: false,
             defaultChannelId: "",
           },
         },
-        plugins: {
+        plugins: serverSettings.plugins || {
           enabled: [],
-          available: [],
+          available: ["Zene Bot", "Szavazás Rendszer", "Gazdasági Rendszer"],
         },
-        settings: {
+        settings: serverSettings.settings || {
           logs: {
             enabled: false,
             channelId: "",
@@ -131,29 +119,108 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
             memberLeaves: false,
           },
         },
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-
-      // Update user document with new server
-      await userCollection.updateOne(
-        { userId: session.user.id },
-        {
-          $set: {
-            [`servers.${serverId}`]: defaultServerData,
-            updatedAt: new Date(),
-          },
-        },
-      )
-
-      userData.servers = userData.servers || {}
-      userData.servers[serverId] = defaultServerData
+      })
     }
 
+    // Return default settings if none found
     return NextResponse.json({
       serverId,
-      userId: session.user.id,
-      ...userData.servers[serverId],
+      serverName: "Unknown Server",
+      userId,
+      botStatus: "online",
+      serverStats: {
+        totalMembers: 0,
+        totalBots: 0,
+        totalAdmins: 0,
+      },
+      changelog: {
+        visible: true,
+        title: "Új funkciók érkeztek!",
+        content: "Frissítettük a moderációs rendszert és hozzáadtunk új beállításokat.",
+        version: "v2.1.0",
+        date: "2024-01-15",
+      },
+      moderation: {
+        moderationLevel: "basic",
+        linkFilter: {
+          enabled: false,
+          config: "phishing_only",
+          whitelist: [],
+        },
+        badWordFilter: {
+          enabled: false,
+          customWords: [],
+        },
+        raidProtection: {
+          enabled: false,
+          threshold: 10,
+        },
+        suspiciousAccounts: {
+          enabled: false,
+          minAgeDays: 7,
+        },
+        autoRole: {
+          enabled: false,
+          roleId: "",
+        },
+      },
+      support: {
+        welcome: {
+          enabled: false,
+          channelId: "",
+          message: "Üdvözlünk {user} a {server} szerveren!",
+          dmEnabled: false,
+        },
+        ticketSystem: {
+          enabled: false,
+          channelId: "",
+          priorityRoleId: "",
+          categories: ["Általános támogatás", "Technikai probléma", "Jelentés", "Egyéb"],
+        },
+        autoAnswer: {
+          enabled: false,
+          qaPairs: "",
+        },
+      },
+      events: {
+        dailyMessages: {
+          enabled: false,
+          time: "09:00",
+          channelId: "",
+          message: "Jó reggelt mindenkinek! 🌅",
+        },
+        joinLeave: {
+          enabled: false,
+          joinChannelId: "",
+          leaveChannelId: "",
+          joinMessage: "🎉 {user} csatlakozott a szerverhez!",
+          leaveMessage: "👋 {user} elhagyta a szervert.",
+        },
+        keywordReactions: {
+          enabled: false,
+          keywords: [],
+        },
+      },
+      integrations: {
+        giveaway: {
+          enabled: false,
+          defaultChannelId: "",
+        },
+      },
+      plugins: {
+        enabled: [],
+        available: ["Zene Bot", "Szavazás Rendszer", "Gazdasági Rendszer"],
+      },
+      settings: {
+        logs: {
+          enabled: false,
+          channelId: "",
+          messageEdits: false,
+          modActions: false,
+          memberJoins: false,
+          memberLeaves: false,
+        },
+      },
     })
   } catch (error) {
     console.error("Error fetching server settings:", error)
@@ -164,35 +231,33 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
 export async function PUT(request: NextRequest, { params }: { params: { serverId: string } }) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const client = await clientPromise
-    const db = client.db("dash-bot")
+    const { db } = await connectToDatabase()
     const { serverId } = params
-    const body = await request.json()
+    const settings = await request.json()
 
-    // Remove userId and serverId from body to avoid overwriting
-    const { userId, serverId: _, ...serverData } = body
+    // Get user ID from session
+    const userId = session.user.email.replace(/[^a-zA-Z0-9]/g, "_")
 
-    // Update server settings in user folder structure
-    const userCollection = db.collection("users")
-    const result = await userCollection.updateOne(
-      { userId: session.user.id },
+    // Update settings in new folder structure: users/[userId]/servers/[serverId]/
+    const updateResult = await db.collection("users").updateOne(
+      { userId },
       {
         $set: {
           [`servers.${serverId}`]: {
-            ...serverData,
-            updatedAt: new Date(),
+            ...settings,
+            lastUpdated: new Date(),
           },
-          updatedAt: new Date(),
         },
       },
+      { upsert: true },
     )
 
-    if (result.acknowledged) {
-      return NextResponse.json({ success: true })
+    if (updateResult.acknowledged) {
+      return NextResponse.json({ success: true, message: "Settings updated successfully" })
     } else {
       return NextResponse.json({ error: "Failed to update settings" }, { status: 500 })
     }

@@ -16,7 +16,11 @@ import {
   ServerIcon,
   CheckCircleIcon,
   XCircleIcon,
+  TrendingUpIcon,
+  BotIcon,
+  MenuIcon,
 } from "lucide-react"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Image from "next/image"
 
 interface DiscordGuild {
@@ -115,10 +119,12 @@ export default function DashboardPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Loader2Icon className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading your dashboard...</p>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center animate-fade-in">
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <Loader2Icon className="h-8 w-8 animate-spin text-primary" />
+          </div>
+          <p className="text-muted-foreground">Vezérlőpult betöltése...</p>
         </div>
       </div>
     )
@@ -132,54 +138,159 @@ export default function DashboardPage() {
   const adminServers = discordServers.filter((server) => (BigInt(server.permissions) & BigInt(0x8)) === BigInt(0x8))
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white shadow-sm py-4 px-6">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden">
-              <Image src="/bot-icon.png" alt="Dash Bot" width={40} height={40} className="object-cover" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900">Dash Dashboard</h1>
-          </div>
-
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-3">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={session?.user?.image || ""} alt={session?.user?.name || ""} />
-                <AvatarFallback>{session?.user?.name?.charAt(0) || "U"}</AvatarFallback>
-              </Avatar>
-              <div className="hidden md:block">
-                <p className="text-sm font-medium text-gray-900">{session?.user?.name}</p>
-                <p className="text-xs text-gray-500">{session?.user?.email}</p>
+      <header className="bg-card shadow-sm border-b border-border sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto mobile-optimized py-3 sm:py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3 sm:space-x-4">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary flex items-center justify-center overflow-hidden">
+                <Image src="/bot-icon.png" alt="Dash Bot" width={40} height={40} className="object-cover" />
+              </div>
+              <div>
+                <h1 className="text-lg sm:text-2xl font-bold text-foreground">Dash Vezérlőpult</h1>
+                <p className="text-xs text-muted-foreground hidden sm:block">Kezeld a Discord szervereidet</p>
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={() => signOut()} className="text-gray-600 hover:text-gray-900">
-              <LogOutIcon className="h-4 w-4" />
-            </Button>
+
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              {/* Mobile Menu */}
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="sm" className="sm:hidden">
+                    <MenuIcon className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-80">
+                  <div className="flex flex-col h-full">
+                    <div className="flex items-center space-x-3 mb-6">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={session?.user?.image || ""} alt={session?.user?.name || ""} />
+                        <AvatarFallback>{session?.user?.name?.charAt(0) || "U"}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium text-foreground">{session?.user?.name}</p>
+                        <p className="text-xs text-muted-foreground">{session?.user?.email}</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      onClick={() => signOut()}
+                      className="justify-start text-muted-foreground hover:text-foreground mt-auto"
+                    >
+                      <LogOutIcon className="h-4 w-4 mr-2" />
+                      Kijelentkezés
+                    </Button>
+                  </div>
+                </SheetContent>
+              </Sheet>
+
+              {/* Desktop User Info */}
+              <div className="hidden sm:flex items-center space-x-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={session?.user?.image || ""} alt={session?.user?.name || ""} />
+                  <AvatarFallback>{session?.user?.name?.charAt(0) || "U"}</AvatarFallback>
+                </Avatar>
+                <div className="hidden md:block">
+                  <p className="text-sm font-medium text-foreground">{session?.user?.name}</p>
+                  <p className="text-xs text-muted-foreground">{session?.user?.email}</p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => signOut()}
+                className="hidden sm:flex text-muted-foreground hover:text-foreground"
+              >
+                <LogOutIcon className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto py-8 px-6">
+      <main className="max-w-7xl mx-auto py-6 sm:py-8 mobile-optimized">
+        {/* Stats Overview */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <Card className="modern-card">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                  <ServerIcon className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-lg sm:text-2xl font-bold text-foreground">{adminServers.length}</p>
+                  <p className="text-xs text-muted-foreground">Elérhető szerver</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="modern-card">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
+                  <CheckCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="text-lg sm:text-2xl font-bold text-foreground">{userServers.length}</p>
+                  <p className="text-xs text-muted-foreground">Aktív szerver</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="modern-card">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
+                  <BotIcon className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-lg sm:text-2xl font-bold text-foreground">
+                    {userServers.filter((s) => s.isBotAdded).length}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Bot hozzáadva</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="modern-card">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
+                  <TrendingUpIcon className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div>
+                  <p className="text-lg sm:text-2xl font-bold text-foreground">100%</p>
+                  <p className="text-xs text-muted-foreground">Üzemidő</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Available Servers */}
         {adminServers.length > 0 && (
-          <section className="mb-12">
-            <div className="flex items-center space-x-2 mb-6">
-              <ServerIcon className="h-5 w-5 text-blue-600" />
-              <h2 className="text-xl font-semibold text-gray-900">Available Servers</h2>
-              <Badge variant="secondary">{adminServers.length}</Badge>
+          <section className="mb-8 sm:mb-12 animate-slide-up">
+            <div className="flex items-center space-x-2 mb-4 sm:mb-6">
+              <ServerIcon className="h-5 w-5 text-primary" />
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground">Elérhető Szerverek</h2>
+              <Badge variant="secondary" className="text-xs">
+                {adminServers.length}
+              </Badge>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {adminServers.map((server) => {
                 const isAdded = userServers.some((us) => us.serverId === server.id)
 
                 return (
-                  <Card key={server.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                  <Card key={server.id} className="modern-card group hover:scale-105 transition-all duration-200">
+                    <CardContent className="p-3 sm:p-4">
+                      <div className="flex items-center space-x-3 mb-3 sm:mb-4">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-muted flex items-center justify-center">
                           {server.icon ? (
                             <Image
                               src={`https://cdn.discordapp.com/icons/${server.id}/${server.icon}.png`}
@@ -189,12 +300,12 @@ export default function DashboardPage() {
                               className="object-cover"
                             />
                           ) : (
-                            <ServerIcon className="h-6 w-6 text-gray-400" />
+                            <ServerIcon className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-gray-900 truncate">{server.name}</h3>
-                          <p className="text-xs text-gray-500">ID: {server.id}</p>
+                          <h3 className="font-medium text-foreground truncate text-sm sm:text-base">{server.name}</h3>
+                          <p className="text-xs text-muted-foreground">ID: {server.id.slice(0, 8)}...</p>
                         </div>
                       </div>
 
@@ -202,24 +313,24 @@ export default function DashboardPage() {
                         <Button
                           onClick={() => handleAddServer(server)}
                           disabled={addingServer === server.id}
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white h-9 text-sm"
+                          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-8 sm:h-9 text-xs sm:text-sm"
                         >
                           {addingServer === server.id ? (
                             <>
-                              <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                              Adding...
+                              <Loader2Icon className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                              Hozzáadás...
                             </>
                           ) : (
                             <>
-                              <PlusIcon className="mr-2 h-4 w-4" />
-                              Add Server
+                              <PlusIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                              Szerver Hozzáadása
                             </>
                           )}
                         </Button>
                       ) : (
-                        <Badge className="w-full justify-center bg-green-100 text-green-800 hover:bg-green-100">
+                        <Badge className="w-full justify-center bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100 hover:bg-green-100 dark:hover:bg-green-900 text-xs">
                           <CheckCircleIcon className="mr-1 h-3 w-3" />
-                          Added
+                          Hozzáadva
                         </Badge>
                       )}
                     </CardContent>
@@ -232,66 +343,72 @@ export default function DashboardPage() {
 
         {/* My Servers */}
         {userServers.length > 0 && (
-          <section>
-            <div className="flex items-center space-x-2 mb-6">
-              <SettingsIcon className="h-5 w-5 text-blue-600" />
-              <h2 className="text-xl font-semibold text-gray-900">My Servers</h2>
-              <Badge variant="secondary">{userServers.length}</Badge>
+          <section className="animate-slide-up">
+            <div className="flex items-center space-x-2 mb-4 sm:mb-6">
+              <SettingsIcon className="h-5 w-5 text-primary" />
+              <h2 className="text-lg sm:text-xl font-semibold text-foreground">Saját Szervereim</h2>
+              <Badge variant="secondary" className="text-xs">
+                {userServers.length}
+              </Badge>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {userServers.map((server) => (
-                <Card key={server.serverId} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                        <ServerIcon className="h-6 w-6 text-gray-400" />
+                <Card key={server.serverId} className="modern-card group hover:scale-105 transition-all duration-200">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center space-x-3 mb-3 sm:mb-4">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-muted flex items-center justify-center">
+                        <ServerIcon className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-gray-900 truncate">{server.serverName}</h3>
-                        <p className="text-xs text-gray-500">Added {new Date(server.addedAt).toLocaleDateString()}</p>
+                        <h3 className="font-medium text-foreground truncate text-sm sm:text-base">
+                          {server.serverName}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          Hozzáadva: {new Date(server.addedAt).toLocaleDateString()}
+                        </p>
                       </div>
                       <div className="flex items-center">
                         {server.isBotAdded ? (
-                          <Badge className="bg-green-100 text-green-800">
+                          <Badge className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100 text-xs">
                             <CheckCircleIcon className="mr-1 h-3 w-3" />
-                            Bot Added
+                            Bot Aktív
                           </Badge>
                         ) : (
-                          <Badge variant="destructive">
+                          <Badge variant="destructive" className="text-xs">
                             <XCircleIcon className="mr-1 h-3 w-3" />
-                            Bot Missing
+                            Bot Hiányzik
                           </Badge>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex space-x-2">
+                    <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                       {server.isBotAdded ? (
                         <Button
                           onClick={() => router.push(`/dashboard/server/${server.serverId}`)}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-9 text-sm"
+                          className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground h-8 sm:h-9 text-xs sm:text-sm"
                         >
-                          <SettingsIcon className="mr-2 h-4 w-4" />
-                          Configure
+                          <SettingsIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                          Konfigurálás
                         </Button>
                       ) : (
                         <>
                           <Button
                             onClick={() => window.open(getInviteLink(server.serverId), "_blank")}
                             variant="outline"
-                            className="flex-1 h-9 text-sm"
+                            className="flex-1 h-8 sm:h-9 text-xs sm:text-sm"
                           >
-                            <ExternalLinkIcon className="mr-2 h-4 w-4" />
-                            Invite Bot
+                            <ExternalLinkIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                            Bot Meghívása
                           </Button>
                           <Button
                             onClick={() => handleToggleBotStatus(server.serverId)}
                             variant="outline"
                             size="sm"
-                            className="h-9 px-3"
+                            className="h-8 sm:h-9 px-2 sm:px-3"
                           >
-                            <CheckCircleIcon className="h-4 w-4" />
+                            <CheckCircleIcon className="h-3 w-3 sm:h-4 sm:w-4" />
                           </Button>
                         </>
                       )}
@@ -305,12 +422,16 @@ export default function DashboardPage() {
 
         {/* Empty State */}
         {adminServers.length === 0 && userServers.length === 0 && (
-          <div className="text-center py-12">
-            <ServerIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No servers found</h3>
-            <p className="text-gray-600 mb-6">You need administrator permissions on a Discord server to add it here.</p>
-            <Button onClick={fetchUserData} variant="outline">
-              Refresh
+          <div className="text-center py-12 sm:py-16 animate-fade-in">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+              <ServerIcon className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg sm:text-xl font-medium text-foreground mb-2">Nincsenek szerverek</h3>
+            <p className="text-muted-foreground mb-6 sm:mb-8 max-w-md mx-auto text-sm sm:text-base">
+              Adminisztrátori jogosultságra van szükséged egy Discord szerveren a hozzáadáshoz.
+            </p>
+            <Button onClick={fetchUserData} variant="outline" className="text-sm sm:text-base bg-transparent">
+              Frissítés
             </Button>
           </div>
         )}
