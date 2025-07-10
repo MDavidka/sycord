@@ -7,43 +7,39 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user?.id) {
+    if (!session?.user?.id || !session.accessToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const { db } = await connectToDatabase()
 
-    // Get user's servers from database
+    // Get user's saved servers from database
     const user = await db.collection("users").findOne({ discordId: session.user.id })
+    const userServers = user?.servers || []
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    // Fetch real Discord guilds
+    let availableGuilds = []
+    try {
+      const discordResponse = await fetch("https://discord.com/api/users/@me/guilds", {
+        headers: {
+          Authorization: `Bearer ${session.accessToken}`,
+        },
+      })
+
+      if (discordResponse.ok) {
+        const guilds = await discordResponse.json()
+        // Filter guilds where user has admin permissions
+        availableGuilds = guilds.filter((guild: any) => {
+          const permissions = Number.parseInt(guild.permissions)
+          return (permissions & 0x8) === 0x8 || guild.owner // Administrator permission or owner
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching Discord guilds:", error)
     }
 
-    const userServers = user.servers || []
-
-    // Return mock available servers for demo purposes
-    const mockAvailableServers = [
-      {
-        id: "123456789",
-        name: "My Discord Server",
-        icon: null,
-        owner: true,
-        permissions: "8",
-        approximate_member_count: 150,
-      },
-      {
-        id: "987654321",
-        name: "Gaming Community",
-        icon: null,
-        owner: false,
-        permissions: "32",
-        approximate_member_count: 500,
-      },
-    ]
-
     return NextResponse.json({
-      availableGuilds: mockAvailableServers,
+      availableGuilds,
       userServers,
     })
   } catch (error) {

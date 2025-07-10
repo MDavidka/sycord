@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
       serverId,
       serverName,
       serverIcon,
-      isBotAdded: false, // Default to false, can be updated later
+      isBotAdded: false, // Default to false
       addedAt: new Date(),
     }
 

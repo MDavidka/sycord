@@ -4,12 +4,11 @@ import { useState, useEffect } from "react"
 import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +26,8 @@ import {
   XCircleIcon,
   Loader2Icon,
   ServerIcon,
-  UserIcon,
+  ExternalLinkIcon,
+  AlertCircleIcon,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -38,7 +38,6 @@ interface DiscordGuild {
   icon?: string
   owner: boolean
   permissions: string
-  approximate_member_count?: number
 }
 
 interface UserServer {
@@ -125,7 +124,7 @@ export default function DashboardPage() {
     }
   }
 
-  const toggleBotStatus = async (serverId: string) => {
+  const markBotAsAdded = async (serverId: string) => {
     try {
       const response = await fetch("/api/toggle-bot", {
         method: "POST",
@@ -143,12 +142,20 @@ export default function DashboardPage() {
     }
   }
 
+  const getGuildIcon = (guild: DiscordGuild) => {
+    return guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128` : null
+  }
+
+  const getBotInviteLink = (serverId: string) => {
+    return `https://discord.com/oauth2/authorize?client_id=${process.env.NEXT_PUBLIC_DISCORD_BOT_CLIENT_ID}&permissions=8&scope=bot%20applications.commands&guild_id=${serverId}`
+  }
+
   if (status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <Loader2Icon className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading dashboard...</p>
+          <p className="text-gray-600 text-sm">Loading dashboard...</p>
         </div>
       </div>
     )
@@ -160,49 +167,48 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      {/* Modern Header */}
+      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200/50 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <Image src="/bot-icon.png" alt="Dash Bot" width={40} height={40} className="rounded-full" />
-              <h1 className="text-2xl font-bold text-gray-900">Dash Dashboard</h1>
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <BotIcon className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Dash</h1>
+                <p className="text-xs text-gray-500">Server Management</p>
+              </div>
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               {session?.user && (
-                <div className="hidden md:flex items-center space-x-3 px-4 py-2 bg-gray-50 rounded-lg">
-                  <UserIcon className="h-4 w-4 text-gray-500" />
+                <div className="hidden sm:flex items-center space-x-3 px-3 py-2 bg-gray-100 rounded-lg">
+                  <Image
+                    src={session.user.image || "/placeholder-user.jpg"}
+                    alt="User"
+                    width={24}
+                    height={24}
+                    className="rounded-full"
+                  />
                   <div className="text-sm">
                     <p className="font-medium text-gray-900">{session.user.name}</p>
-                    <p className="text-gray-500 text-xs">{session.user.email}</p>
                   </div>
                 </div>
               )}
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Image
-                      src={session?.user?.image || "/placeholder-user.jpg"}
-                      alt="User Avatar"
-                      width={40}
-                      height={40}
-                      className="rounded-full"
-                    />
+                  <Button variant="ghost" size="sm" className="rounded-lg">
+                    <SettingsIcon className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end">
-                  <DropdownMenuLabel>
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium">{session?.user?.name}</p>
-                      <p className="text-xs text-muted-foreground">{session?.user?.email}</p>
-                    </div>
-                  </DropdownMenuLabel>
+                <DropdownMenuContent className="w-48" align="end">
+                  <DropdownMenuLabel>Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/login" })}>
                     <LogOutIcon className="mr-2 h-4 w-4" />
-                    Log out
+                    Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -213,52 +219,68 @@ export default function DashboardPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 space-y-4 sm:space-y-0">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900">Your Servers</h2>
-            <p className="text-gray-600 mt-1">Manage your Discord servers</p>
+            <h2 className="text-2xl font-bold text-gray-900">Your Servers</h2>
+            <p className="text-gray-600 text-sm mt-1">Manage your Discord servers</p>
           </div>
 
           <Dialog open={isAddServerDialogOpen} onOpenChange={setIsAddServerDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                <PlusIcon className="mr-2 h-5 w-5" />
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm">
+                <PlusIcon className="mr-2 h-4 w-4" />
                 Add Server
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Add a Server</DialogTitle>
-                <CardDescription>Select a server to add to your dashboard.</CardDescription>
+                <DialogTitle>Add Server</DialogTitle>
               </DialogHeader>
-              <Separator />
 
               {loading ? (
                 <div className="flex items-center justify-center py-8">
-                  <Loader2Icon className="h-8 w-8 animate-spin text-blue-600" />
+                  <Loader2Icon className="h-6 w-6 animate-spin text-blue-600" />
+                </div>
+              ) : availableGuilds.length === 0 ? (
+                <div className="text-center py-8">
+                  <ServerIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <p className="text-gray-600">No servers available</p>
+                  <p className="text-sm text-gray-500 mt-1">Make sure you have admin permissions</p>
                 </div>
               ) : (
-                <ScrollArea className="h-[300px]">
-                  <div className="space-y-3">
+                <ScrollArea className="h-[300px] pr-4">
+                  <div className="space-y-2">
                     {availableGuilds.map((guild) => (
-                      <Card key={guild.id} className="hover:bg-gray-50">
-                        <CardContent className="flex items-center p-4">
-                          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mr-4">
-                            <ServerIcon className="h-6 w-6 text-gray-500" />
-                          </div>
-                          <div className="flex-grow">
-                            <h3 className="font-semibold">{guild.name}</h3>
-                            <p className="text-sm text-gray-500">{guild.approximate_member_count} members</p>
-                          </div>
-                          <Button
-                            onClick={() => handleAddServer(guild)}
-                            disabled={addingServer === guild.id}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                          >
-                            {addingServer === guild.id ? <Loader2Icon className="h-4 w-4 animate-spin" /> : "Add"}
-                          </Button>
-                        </CardContent>
-                      </Card>
+                      <div
+                        key={guild.id}
+                        className="flex items-center p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center mr-3">
+                          {getGuildIcon(guild) ? (
+                            <Image
+                              src={getGuildIcon(guild)! || "/placeholder.svg"}
+                              alt={guild.name}
+                              width={40}
+                              height={40}
+                              className="rounded-lg"
+                            />
+                          ) : (
+                            <ServerIcon className="h-5 w-5 text-gray-500" />
+                          )}
+                        </div>
+                        <div className="flex-grow min-w-0">
+                          <h3 className="font-medium text-gray-900 truncate">{guild.name}</h3>
+                          <p className="text-xs text-gray-500">{guild.owner ? "Owner" : "Admin"}</p>
+                        </div>
+                        <Button
+                          onClick={() => handleAddServer(guild)}
+                          disabled={addingServer === guild.id}
+                          size="sm"
+                          className="bg-blue-600 hover:bg-blue-700 text-white ml-2"
+                        >
+                          {addingServer === guild.id ? <Loader2Icon className="h-3 w-3 animate-spin" /> : "Add"}
+                        </Button>
+                      </div>
                     ))}
                   </div>
                 </ScrollArea>
@@ -269,23 +291,22 @@ export default function DashboardPage() {
 
         {error && (
           <Alert variant="destructive" className="mb-6">
-            <XCircleIcon className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
+            <AlertCircleIcon className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
         {/* Server Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[...Array(3)].map((_, i) => (
-              <Card key={i}>
+              <Card key={i} className="modern-card">
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center text-center">
-                    <Skeleton className="h-20 w-20 rounded-full mb-4" />
-                    <Skeleton className="h-6 w-32 mb-2" />
-                    <Skeleton className="h-4 w-24 mb-4" />
-                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-16 w-16 rounded-xl mb-4" />
+                    <Skeleton className="h-5 w-32 mb-2" />
+                    <Skeleton className="h-4 w-20 mb-4" />
+                    <Skeleton className="h-9 w-full" />
                   </div>
                 </CardContent>
               </Card>
@@ -293,53 +314,79 @@ export default function DashboardPage() {
           </div>
         ) : userServers.length === 0 ? (
           <div className="text-center py-16">
-            <BotIcon className="mx-auto h-24 w-24 text-gray-400 mb-6" />
-            <h3 className="text-2xl font-bold text-gray-800 mb-2">No servers added yet!</h3>
-            <p className="text-gray-600 mb-6 max-w-md mx-auto">
-              Click the "Add Server" button to start managing your Discord servers.
+            <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <BotIcon className="h-10 w-10 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">No servers yet</h3>
+            <p className="text-gray-600 max-w-sm mx-auto">
+              Add your first Discord server to start managing it with Dash.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {userServers.map((server) => (
-              <Card key={server.serverId} className="hover:shadow-lg transition-shadow">
+              <Card key={server.serverId} className="modern-card group">
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center text-center">
-                    <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mb-4">
-                      <ServerIcon className="h-10 w-10 text-gray-500" />
+                    <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center mb-4">
+                      {server.serverIcon ? (
+                        <Image
+                          src={server.serverIcon || "/placeholder.svg"}
+                          alt={server.serverName}
+                          width={64}
+                          height={64}
+                          className="rounded-xl"
+                        />
+                      ) : (
+                        <ServerIcon className="h-8 w-8 text-gray-500" />
+                      )}
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-3">{server.serverName}</h3>
+
+                    <h3 className="font-semibold text-gray-900 mb-2 truncate w-full">{server.serverName}</h3>
 
                     <div className="flex items-center mb-4">
                       {server.isBotAdded ? (
-                        <div className="flex items-center text-green-600">
-                          <CheckCircleIcon className="h-5 w-5 mr-2" />
-                          <span className="font-medium">Bot Active</span>
+                        <div className="flex items-center text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                          <CheckCircleIcon className="h-4 w-4 mr-1" />
+                          <span className="text-xs font-medium">Active</span>
                         </div>
                       ) : (
-                        <div className="flex items-center text-gray-500">
-                          <XCircleIcon className="h-5 w-5 mr-2" />
-                          <span className="font-medium">Bot Inactive</span>
+                        <div className="flex items-center text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
+                          <XCircleIcon className="h-4 w-4 mr-1" />
+                          <span className="text-xs font-medium">Pending</span>
                         </div>
                       )}
                     </div>
 
-                    <div className="flex space-x-2 w-full">
-                      <Button
-                        onClick={() => toggleBotStatus(server.serverId)}
-                        className={`flex-1 ${
-                          server.isBotAdded ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"
-                        } text-white`}
-                      >
-                        {server.isBotAdded ? "Disable" : "Enable"}
-                      </Button>
-                      <Button asChild variant="outline" className="flex-1 bg-transparent">
+                    {server.isBotAdded ? (
+                      <Button asChild className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                         <Link href={`/dashboard/server/${server.serverId}`}>
                           <SettingsIcon className="mr-2 h-4 w-4" />
-                          Settings
+                          Configure
                         </Link>
                       </Button>
-                    </div>
+                    ) : (
+                      <div className="w-full space-y-2">
+                        <Button
+                          asChild
+                          variant="outline"
+                          className="w-full border-blue-200 text-blue-600 hover:bg-blue-50 bg-transparent"
+                        >
+                          <a href={getBotInviteLink(server.serverId)} target="_blank" rel="noopener noreferrer">
+                            <ExternalLinkIcon className="mr-2 h-4 w-4" />
+                            Invite Bot
+                          </a>
+                        </Button>
+                        <Button
+                          onClick={() => markBotAsAdded(server.serverId)}
+                          size="sm"
+                          variant="ghost"
+                          className="w-full text-xs text-gray-500 hover:text-gray-700"
+                        >
+                          Mark as Added
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

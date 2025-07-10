@@ -9,7 +9,7 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.DISCORD_CLIENT_SECRET!,
       authorization: {
         params: {
-          scope: "identify email",
+          scope: "identify email guilds",
         },
       },
     }),
@@ -20,7 +20,7 @@ export const authOptions: NextAuthOptions = {
         try {
           const { db } = await connectToDatabase()
 
-          // Simple user creation/update without Discord API calls
+          // Create or update user in database
           await db.collection("users").updateOne(
             { discordId: user.id },
             {
@@ -29,11 +29,13 @@ export const authOptions: NextAuthOptions = {
                 name: user.name,
                 email: user.email,
                 image: user.image,
-                lastLogin: new Date(),
+                accessToken: account.access_token,
+                refreshToken: account.refresh_token,
+                updatedAt: new Date(),
               },
               $setOnInsert: {
-                createdAt: new Date(),
                 servers: [],
+                createdAt: new Date(),
               },
             },
             { upsert: true },
@@ -41,20 +43,24 @@ export const authOptions: NextAuthOptions = {
 
           return true
         } catch (error) {
-          console.error("Error saving user data:", error)
+          console.error("Error saving user:", error)
           return false
         }
       }
       return true
     },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.sub!
+    async jwt({ token, account, user }) {
+      if (account) {
+        token.accessToken = account.access_token
+        token.refreshToken = account.refresh_token
+        token.userId = user.id
       }
-      return session
-    },
-    async jwt({ token, account }) {
       return token
+    },
+    async session({ session, token }) {
+      session.accessToken = token.accessToken as string
+      session.user.id = token.userId as string
+      return session
     },
   },
   pages: {
