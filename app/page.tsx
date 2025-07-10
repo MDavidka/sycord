@@ -145,17 +145,12 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t border-gray-200 py-8">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Image src="/bot-icon.png" alt="Dash Bot" width={24} height={24} className="rounded" />
               <span className="font-semibold text-gray-900">Dash</span>
             </div>
-            <div className="flex items-center space-x-6 text-sm text-gray-600">
-              <span>© 2024 Dash Bot. Free forever.</span>
-              <Link href="/tos" className="hover:underline text-gray-600">
-                Terms of Service
-              </Link>
-            </div>
+            <div className="text-sm text-gray-600">© 2024 Dash Bot. Free forever.</div>
           </div>
         </div>
       </footer>

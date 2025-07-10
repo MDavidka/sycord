@@ -1,43 +1,38 @@
 import { type NextRequest, NextResponse } from "next/server"
-import clientPromise from "@/lib/mongodb"
+import { connectToDatabase } from "@/lib/mongodb"
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { serverId, botSecret } = body
-
-    // Verify bot secret
-    if (botSecret !== process.env.BOT_WEBHOOK_SECRET) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { serverId } = body
 
     if (!serverId) {
-      return NextResponse.json({ error: "Missing serverId" }, { status: 400 })
+      return NextResponse.json({ error: "Server ID is required" }, { status: 400 })
     }
 
-    const client = await clientPromise
-    const db = client.db("dash-bot")
-    const userServers = db.collection("user_servers")
+    const { db } = await connectToDatabase()
 
-    // Update all user server entries for this server to mark bot as removed
-    const updateResult = await userServers.updateMany(
-      { serverId: serverId },
+    // Update the server to mark bot as removed
+    const result = await db.collection("servers").updateOne(
+      { serverId },
       {
         $set: {
           isBotAdded: false,
-          botJoinedAt: null,
+          updatedAt: new Date(),
         },
       },
     )
 
-    console.log(`Updated ${updateResult.modifiedCount} user server entries for server ${serverId} (bot left)`)
+    if (result.matchedCount === 0) {
+      console.log(`Bot left server ${serverId} but server not found in database`)
+    }
 
     return NextResponse.json({
-      message: "Server status updated successfully",
-      modifiedCount: updateResult.modifiedCount,
+      success: true,
+      message: "Bot leave status updated",
     })
   } catch (error) {
-    console.error("Error updating server status:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("Error updating bot leave status:", error)
+    return NextResponse.json({ error: "Failed to update bot status" }, { status: 500 })
   }
 }

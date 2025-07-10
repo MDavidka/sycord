@@ -167,7 +167,7 @@ export interface Plugin {
   author: string
   enabled: boolean
   category: string
-  permissions: string[] // ✅ fixed to array for .includes()
+  permissions: string[]
   commands: string[]
 }
 
@@ -193,6 +193,6 @@ export interface DiscordGuild {
   name: string
   icon?: string
   owner: boolean
-  permissions: string[] // ✅ fixed from string ➝ string[] for .includes()
+  permissions: string
   approximate_member_count?: number
 }
