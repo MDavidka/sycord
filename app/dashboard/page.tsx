@@ -28,6 +28,7 @@ import {
   RefreshCcwIcon,
   Loader2Icon,
   ServerIcon,
+  UserIcon,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -119,10 +120,8 @@ export default function DashboardPage() {
 
       if (response.ok) {
         if (data.isBotAdded) {
-          // Bot is already added, redirect to config page
           router.push(`/dashboard/server/${guild.id}`)
         } else {
-          // Bot not added, close dialog and refresh data
           setIsAddServerDialogOpen(false)
           await fetchUserData()
         }
@@ -148,10 +147,17 @@ export default function DashboardPage() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <Loader2Icon className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <Loader2Icon className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading your dashboard...</p>
+        </div>
       </div>
     )
+  }
+
+  if (status === "unauthenticated") {
+    return null
   }
 
   return (
@@ -164,39 +170,53 @@ export default function DashboardPage() {
               <Image src="/bot-icon.png" alt="Dash Bot" width={40} height={40} className="rounded-full" />
               <h1 className="text-2xl font-bold text-gray-900">Dash</h1>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-gray-100">
-                  <Image
-                    src={session?.user?.image || "/placeholder-user.jpg"}
-                    alt="User Avatar"
-                    width={40}
-                    height={40}
-                    className="rounded-full"
-                  />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 bg-white border border-gray-200" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none text-gray-900">{session?.user?.name}</p>
-                    <p className="text-xs leading-none text-gray-500">{session?.user?.email}</p>
+
+            {/* User Info Display */}
+            <div className="flex items-center space-x-4">
+              {session?.user && (
+                <div className="hidden md:flex items-center space-x-3 px-4 py-2 bg-gray-50 rounded-lg">
+                  <UserIcon className="h-4 w-4 text-gray-500" />
+                  <div className="text-sm">
+                    <p className="font-medium text-gray-900">{session.user.name}</p>
+                    <p className="text-gray-500 text-xs">{session.user.email}</p>
                   </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-gray-200" />
-                <DropdownMenuItem className="text-gray-700 hover:bg-gray-50" onClick={() => router.push("/settings")}>
-                  <SettingsIcon className="mr-2 h-4 w-4" />
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-gray-700 hover:bg-gray-50"
-                  onClick={() => signOut({ callbackUrl: "/login" })}
-                >
-                  <LogOutIcon className="mr-2 h-4 w-4" />
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </div>
+              )}
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-gray-100">
+                    <Image
+                      src={session?.user?.image || "/placeholder-user.jpg"}
+                      alt="User Avatar"
+                      width={40}
+                      height={40}
+                      className="rounded-full"
+                    />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 bg-white border border-gray-200" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none text-gray-900">{session?.user?.name}</p>
+                      <p className="text-xs leading-none text-gray-500">{session?.user?.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-gray-200" />
+                  <DropdownMenuItem className="text-gray-700 hover:bg-gray-50" onClick={() => router.push("/settings")}>
+                    <SettingsIcon className="mr-2 h-4 w-4" />
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-gray-700 hover:bg-gray-50"
+                    onClick={() => signOut({ callbackUrl: "/login" })}
+                  >
+                    <LogOutIcon className="mr-2 h-4 w-4" />
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </header>
@@ -210,7 +230,7 @@ export default function DashboardPage() {
           </div>
           <Dialog open={isAddServerDialogOpen} onOpenChange={setIsAddServerDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white border-0">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
                 <PlusIcon className="mr-2 h-5 w-5" />
                 Add Server
               </Button>
@@ -284,7 +304,7 @@ export default function DashboardPage() {
                           <Button
                             onClick={() => handleAddServer(guild)}
                             disabled={addingServer === guild.id}
-                            className="ml-auto bg-blue-600 hover:bg-blue-700 text-white border-0"
+                            className="ml-auto bg-blue-600 hover:bg-blue-700 text-white"
                           >
                             {addingServer === guild.id ? <Loader2Icon className="h-4 w-4 animate-spin" /> : "Add"}
                           </Button>
@@ -334,7 +354,7 @@ export default function DashboardPage() {
             {userServers.map((server) => (
               <Card
                 key={server.serverId}
-                className="bg-white border border-gray-200 hover:border-gray-300 transition-colors"
+                className="bg-white border border-gray-200 hover:border-gray-300 transition-all duration-200 hover:shadow-lg"
               >
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center text-center">
@@ -343,7 +363,7 @@ export default function DashboardPage() {
                       alt={server.serverName}
                       width={80}
                       height={80}
-                      className="rounded-full mb-4"
+                      className="rounded-full mb-4 shadow-sm"
                     />
                     <h3 className="text-xl font-bold text-gray-900 mb-3">{server.serverName}</h3>
                     {server.isBotAdded ? (
@@ -374,7 +394,7 @@ export default function DashboardPage() {
                         server.isBotAdded
                           ? "bg-blue-600 hover:bg-blue-700 text-white"
                           : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                      } border-0`}
+                      }`}
                     >
                       {server.isBotAdded ? (
                         <Link href={`/dashboard/server/${server.serverId}`}>
