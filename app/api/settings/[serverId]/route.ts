@@ -17,28 +17,78 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
 
     const serverSettings = await settings.findOne({
       serverId: params.serverId,
-      ownerId: session.user.id,
+      userId: session.user.id,
     })
 
     if (!serverSettings) {
       // Return default settings if none exist
       const defaultSettings = {
         serverId: params.serverId,
-        serverName: "Unknown Server",
-        ownerId: session.user.id,
+        serverName: "Server Configuration",
+        userId: session.user.id,
         settings: {
-          aiAnswersEnabled: false,
-          contentModerationEnabled: false,
-          badWordFilterEnabled: false,
-          badLinkDetectionEnabled: false,
-          autoApproveEnabled: false,
-          timedAnnouncementsEnabled: false,
-          memberCountThreshold: 100,
-          announcementChannel: "",
-          moderationChannel: "",
-          customBadWords: [],
-          trustedRoles: [],
-          suspiciousUserThreshold: 3,
+          // General Settings
+          moderationLevel: "off",
+
+          // Moderation Settings
+          linkFilter: {
+            enabled: false,
+            config: "phishing_only",
+            whitelist: [],
+          },
+          badWordFilter: {
+            enabled: false,
+            customWords: [],
+          },
+          raidProtection: {
+            enabled: false,
+            threshold: 10,
+          },
+          suspiciousAccounts: {
+            enabled: false,
+            minAgeDays: 30,
+          },
+          autoRole: {
+            enabled: false,
+            roleId: "",
+          },
+
+          // Welcome Settings
+          welcome: {
+            enabled: false,
+            channelId: "",
+            message: "Welcome {user} to {server}!",
+            dmEnabled: false,
+          },
+
+          // Support Settings
+          support: {
+            ticketSystem: {
+              enabled: false,
+              channelId: "",
+              priorityRoleId: "",
+            },
+            autoAnswer: {
+              enabled: false,
+              qaPairs: "",
+            },
+          },
+
+          // Giveaway Settings
+          giveaway: {
+            enabled: false,
+            defaultChannelId: "",
+          },
+
+          // Logging Settings
+          logs: {
+            enabled: false,
+            channelId: "",
+            messageEdits: false,
+            modActions: false,
+            memberJoins: false,
+            memberLeaves: false,
+          },
         },
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -71,7 +121,7 @@ export async function PUT(request: NextRequest, { params }: { params: { serverId
     const updatedSettings = await settings.findOneAndUpdate(
       {
         serverId: params.serverId,
-        ownerId: session.user.id,
+        userId: session.user.id,
       },
       {
         $set: {
