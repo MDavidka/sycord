@@ -1,274 +1,266 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import {
-  BotIcon,
-  ShieldIcon,
-  ZapIcon,
-  UsersIcon,
-  TrendingUpIcon,
-  StarIcon,
-  ArrowRightIcon,
-  SparklesIcon,
-  HeartIcon,
-  MessageSquareIcon,
-  SettingsIcon,
-} from "lucide-react"
-import Image from "next/image"
+import { Card, CardContent } from "@/components/ui/card"
+import { Bot, Users, Shield, MessageSquare, Star, ArrowRight, Zap, CheckCircle } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
-export default function LandingPage() {
+export default function HomePage() {
   const [serverCount, setServerCount] = useState(0)
 
   useEffect(() => {
-    // Fetch server count
     fetch("/api/server-count")
       .then((res) => res.json())
-      .then((data) => setServerCount(data.count || 0))
+      .then((data) => setServerCount(data.count))
       .catch(() => setServerCount(0))
   }, [])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-white/80 backdrop-blur-sm dark:bg-gray-900/80 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
+      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto mobile-optimized py-3 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                <Image src="/bot-icon.png" alt="Dash Bot" width={24} height={24} className="rounded-lg" />
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary flex items-center justify-center">
+                <Image src="/bot-icon.png" alt="Dash Bot" width={32} height={32} className="rounded-lg" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Dash Bot
-                </h1>
-                <p className="text-xs text-muted-foreground">AI-Powered Discord Moderation</p>
-              </div>
+              <span className="text-lg sm:text-xl font-bold text-foreground">Dash</span>
             </div>
-            <Link href="/login">
-              <Button
-                variant="outline"
-                className="border-blue-200 hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-950 bg-transparent"
-              >
-                Dashboard
-              </Button>
-            </Link>
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <Link href="/login">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-border text-foreground hover:bg-accent bg-transparent"
+                >
+                  Login
+                </Button>
+              </Link>
+              <Link href="/login">
+                <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                  Get Started
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 px-4">
-        <div className="container mx-auto text-center max-w-4xl">
-          <div className="mb-8">
-            <Badge className="mb-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white border-0">
-              <SparklesIcon className="w-3 h-3 mr-1" />
-              AI-Powered Moderation
-            </Badge>
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent leading-tight">
-              The Future of Discord Moderation
+      <section className="py-12 sm:py-20 gradient-bg">
+        <div className="container mx-auto mobile-optimized text-center">
+          <div className="max-w-4xl mx-auto animate-fade-in">
+            {/* Hero Illustration */}
+            <div className="mb-8 sm:mb-12">
+              <div className="relative mx-auto w-32 h-32 sm:w-48 sm:h-48 mb-6 sm:mb-8">
+                <div className="absolute inset-0 bg-primary/10 rounded-full animate-pulse"></div>
+                <div className="absolute inset-4 bg-primary/20 rounded-full animate-bounce-in"></div>
+                <div className="absolute inset-8 bg-primary rounded-full flex items-center justify-center">
+                  <Bot className="w-12 h-12 sm:w-16 sm:h-16 text-primary-foreground" />
+                </div>
+              </div>
+            </div>
+
+            <h1 className="text-3xl sm:text-4xl lg:text-6xl font-bold text-foreground mb-4 sm:mb-6 leading-tight">
+              The Ultimate Discord Bot
+              <br />
+              <span className="text-primary">For Your Server</span>
             </h1>
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
-              Dash Bot uses advanced AI to automatically moderate your Discord server, keeping your community safe and
-              engaged 24/7.
+            <p className="text-lg sm:text-xl text-muted-foreground mb-6 sm:mb-8 max-w-2xl mx-auto">
+              Powerful moderation, engaging features, and seamless management. Everything you need to build an amazing
+              Discord community.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-8 sm:mb-12">
+              <Link href="/login">
+                <Button
+                  size="lg"
+                  className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4"
+                >
+                  Add to Discord
+                  <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+                </Button>
+              </Link>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-8 text-sm text-muted-foreground">
+              <div className="flex items-center space-x-2">
+                <Users className="h-4 w-4" />
+                <span>{serverCount.toLocaleString()} servers</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Star className="h-4 w-4" />
+                <span>Free forever</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Zap className="h-4 w-4" />
+                <span>Instant setup</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="py-12 sm:py-20 bg-muted/30">
+        <div className="container mx-auto mobile-optimized">
+          <div className="text-center mb-12 sm:mb-16 animate-slide-up">
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3 sm:mb-4">Everything you need</h2>
+            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
+              Powerful features to manage and grow your Discord community
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <Button
-              size="lg"
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-              onClick={() => {
-                const clientId = process.env.NEXT_PUBLIC_DISCORD_BOT_CLIENT_ID
-                window.open(
-                  `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot`,
-                  "_blank",
-                )
-              }}
-            >
-              <BotIcon className="mr-2 h-5 w-5" />
-              Add to Discord
-              <ArrowRightIcon className="ml-2 h-4 w-4" />
-            </Button>
-            <Link href="/login">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-blue-200 hover:bg-blue-50 dark:border-blue-800 bg-transparent"
-              >
-                <SettingsIcon className="mr-2 h-4 w-4" />
-                Open Dashboard
-              </Button>
-            </Link>
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+            <Card className="modern-card group hover:scale-105 transition-transform duration-200">
+              <CardContent className="p-4 sm:p-6 text-center">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-blue-100 dark:bg-blue-900 rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4 group-hover:scale-110 transition-transform">
+                  <Shield className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 dark:text-blue-400" />
+                </div>
+                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">AI Moderation</h3>
+                <p className="text-sm text-muted-foreground">
+                  Advanced auto-moderation with customizable filters and actions
+                </p>
+              </CardContent>
+            </Card>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-            <Card className="border-blue-100 bg-white/50 backdrop-blur-sm dark:border-blue-900 dark:bg-gray-800/50">
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <UsersIcon className="h-6 w-6 text-white" />
+            <Card className="modern-card group hover:scale-105 transition-transform duration-200">
+              <CardContent className="p-4 sm:p-6 text-center">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 dark:bg-green-900 rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4 group-hover:scale-110 transition-transform">
+                  <Users className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 dark:text-green-400" />
                 </div>
-                <h3 className="text-2xl font-bold text-blue-600 dark:text-blue-400">{serverCount.toLocaleString()}+</h3>
-                <p className="text-muted-foreground">Active Servers</p>
+                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">Welcome System</h3>
+                <p className="text-sm text-muted-foreground">Greet new members with custom messages and auto-roles</p>
               </CardContent>
             </Card>
-            <Card className="border-purple-100 bg-white/50 backdrop-blur-sm dark:border-purple-900 dark:bg-gray-800/50">
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <ShieldIcon className="h-6 w-6 text-white" />
+
+            <Card className="modern-card group hover:scale-105 transition-transform duration-200">
+              <CardContent className="p-4 sm:p-6 text-center">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-100 dark:bg-purple-900 rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4 group-hover:scale-110 transition-transform">
+                  <MessageSquare className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600 dark:text-purple-400" />
                 </div>
-                <h3 className="text-2xl font-bold text-purple-600 dark:text-purple-400">99.9%</h3>
-                <p className="text-muted-foreground">Uptime</p>
+                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">Support Tickets</h3>
+                <p className="text-sm text-muted-foreground">Professional ticket system for member support</p>
               </CardContent>
             </Card>
-            <Card className="border-green-100 bg-white/50 backdrop-blur-sm dark:border-green-900 dark:bg-gray-800/50">
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <ZapIcon className="h-6 w-6 text-white" />
+
+            <Card className="modern-card group hover:scale-105 transition-transform duration-200">
+              <CardContent className="p-4 sm:p-6 text-center">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 dark:bg-orange-900 rounded-xl flex items-center justify-center mx-auto mb-3 sm:mb-4 group-hover:scale-110 transition-transform">
+                  <Bot className="h-6 w-6 sm:h-8 sm:w-8 text-orange-600 dark:text-orange-400" />
                 </div>
-                <h3 className="text-2xl font-bold text-green-600 dark:text-green-400">10k+</h3>
-                <p className="text-muted-foreground">Actions/Day</p>
+                <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">Custom Commands</h3>
+                <p className="text-sm text-muted-foreground">Create custom commands and automated responses</p>
               </CardContent>
             </Card>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 px-4 bg-white/50 dark:bg-gray-800/50">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Powerful Features
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Everything you need to keep your Discord community safe and thriving
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card className="border-blue-100 hover:border-blue-200 transition-colors bg-white/80 backdrop-blur-sm dark:border-blue-900 dark:bg-gray-800/80">
-              <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mb-4">
-                  <ShieldIcon className="h-6 w-6 text-white" />
+      {/* Benefits Section */}
+      <section className="py-12 sm:py-20">
+        <div className="container mx-auto mobile-optimized">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+            <div className="animate-slide-up">
+              <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4 sm:mb-6">Why choose Dash?</h2>
+              <div className="space-y-4 sm:space-y-6">
+                <div className="flex items-start space-x-3 sm:space-x-4">
+                  <div className="w-6 h-6 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-1">Quick Setup</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Deploy in minutes, no programming knowledge required
+                    </p>
+                  </div>
                 </div>
-                <CardTitle className="text-blue-600 dark:text-blue-400">AI Moderation</CardTitle>
-                <CardDescription>
-                  Advanced AI automatically detects and handles spam, toxic behavior, and rule violations in real-time.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="border-purple-100 hover:border-purple-200 transition-colors bg-white/80 backdrop-blur-sm dark:border-purple-900 dark:bg-gray-800/80">
-              <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center mb-4">
-                  <MessageSquareIcon className="h-6 w-6 text-white" />
+                <div className="flex items-start space-x-3 sm:space-x-4">
+                  <div className="w-6 h-6 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-1">24/7 Uptime</h3>
+                    <p className="text-sm text-muted-foreground">Reliable service with 99.9% uptime guarantee</p>
+                  </div>
                 </div>
-                <CardTitle className="text-purple-600 dark:text-purple-400">Smart Tickets</CardTitle>
-                <CardDescription>
-                  Intelligent ticket system that categorizes and routes support requests to the right team members.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="border-green-100 hover:border-green-200 transition-colors bg-white/80 backdrop-blur-sm dark:border-green-900 dark:bg-gray-800/80">
-              <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center mb-4">
-                  <ZapIcon className="h-6 w-6 text-white" />
+                <div className="flex items-start space-x-3 sm:space-x-4">
+                  <div className="w-6 h-6 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-1">Continuous Updates</h3>
+                    <p className="text-sm text-muted-foreground">Regular updates and new features</p>
+                  </div>
                 </div>
-                <CardTitle className="text-green-600 dark:text-green-400">Auto Events</CardTitle>
-                <CardDescription>
-                  Automated welcome messages, role assignments, and scheduled announcements to keep your community
-                  engaged.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="border-orange-100 hover:border-orange-200 transition-colors bg-white/80 backdrop-blur-sm dark:border-orange-900 dark:bg-gray-800/80">
-              <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center mb-4">
-                  <TrendingUpIcon className="h-6 w-6 text-white" />
+              </div>
+            </div>
+            <div className="relative">
+              <div className="bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-2xl p-6 sm:p-8">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-card rounded-xl p-4 text-center">
+                    <Users className="w-8 h-8 text-primary mx-auto mb-2" />
+                    <div className="text-xl sm:text-2xl font-bold text-foreground">10K+</div>
+                    <div className="text-xs text-muted-foreground">Happy users</div>
+                  </div>
+                  <div className="bg-card rounded-xl p-4 text-center">
+                    <Shield className="w-8 h-8 text-primary mx-auto mb-2" />
+                    <div className="text-xl sm:text-2xl font-bold text-foreground">99.9%</div>
+                    <div className="text-xs text-muted-foreground">Uptime</div>
+                  </div>
+                  <div className="bg-card rounded-xl p-4 text-center">
+                    <Star className="w-8 h-8 text-primary mx-auto mb-2" />
+                    <div className="text-xl sm:text-2xl font-bold text-foreground">4.9/5</div>
+                    <div className="text-xs text-muted-foreground">Rating</div>
+                  </div>
+                  <div className="bg-card rounded-xl p-4 text-center">
+                    <Bot className="w-8 h-8 text-primary mx-auto mb-2" />
+                    <div className="text-xl sm:text-2xl font-bold text-foreground">24/7</div>
+                    <div className="text-xs text-muted-foreground">Support</div>
+                  </div>
                 </div>
-                <CardTitle className="text-orange-600 dark:text-orange-400">Analytics</CardTitle>
-                <CardDescription>
-                  Detailed insights into your server activity, member engagement, and moderation effectiveness.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="border-pink-100 hover:border-pink-200 transition-colors bg-white/80 backdrop-blur-sm dark:border-pink-900 dark:bg-gray-800/80">
-              <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-pink-600 rounded-lg flex items-center justify-center mb-4">
-                  <HeartIcon className="h-6 w-6 text-white" />
-                </div>
-                <CardTitle className="text-pink-600 dark:text-pink-400">Easy Setup</CardTitle>
-                <CardDescription>
-                  Get started in minutes with our intuitive dashboard and guided setup process. No coding required.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="border-indigo-100 hover:border-indigo-200 transition-colors bg-white/80 backdrop-blur-sm dark:border-indigo-900 dark:bg-gray-800/80">
-              <CardHeader>
-                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center mb-4">
-                  <StarIcon className="h-6 w-6 text-white" />
-                </div>
-                <CardTitle className="text-indigo-600 dark:text-indigo-400">24/7 Support</CardTitle>
-                <CardDescription>
-                  Round-the-clock monitoring and support to ensure your server stays protected at all times.
-                </CardDescription>
-              </CardHeader>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4">
-        <div className="container mx-auto text-center max-w-4xl">
-          <h2 className="text-4xl font-bold mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Ready to Transform Your Server?
-          </h2>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Join thousands of Discord communities already using Dash Bot to create safer, more engaging spaces.
-          </p>
-          <Button
-            size="lg"
-            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-            onClick={() => {
-              const clientId = process.env.NEXT_PUBLIC_DISCORD_BOT_CLIENT_ID
-              window.open(
-                `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot`,
-                "_blank",
-              )
-            }}
-          >
-            <BotIcon className="mr-2 h-5 w-5" />
-            Add Dash Bot Now
-            <ArrowRightIcon className="ml-2 h-4 w-4" />
-          </Button>
+      <section className="py-12 sm:py-20 bg-primary/5">
+        <div className="container mx-auto mobile-optimized text-center">
+          <div className="max-w-3xl mx-auto animate-fade-in">
+            <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3 sm:mb-4">Ready to get started?</h2>
+            <p className="text-base sm:text-lg text-muted-foreground mb-6 sm:mb-8">
+              Join thousands of Discord servers using Dash to create amazing communities.
+            </p>
+            <Link href="/login">
+              <Button
+                size="lg"
+                className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90 text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4"
+              >
+                Add to Discord
+                <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t bg-white/80 backdrop-blur-sm dark:bg-gray-900/80 py-8 px-4">
-        <div className="container mx-auto text-center">
-          <div className="flex items-center justify-center space-x-3 mb-4">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <Image src="/bot-icon.png" alt="Dash Bot" width={20} height={20} className="rounded" />
+      <footer className="border-t border-border py-6 sm:py-8 bg-card">
+        <div className="container mx-auto mobile-optimized">
+          <div className="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <Image src="/bot-icon.png" alt="Dash Bot" width={24} height={24} className="rounded" />
+              <span className="font-semibold text-foreground">Dash</span>
             </div>
-            <span className="font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Dash Bot
-            </span>
+            <div className="text-sm text-muted-foreground text-center sm:text-right">
+              © 2024 Dash Bot. Free forever.
+            </div>
           </div>
-          <p className="text-muted-foreground text-sm">
-            © 2024 Dash Bot. All rights reserved. Made with <HeartIcon className="inline h-4 w-4 text-red-500" /> for
-            Discord communities.
-          </p>
         </div>
       </footer>
     </div>
