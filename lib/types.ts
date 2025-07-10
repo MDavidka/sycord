@@ -167,7 +167,7 @@ export interface Plugin {
   author: string
   enabled: boolean
   category: string
-  permissions: string[]
+  permissions: string[] // ✅ Corrected type
   commands: string[]
 }
 
