@@ -1,39 +1,35 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
+import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
-import clientPromise from "@/lib/mongodb"
+import { connectToDatabase } from "@/lib/mongodb"
 
 export async function GET(request: NextRequest, { params }: { params: { serverId: string } }) {
   try {
     const session = await getServerSession(authOptions)
-
-    if (!session?.user) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const client = await clientPromise
-    const db = client.db("dash-bot")
-    const settings = db.collection("server_settings")
+    const { db } = await connectToDatabase()
+    const { serverId } = params
 
-    const serverSettings = await settings.findOne({
-      serverId: params.serverId,
+    // Get server settings from database
+    let serverSettings = await db.collection("serverSettings").findOne({
+      serverId,
       userId: session.user.id,
     })
 
+    // If no settings exist, create default ones
     if (!serverSettings) {
-      // Return default settings if none exist
       const defaultSettings = {
-        serverId: params.serverId,
-        serverName: "Server Configuration",
+        serverId,
         userId: session.user.id,
+        serverName: `Server ${serverId}`,
         settings: {
-          // General Settings
           moderationLevel: "off",
-
-          // Moderation Settings
           linkFilter: {
             enabled: false,
-            config: "phishing_only",
+            config: "all_links",
             whitelist: [],
           },
           badWordFilter: {
@@ -52,16 +48,12 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
             enabled: false,
             roleId: "",
           },
-
-          // Welcome Settings
           welcome: {
             enabled: false,
             channelId: "",
             message: "Welcome {user} to {server}!",
             dmEnabled: false,
           },
-
-          // Support Settings
           support: {
             ticketSystem: {
               enabled: false,
@@ -73,14 +65,10 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
               qaPairs: "",
             },
           },
-
-          // Giveaway Settings
           giveaway: {
             enabled: false,
             defaultChannelId: "",
           },
-
-          // Logging Settings
           logs: {
             enabled: false,
             channelId: "",
@@ -94,13 +82,13 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
         updatedAt: new Date(),
       }
 
-      await settings.insertOne(defaultSettings)
-      return NextResponse.json(defaultSettings)
+      await db.collection("serverSettings").insertOne(defaultSettings)
+      serverSettings = defaultSettings
     }
 
     return NextResponse.json(serverSettings)
   } catch (error) {
-    console.error("Error fetching settings:", error)
+    console.error("Error fetching server settings:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -108,33 +96,33 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
 export async function PUT(request: NextRequest, { params }: { params: { serverId: string } }) {
   try {
     const session = await getServerSession(authOptions)
-
-    if (!session?.user) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const { db } = await connectToDatabase()
+    const { serverId } = params
     const body = await request.json()
-    const client = await clientPromise
-    const db = client.db("dash-bot")
-    const settings = db.collection("server_settings")
 
-    const updatedSettings = await settings.findOneAndUpdate(
-      {
-        serverId: params.serverId,
-        userId: session.user.id,
-      },
+    // Update server settings
+    const result = await db.collection("serverSettings").updateOne(
+      { serverId, userId: session.user.id },
       {
         $set: {
-          settings: body.settings,
+          ...body,
           updatedAt: new Date(),
         },
       },
-      { returnDocument: "after", upsert: true },
+      { upsert: true },
     )
 
-    return NextResponse.json(updatedSettings.value)
+    if (result.acknowledged) {
+      return NextResponse.json({ success: true })
+    } else {
+      return NextResponse.json({ error: "Failed to update settings" }, { status: 500 })
+    }
   } catch (error) {
-    console.error("Error updating settings:", error)
+    console.error("Error updating server settings:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

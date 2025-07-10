@@ -12,8 +12,33 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2Icon, CheckCircleIcon, XCircleIcon, SaveIcon, ArrowLeftIcon } from "lucide-react"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Loader2Icon,
+  CheckCircleIcon,
+  XCircleIcon,
+  SaveIcon,
+  ArrowLeftIcon,
+  SettingsIcon,
+  LogOutIcon,
+  UserIcon,
+  ChevronDownIcon,
+  HomeIcon,
+  ShieldIcon,
+  HeadphonesIcon,
+  PuzzleIcon,
+  PlugIcon,
+} from "lucide-react"
 import Image from "next/image"
+import { signOut } from "next-auth/react"
 
 interface ServerSettings {
   serverId: string
@@ -188,62 +213,199 @@ export default function ServerConfigPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm py-4 px-6 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard")} className="mr-2">
-            <ArrowLeftIcon className="h-4 w-4" />
-          </Button>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center overflow-hidden">
-            <Image src="/bot-icon.png" alt="Dash Bot" width={40} height={40} className="object-cover" />
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-4">
+              <Image src="/bot-icon.png" alt="Dash Bot" width={40} height={40} className="rounded-full" />
+              <h1 className="text-2xl font-bold text-gray-900">Dash</h1>
+            </div>
+
+            {/* Server Chooser */}
+            <div className="flex items-center space-x-4">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="flex items-center space-x-2 bg-transparent">
+                    <Image
+                      src="/placeholder-logo.svg"
+                      alt={config.serverName}
+                      width={24}
+                      height={24}
+                      className="rounded-full"
+                    />
+                    <span className="font-medium">{config.serverName}</span>
+                    <ChevronDownIcon className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56">
+                  <DropdownMenuLabel>Switch Server</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => router.push("/dashboard")}>
+                    <ArrowLeftIcon className="mr-2 h-4 w-4" />
+                    Back to Dashboard
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* User Info Display */}
+              {session?.user && (
+                <div className="hidden md:flex items-center space-x-3 px-4 py-2 bg-gray-50 rounded-lg">
+                  <UserIcon className="h-4 w-4 text-gray-500" />
+                  <div className="text-sm">
+                    <p className="font-medium text-gray-900">{session.user.name}</p>
+                    <p className="text-gray-500 text-xs">{session.user.email}</p>
+                  </div>
+                </div>
+              )}
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-gray-100">
+                    <Image
+                      src={session?.user?.image || "/placeholder-user.jpg"}
+                      alt="User Avatar"
+                      width={40}
+                      height={40}
+                      className="rounded-full"
+                    />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 bg-white border border-gray-200" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none text-gray-900">{session?.user?.name}</p>
+                      <p className="text-xs leading-none text-gray-500">{session?.user?.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-gray-200" />
+                  <DropdownMenuItem className="text-gray-700 hover:bg-gray-50" onClick={() => router.push("/settings")}>
+                    <SettingsIcon className="mr-2 h-4 w-4" />
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-gray-700 hover:bg-gray-50"
+                    onClick={() => signOut({ callbackUrl: "/login" })}
+                  >
+                    <LogOutIcon className="mr-2 h-4 w-4" />
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
-          <h1 className="text-xl font-bold text-gray-900">Server Configuration</h1>
-        </div>
-        <div className="flex items-center space-x-4">
-          <span className="text-sm text-gray-600">Server ID: {config.serverId}</span>
         </div>
       </header>
 
-      <main className="container mx-auto py-8 px-4 max-w-6xl">
-        <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-6">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="moderation">Moderation</TabsTrigger>
-            <TabsTrigger value="welcome">Welcome</TabsTrigger>
-            <TabsTrigger value="support">Support</TabsTrigger>
-            <TabsTrigger value="giveaway">Giveaway</TabsTrigger>
-            <TabsTrigger value="logs">Logs</TabsTrigger>
-          </TabsList>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <Tabs defaultValue="home" className="w-full">
+          {/* Scrollable Tabs */}
+          <div className="mb-8">
+            <ScrollArea className="w-full whitespace-nowrap">
+              <TabsList className="inline-flex h-12 items-center justify-center rounded-lg bg-gray-100 p-1 text-gray-500">
+                <TabsTrigger
+                  value="home"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm"
+                >
+                  <HomeIcon className="mr-2 h-4 w-4" />
+                  Home
+                </TabsTrigger>
+                <TabsTrigger
+                  value="sentinel"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm"
+                >
+                  <ShieldIcon className="mr-2 h-4 w-4" />
+                  Sentinel
+                </TabsTrigger>
+                <TabsTrigger
+                  value="helpdesk"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm"
+                >
+                  <HeadphonesIcon className="mr-2 h-4 w-4" />
+                  Helpdesk
+                </TabsTrigger>
+                <TabsTrigger
+                  value="integration"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm"
+                >
+                  <PuzzleIcon className="mr-2 h-4 w-4" />
+                  Integration
+                </TabsTrigger>
+                <TabsTrigger
+                  value="plugin"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm"
+                >
+                  <PlugIcon className="mr-2 h-4 w-4" />
+                  Plugin
+                </TabsTrigger>
+                <TabsTrigger
+                  value="settings"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm"
+                >
+                  <SettingsIcon className="mr-2 h-4 w-4" />
+                  Settings
+                </TabsTrigger>
+              </TabsList>
+            </ScrollArea>
+          </div>
 
-          {/* General Settings */}
-          <TabsContent value="general" className="mt-6">
+          {/* Home Tab */}
+          <TabsContent value="home" className="mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>General Settings</CardTitle>
+                <CardTitle>Server Overview</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div>
-                  <Label htmlFor="moderationLevel">Moderation Level</Label>
-                  <Select
-                    value={config.settings.moderationLevel}
-                    onValueChange={(value: "off" | "on" | "lockdown") => handleSettingChange("moderationLevel", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select moderation level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="off">Off</SelectItem>
-                      <SelectItem value="on">On</SelectItem>
-                      <SelectItem value="lockdown">Lockdown</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center p-6 bg-blue-50 rounded-lg">
+                    <h3 className="text-2xl font-bold text-blue-600">Active</h3>
+                    <p className="text-gray-600">Bot Status</p>
+                  </div>
+                  <div className="text-center p-6 bg-green-50 rounded-lg">
+                    <h3 className="text-2xl font-bold text-green-600">
+                      {Object.values(config.settings).filter((setting: any) => setting.enabled).length}
+                    </h3>
+                    <p className="text-gray-600">Features Enabled</p>
+                  </div>
+                  <div className="text-center p-6 bg-purple-50 rounded-lg">
+                    <h3 className="text-2xl font-bold text-purple-600">{config.serverName}</h3>
+                    <p className="text-gray-600">Server Name</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Moderation Settings */}
-          <TabsContent value="moderation" className="mt-6">
+          {/* Sentinel Tab (Moderation) */}
+          <TabsContent value="sentinel" className="mt-6">
             <div className="space-y-6">
+              {/* General Moderation */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>General Moderation</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="moderationLevel">Moderation Level</Label>
+                    <Select
+                      value={config.settings.moderationLevel}
+                      onValueChange={(value: "off" | "on" | "lockdown") =>
+                        handleSettingChange("moderationLevel", value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select moderation level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="off">Off</SelectItem>
+                        <SelectItem value="on">On</SelectItem>
+                        <SelectItem value="lockdown">Lockdown</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Link Filter */}
               <Card>
                 <CardHeader>
@@ -362,39 +524,6 @@ export default function ServerConfigPage() {
                 </CardContent>
               </Card>
 
-              {/* Suspicious Accounts */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Suspicious Accounts</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="suspiciousAccountsEnabled"
-                      checked={config.settings.suspiciousAccounts.enabled}
-                      onCheckedChange={(checked) => handleSettingChange("suspiciousAccounts.enabled", checked)}
-                    />
-                    <Label htmlFor="suspiciousAccountsEnabled">Enable Suspicious Account Detection</Label>
-                  </div>
-
-                  {config.settings.suspiciousAccounts.enabled && (
-                    <div>
-                      <Label htmlFor="minAgeDays">Minimum Account Age (days)</Label>
-                      <Input
-                        id="minAgeDays"
-                        type="number"
-                        value={config.settings.suspiciousAccounts.minAgeDays}
-                        onChange={(e) =>
-                          handleSettingChange("suspiciousAccounts.minAgeDays", Number.parseInt(e.target.value))
-                        }
-                        min="1"
-                        max="365"
-                      />
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
               {/* Auto Role */}
               <Card>
                 <CardHeader>
@@ -426,60 +555,59 @@ export default function ServerConfigPage() {
             </div>
           </TabsContent>
 
-          {/* Welcome Settings */}
-          <TabsContent value="welcome" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Welcome Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="welcomeEnabled"
-                    checked={config.settings.welcome.enabled}
-                    onCheckedChange={(checked) => handleSettingChange("welcome.enabled", checked)}
-                  />
-                  <Label htmlFor="welcomeEnabled">Enable Welcome Messages</Label>
-                </div>
-
-                {config.settings.welcome.enabled && (
-                  <>
-                    <div>
-                      <Label htmlFor="welcomeChannel">Welcome Channel ID</Label>
-                      <Input
-                        id="welcomeChannel"
-                        value={config.settings.welcome.channelId}
-                        onChange={(e) => handleSettingChange("welcome.channelId", e.target.value)}
-                        placeholder="Enter channel ID"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="welcomeMessage">Welcome Message</Label>
-                      <Textarea
-                        id="welcomeMessage"
-                        value={config.settings.welcome.message}
-                        onChange={(e) => handleSettingChange("welcome.message", e.target.value)}
-                        placeholder="Welcome {user} to {server}!"
-                        rows={3}
-                      />
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        id="welcomeDmEnabled"
-                        checked={config.settings.welcome.dmEnabled}
-                        onCheckedChange={(checked) => handleSettingChange("welcome.dmEnabled", checked)}
-                      />
-                      <Label htmlFor="welcomeDmEnabled">Send Welcome Message in DM</Label>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Support Settings */}
-          <TabsContent value="support" className="mt-6">
+          {/* Helpdesk Tab */}
+          <TabsContent value="helpdesk" className="mt-6">
             <div className="space-y-6">
+              {/* Welcome Messages */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Welcome Messages</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="welcomeEnabled"
+                      checked={config.settings.welcome.enabled}
+                      onCheckedChange={(checked) => handleSettingChange("welcome.enabled", checked)}
+                    />
+                    <Label htmlFor="welcomeEnabled">Enable Welcome Messages</Label>
+                  </div>
+
+                  {config.settings.welcome.enabled && (
+                    <>
+                      <div>
+                        <Label htmlFor="welcomeChannel">Welcome Channel ID</Label>
+                        <Input
+                          id="welcomeChannel"
+                          value={config.settings.welcome.channelId}
+                          onChange={(e) => handleSettingChange("welcome.channelId", e.target.value)}
+                          placeholder="Enter channel ID"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="welcomeMessage">Welcome Message</Label>
+                        <Textarea
+                          id="welcomeMessage"
+                          value={config.settings.welcome.message}
+                          onChange={(e) => handleSettingChange("welcome.message", e.target.value)}
+                          placeholder="Welcome {user} to {server}!"
+                          rows={3}
+                        />
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="welcomeDmEnabled"
+                          checked={config.settings.welcome.dmEnabled}
+                          onCheckedChange={(checked) => handleSettingChange("welcome.dmEnabled", checked)}
+                        />
+                        <Label htmlFor="welcomeDmEnabled">Send Welcome Message in DM</Label>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Support System */}
               <Card>
                 <CardHeader>
                   <CardTitle>Ticket System</CardTitle>
@@ -518,43 +646,14 @@ export default function ServerConfigPage() {
                   )}
                 </CardContent>
               </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Auto Answer</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="autoAnswerEnabled"
-                      checked={config.settings.support.autoAnswer.enabled}
-                      onCheckedChange={(checked) => handleSettingChange("support.autoAnswer.enabled", checked)}
-                    />
-                    <Label htmlFor="autoAnswerEnabled">Enable Auto-Answer (AI)</Label>
-                  </div>
-
-                  {config.settings.support.autoAnswer.enabled && (
-                    <div>
-                      <Label htmlFor="qaPairs">Q&A Pairs (JSON format)</Label>
-                      <Textarea
-                        id="qaPairs"
-                        value={config.settings.support.autoAnswer.qaPairs}
-                        onChange={(e) => handleSettingChange("support.autoAnswer.qaPairs", e.target.value)}
-                        placeholder='[{"question": "How do I...?", "answer": "You can..."}]'
-                        rows={6}
-                      />
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
             </div>
           </TabsContent>
 
-          {/* Giveaway Settings */}
-          <TabsContent value="giveaway" className="mt-6">
+          {/* Integration Tab */}
+          <TabsContent value="integration" className="mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Giveaway Settings</CardTitle>
+                <CardTitle>Giveaway Integration</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center space-x-2">
@@ -581,8 +680,24 @@ export default function ServerConfigPage() {
             </Card>
           </TabsContent>
 
-          {/* Logging Settings */}
-          <TabsContent value="logs" className="mt-6">
+          {/* Plugin Tab */}
+          <TabsContent value="plugin" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Available Plugins</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8">
+                  <PlugIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No plugins available</h3>
+                  <p className="text-gray-600">Plugin system coming soon!</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="settings" className="mt-6">
             <Card>
               <CardHeader>
                 <CardTitle>Logging Settings</CardTitle>
