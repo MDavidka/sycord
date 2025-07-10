@@ -13,20 +13,31 @@ export async function GET(request: NextRequest) {
 
     const { db } = await connectToDatabase()
 
-    // Get user document with servers
+    // Get user document
     const user = await db.collection("users").findOne({ _id: session.user.id })
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
+    // Get user's added servers
     const userServers = user.servers || []
+
+    // Get available guilds from user's Discord data (stored during login)
+    const availableGuilds = user.discordGuilds || []
+
+    // Filter available guilds to exclude already added servers
+    const addedServerIds = new Set(userServers.map((server: any) => server.serverId))
+    const filteredAvailableGuilds = availableGuilds.filter(
+      (guild: any) => !addedServerIds.has(guild.id) && (guild.permissions & 0x20) === 0x20, // MANAGE_GUILD permission
+    )
 
     return NextResponse.json({
       userServers,
+      availableGuilds: filteredAvailableGuilds,
     })
   } catch (error) {
-    console.error("Error fetching user servers:", error)
-    return NextResponse.json({ error: "Failed to fetch user servers" }, { status: 500 })
+    console.error("Error fetching user data:", error)
+    return NextResponse.json({ error: "Failed to fetch user data" }, { status: 500 })
   }
 }

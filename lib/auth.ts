@@ -34,6 +34,46 @@ export const authOptions: NextAuthOptions = {
       }
       return session
     },
+    async signIn({ user, account, profile }) {
+      if (account?.provider === "discord" && account.access_token) {
+        try {
+          // Fetch user's Discord guilds
+          const guildsResponse = await fetch("https://discord.com/api/users/@me/guilds", {
+            headers: {
+              Authorization: `Bearer ${account.access_token}`,
+            },
+          })
+
+          if (guildsResponse.ok) {
+            const guilds = await guildsResponse.json()
+
+            // Store guilds in user document
+            const client = await clientPromise
+            const db = client.db("dash-bot")
+
+            await db.collection("users").updateOne(
+              { email: user.email },
+              {
+                $set: {
+                  discordGuilds: guilds,
+                  accessToken: account.access_token,
+                  refreshToken: account.refresh_token,
+                  updatedAt: new Date(),
+                },
+                $setOnInsert: {
+                  servers: [],
+                  createdAt: new Date(),
+                },
+              },
+              { upsert: true },
+            )
+          }
+        } catch (error) {
+          console.error("Error fetching Discord guilds during sign in:", error)
+        }
+      }
+      return true
+    },
   },
   session: {
     strategy: "jwt", // Use JWT for session management
