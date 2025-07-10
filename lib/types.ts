@@ -1,190 +1,198 @@
-// pages/servers/index.tsx
-import { GetServerSideProps } from 'next';
-import { getSession } from 'next-auth/react';
-import { useState, useEffect } from 'react';
-import type { User, ServerConfig, DiscordGuild } from '@/types'; // Your types
+import type { DefaultSession } from "next-auth"
 
-// Initialize Eruda debug console only in development
-if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
-  import('eruda').then((eruda) => eruda.default.init());
+// Extend the NextAuth session to include custom properties
+declare module "next-auth" {
+  interface Session {
+    accessToken?: string
+    user: {
+      id: string
+    } & DefaultSession["user"]
+  }
+
+  interface JWT {
+    accessToken?: string
+    refreshToken?: string
+    userId?: string
+  }
 }
 
-interface Props {
-  initialServers: DiscordGuild[];
-  user: User;
+export interface User {
+  id: string
+  name: string
+  email: string
+  image?: string
+  discordId: string
+  accessToken?: string
+  refreshToken?: string
 }
 
-export default function ServerDashboard({ initialServers, user }: Props) {
-  const [servers, setServers] = useState<DiscordGuild[]>(initialServers || []);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedServer, setSelectedServer] = useState<ServerConfig | null>(null);
+export interface Server {
+  serverId: string
+  serverName: string
+  serverIcon?: string
+  ownerId: string
+  isBotAdded: boolean
+  createdAt: Date
+  updatedAt: Date
+}
 
-  useEffect(() => {
-    // Load server config if needed
-    if (selectedServer) return;
-    
-    const loadServerConfig = async (serverId: string) => {
-      try {
-        setLoading(true);
-        const res = await fetch(`/api/servers/${serverId}/config`);
-        const data = await res.json();
-        setSelectedServer(data);
-      } catch (err) {
-        setError('Failed to load server config');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (servers.length > 0) {
-      loadServerConfig(servers[0].id);
+export interface ServerConfig {
+  serverId: string
+  serverName: string
+  serverIcon?: string
+  isBotAdded: boolean
+  moderationLevel: "off" | "on" | "lockdown"
+  rolesAndNames: { [key: string]: string }
+  channels?: { [key: string]: string }
+  welcome: {
+    enabled: boolean
+    channelId?: string
+    message?: string
+    dmEnabled?: boolean
+  }
+  moderation: {
+    linkFilter: {
+      enabled: boolean
+      config: "all_links" | "whitelist_only" | "phishing_only"
+      whitelist?: string[]
     }
-  }, [servers]);
-
-  const handleServerSelect = (serverId: string) => {
-    const server = servers.find(s => s.id === serverId);
-    if (server) {
-      setSelectedServer(null); // Reset while loading
-      fetch(`/api/servers/${serverId}/config`)
-        .then(res => res.json())
-        .then(setSelectedServer)
-        .catch(console.error);
+    badWordFilter: {
+      enabled: boolean
+      customWords?: string[]
     }
-  };
-
-  if (error) {
-    return (
-      <div className="p-4 bg-red-100 text-red-800 rounded">
-        Error: {error}
-        <button onClick={() => setError(null)} className="ml-4 px-3 py-1 bg-red-200 rounded">
-          Retry
-        </button>
-      </div>
-    );
+    raidProtection: {
+      enabled: boolean
+      threshold?: number
+    }
+    suspiciousAccounts: {
+      enabled: boolean
+      minAgeDays?: number
+    }
+    autoRole: {
+      enabled: boolean
+      roleId?: string
+    }
+    permissionAbuse: {
+      enabled: boolean
+      notifyOwnerOnRoleChange: boolean
+      monitorAdminActions: boolean
+    }
+    maliciousBotDetection: {
+      enabled: boolean
+      newBotNotifications: boolean
+      botActivityMonitoring: boolean
+      botTimeoutThreshold: number
+    }
+    tokenWebhookAbuse: {
+      enabled: boolean
+      webhookCreationMonitor: boolean
+      webhookAutoRevoke: boolean
+      webhookVerificationTimeout: number
+      leakedWebhookScanner: boolean
+    }
+    inviteHijacking: {
+      enabled: boolean
+      inviteLinkMonitor: boolean
+      vanityUrlWatcher: boolean
+    }
+    massPingProtection: {
+      enabled: boolean
+      antiMentionFlood: boolean
+      mentionRateLimit: number
+      messageCooldownOnRaid: boolean
+      cooldownDuration: number
+    }
+    maliciousFileScanner: {
+      enabled: boolean
+      suspiciousAttachmentBlocker: boolean
+      autoFileFilter: boolean
+      allowedFileTypes?: string[]
+    }
   }
-
-  return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">Server Dashboard</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Server List */}
-        <div className="md:col-span-1 bg-gray-50 p-4 rounded-lg">
-          <h2 className="font-semibold mb-4">Your Servers</h2>
-          {loading && !servers.length ? (
-            <div>Loading servers...</div>
-          ) : (
-            <ul className="space-y-2">
-              {servers?.map(server => (
-                <li 
-                  key={server.id}
-                  onClick={() => handleServerSelect(server.id)}
-                  className={`p-2 rounded cursor-pointer hover:bg-gray-200 ${
-                    selectedServer?.serverId === server.id ? 'bg-blue-100' : ''
-                  }`}
-                >
-                  <div className="flex items-center">
-                    {server.icon && (
-                      <img 
-                        src={`https://cdn.discordapp.com/icons/${server.id}/${server.icon}.png`} 
-                        alt={server.name}
-                        className="w-8 h-8 rounded-full mr-2"
-                      />
-                    )}
-                    <span>{server.name}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Server Config */}
-        <div className="md:col-span-3">
-          {loading && !selectedServer ? (
-            <div>Loading server configuration...</div>
-          ) : selectedServer ? (
-            <ServerConfigEditor 
-              config={selectedServer} 
-              onSave={(updatedConfig) => {
-                // Implement save logic
-                console.log('Saving config:', updatedConfig);
-              }}
-            />
-          ) : (
-            <div className="bg-yellow-50 p-4 rounded-lg text-yellow-800">
-              No server selected or configuration available
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  support: {
+    ticketSystem: {
+      enabled: boolean
+      channelId?: string
+      priorityRoleId?: string
+    }
+    autoAnswer: {
+      enabled: boolean
+      qaPairs?: string
+    }
+  }
+  giveaway: {
+    enabled: boolean
+    defaultChannelId?: string
+  }
+  logs: {
+    enabled: boolean
+    channelId?: string
+    messageEdits: boolean
+    modActions: boolean
+    memberJoins: boolean
+    memberLeaves: boolean
+  }
+  serverStats?: {
+    totalMembers?: number
+    totalBots?: number
+    totalAdmins?: number
+  }
+  lastUpdated?: Date
 }
 
-// Server Config Editor Component
-function ServerConfigEditor({ config, onSave }: { 
-  config: ServerConfig; 
-  onSave: (config: ServerConfig) => void 
-}) {
-  const [localConfig, setLocalConfig] = useState(config);
-
-  return (
-    <div className="bg-white p-4 rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-4">{config.serverName} Configuration</h2>
-      {/* Implement your config editor here */}
-      <pre className="bg-gray-100 p-2 rounded text-xs overflow-x-auto">
-        {JSON.stringify(localConfig, null, 2)}
-      </pre>
-      <button 
-        onClick={() => onSave(localConfig)}
-        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-      >
-        Save Changes
-      </button>
-    </div>
-  );
+export interface BotSettings {
+  serverId: string
+  name: string
+  avatar: string
+  status: "online" | "idle" | "dnd" | "offline"
+  version: string
+  updatedAt: Date
 }
 
-export const getServerSideProps: GetServerSideProps = async (context) => {
-  const session = await getSession(context);
-  
-  if (!session) {
-    return {
-      redirect: {
-        destination: '/auth/signin',
-        permanent: false,
-      },
-    };
-  }
+export interface Announcement {
+  _id: string
+  title: string
+  message: string
+  type: "info" | "warning" | "success"
+  active: boolean
+  createdAt: Date
+  updatedAt: Date
+}
 
-  try {
-    // Fetch user's servers from your API
-    const res = await fetch(`${process.env.NEXTAUTH_URL}/api/users/${session.user.id}/servers`, {
-      headers: {
-        cookie: context.req.headers.cookie || '',
-      },
-    });
+export interface Plugin {
+  id: string
+  name: string
+  description: string
+  version: string
+  author: string
+  enabled: boolean
+  category: string
+  permissions: string[] // ✅ fixed to array for .includes()
+  commands: string[]
+}
 
-    if (!res.ok) throw new Error('Failed to fetch servers');
+export interface BotServer {
+  serverId: string
+  serverName: string
+  serverIcon?: string
+  memberCount: number
+  addedAt: Date
+  isActive: boolean
+}
 
-    const servers = await res.json();
+export interface UserServer {
+  serverId: string
+  serverName: string
+  serverIcon?: string
+  isBotAdded: boolean
+  addedAt?: Date
+}
 
-    return {
-      props: {
-        initialServers: Array.isArray(servers) ? servers : [],
-        user: session.user,
-      },
-    };
-  } catch (error) {
-    console.error('Error in getServerSideProps:', error);
-    return {
-      props: {
-        initialServers: [],
-        user: session.user,
-      },
-    };
-  }
-};
+export interface DiscordGuild {
+  id: string
+  name: string
+  icon?: string
+  owner: boolean
+  permissions: string[] // ✅ fixed from string ➝ string[] for .includes()
+  approximate_member_count?: number
+}
