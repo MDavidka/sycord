@@ -7,31 +7,41 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user?.id) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const client = await clientPromise
     const db = client.db("dash-bot")
     const users = db.collection("users")
+    const botServers = db.collection("bot_servers")
 
-    // Find user by discordId
+    // Find user
     const user = await users.findOne({ discordId: session.user.id })
 
     if (!user || !user.servers) {
       return NextResponse.json({ servers: [] })
     }
 
-    // Transform the servers array to match the expected format
-    const servers = user.servers.map((server: any) => ({
-      serverId: server.server_id,
-      serverName: server.server_name,
-      serverIcon: server.server_icon,
-      isBotAdded: server.is_bot_added,
-      lastConfigUpdate: server.last_updated,
-    }))
+    // Check bot status for each server
+    const serversWithBotStatus = await Promise.all(
+      user.servers.map(async (server: any) => {
+        const botServer = await botServers.findOne({
+          serverId: server.server_id,
+          isActive: true,
+        })
 
-    return NextResponse.json({ servers })
+        return {
+          serverId: server.server_id,
+          serverName: server.server_name,
+          serverIcon: server.server_icon,
+          isBotAdded: !!botServer,
+          lastConfigUpdate: server.last_updated,
+        }
+      }),
+    )
+
+    return NextResponse.json({ servers: serversWithBotStatus })
   } catch (error) {
     console.error("Error fetching user servers:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

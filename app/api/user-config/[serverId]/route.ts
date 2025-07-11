@@ -7,7 +7,7 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user?.id) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -15,17 +15,18 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
     const db = client.db("dash-bot")
     const users = db.collection("users")
 
-    // Find user by discordId
+    // Find user and their server configuration
     const user = await users.findOne({ discordId: session.user.id })
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Find the specific server in the user's servers array
-    const server = user.servers?.find((s: any) => s.server_id === params.serverId)
+    // Find the specific server configuration
+    const servers = user.servers || []
+    const serverConfig = servers.find((s: any) => s.server_id === params.serverId)
 
-    if (!server) {
+    if (!serverConfig) {
       return NextResponse.json({ error: "Server configuration not found" }, { status: 404 })
     }
 
@@ -35,8 +36,7 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
         email: user.email,
         joined_since: user.joined_since,
       },
-      server,
-      isBotAdded: server.is_bot_added,
+      server: serverConfig,
     })
   } catch (error) {
     console.error("Error fetching user config:", error)
@@ -48,17 +48,22 @@ export async function PUT(request: NextRequest, { params }: { params: { serverId
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user?.id) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const body = await request.json()
+    const { server } = await request.json()
+
+    if (!server) {
+      return NextResponse.json({ error: "Server configuration is required" }, { status: 400 })
+    }
+
     const client = await clientPromise
     const db = client.db("dash-bot")
     const users = db.collection("users")
 
-    // Update the specific server configuration in the user's servers array
-    const updateResult = await users.updateOne(
+    // Update the server configuration
+    const result = await users.updateOne(
       {
         discordId: session.user.id,
         "servers.server_id": params.serverId,
@@ -66,15 +71,15 @@ export async function PUT(request: NextRequest, { params }: { params: { serverId
       {
         $set: {
           "servers.$": {
-            ...body.server,
+            ...server,
             last_updated: new Date().toISOString(),
           },
         },
       },
     )
 
-    if (updateResult.modifiedCount === 0) {
-      return NextResponse.json({ error: "Failed to update configuration or server not found" }, { status: 500 })
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ error: "Server configuration not found" }, { status: 404 })
     }
 
     return NextResponse.json({ success: true })
