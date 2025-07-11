@@ -48,7 +48,7 @@ export function ServerCard({ server, botAdded = false }: ServerCardProps) {
                 </div>
               )}
               {server.owner && (
-                <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+                <Badge variant="secondary" className="bg-gray-500/20 text-gray-400 border-gray-500/30">
                   Owner
                 </Badge>
               )}
@@ -63,15 +63,19 @@ export function ServerCard({ server, botAdded = false }: ServerCardProps) {
                   </Button>
                 </Link>
               ) : (
-                <Button size="sm" variant="outline" className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10">
-                  Add Bot
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-gray-500/50 text-gray-400 hover:bg-gray-500/10 bg-transparent"
+                >
+                  Add Sycord
                 </Button>
               )}
               <Badge
                 variant={botAdded ? "default" : "secondary"}
                 className={
                   botAdded
-                    ? "bg-green-500/20 text-green-400 border-green-500/30"
+                    ? "bg-gray-500/20 text-gray-400 border-gray-500/30"
                     : "bg-gray-500/20 text-gray-400 border-gray-500/30"
                 }
               >

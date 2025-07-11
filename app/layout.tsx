@@ -7,7 +7,7 @@ import { Providers } from "./providers"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Dash - AI-Powered Discord Bot",
+  title: "Sycord - AI-Powered Discord Bot",
   description:
     "The intelligent Discord bot that moderates your server, answers questions with AI, and keeps your community engaged.",
     generator: 'v0.dev'

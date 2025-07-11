@@ -367,7 +367,7 @@ export default function ServerConfigPage() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400 mx-auto mb-4"></div>
           <p className="text-white">Loading server configuration...</p>
         </div>
       </div>
@@ -391,12 +391,10 @@ export default function ServerConfigPage() {
                     <ArrowLeft className="h-5 w-5" />
                   </Button>
                 </Link>
-                <Image src="/bot-icon.png" alt="Dash Bot" width={28} height={28} className="rounded-lg" />
+                <Image src="/bot-icon.png" alt="Sycord Bot" width={28} height={28} className="rounded-lg" />
                 <div>
                   <h1 className="text-lg font-bold text-white">
-                    <span className="bg-gradient-to-r from-blue-700 to-blue-900 bg-clip-text text-transparent">
-                      Dash
-                    </span>
+                    <span className="text-white">Sycord</span>
                   </h1>
                 </div>
               </div>
@@ -430,13 +428,13 @@ export default function ServerConfigPage() {
         <div className="container mx-auto px-4 py-8">
           <Card className="glass-card max-w-2xl mx-auto">
             <CardContent className="p-8 md:p-12 text-center">
-              <div className="w-16 h-16 rounded-full bg-orange-500/20 flex items-center justify-center mx-auto mb-6">
-                <Clock className="h-8 w-8 text-orange-400" />
+              <div className="w-16 h-16 rounded-full bg-gray-500/20 flex items-center justify-center mx-auto mb-6">
+                <Clock className="h-8 w-8 text-gray-400" />
               </div>
               <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">Waiting for Bot</h2>
               <p className="text-gray-400 mb-8 text-base md:text-lg">
-                The server configuration has been created, but the Dash bot hasn't joined this server yet. Once the bot
-                is added, you'll be able to configure all settings.
+                The server configuration has been created, but the Sycord bot hasn't joined this server yet. Once the
+                bot is added, you'll be able to configure all settings.
               </p>
               <div className="space-y-4">
                 <Link href="/dashboard">
@@ -463,10 +461,10 @@ export default function ServerConfigPage() {
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Image src="/bot-icon.png" alt="Dash Bot" width={28} height={28} className="rounded-lg" />
+              <Image src="/bot-icon.png" alt="Sycord Bot" width={28} height={28} className="rounded-lg" />
               <div>
                 <h1 className="text-lg font-bold text-white">
-                  <span className="bg-gradient-to-r from-blue-700 to-blue-900 bg-clip-text text-transparent">Dash</span>
+                  <span className="text-white">Sycord</span>
                 </h1>
               </div>
             </div>
@@ -662,7 +660,7 @@ export default function ServerConfigPage() {
                     <div
                       className={`p-3 rounded-lg border transition-all ${
                         serverConfig.welcome.enabled
-                          ? "border-green-500/50 bg-green-500/5"
+                          ? "border-gray-500/50 bg-gray-500/5"
                           : "border-gray-500/50 bg-gray-500/5"
                       }`}
                     >
@@ -670,11 +668,11 @@ export default function ServerConfigPage() {
                         <div className="flex items-center space-x-2">
                           <div
                             className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                              serverConfig.welcome.enabled ? "bg-green-500/20" : "bg-gray-500/20"
+                              serverConfig.welcome.enabled ? "bg-gray-500/20" : "bg-gray-500/20"
                             }`}
                           >
                             <LogIn
-                              className={`h-4 w-4 ${serverConfig.welcome.enabled ? "text-green-400" : "text-gray-400"}`}
+                              className={`h-4 w-4 ${serverConfig.welcome.enabled ? "text-gray-400" : "text-gray-400"}`}
                             />
                           </div>
                           <div>
@@ -696,7 +694,7 @@ export default function ServerConfigPage() {
                     {/* Connection Line */}
                     {serverConfig.welcome.enabled && (
                       <div className="flex justify-center">
-                        <div className="w-0.5 h-6 bg-green-500"></div>
+                        <div className="w-0.5 h-6 bg-gray-500"></div>
                       </div>
                     )}
                   </div>
@@ -719,13 +717,13 @@ export default function ServerConfigPage() {
                           }
                           className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
                             serverConfig.moderation.suspicious_accounts.enabled
-                              ? "bg-green-500/20 border border-green-500/50"
+                              ? "bg-gray-500/20 border border-gray-500/50"
                               : "bg-gray-500/20 border border-gray-500/50"
                           }`}
                         >
                           <Shield
                             className={`h-4 w-4 ${
-                              serverConfig.moderation.suspicious_accounts.enabled ? "text-green-400" : "text-gray-400"
+                              serverConfig.moderation.suspicious_accounts.enabled ? "text-gray-400" : "text-gray-400"
                             }`}
                           />
                         </button>
@@ -735,18 +733,18 @@ export default function ServerConfigPage() {
                       {serverConfig.moderation.suspicious_accounts.enabled && (
                         <>
                           <div className="flex justify-center mt-2">
-                            <div className="w-0.5 h-4 bg-green-500"></div>
+                            <div className="w-0.5 h-4 bg-gray-500"></div>
                           </div>
                           <div className="flex justify-center">
-                            <div className="w-48 h-0.5 bg-green-500"></div>
+                            <div className="w-48 h-0.5 bg-gray-500"></div>
                           </div>
                           <div
                             className="flex justify-between items-start relative"
                             style={{ marginLeft: "calc(50% - 96px)", marginRight: "calc(50% - 96px)" }}
                           >
-                            <div className="w-0.5 h-4 bg-green-500"></div>
-                            <div className="w-0.5 h-4 bg-green-500"></div>
-                            <div className="w-0.5 h-4 bg-green-500"></div>
+                            <div className="w-0.5 h-4 bg-gray-500"></div>
+                            <div className="w-0.5 h-4 bg-gray-500"></div>
+                            <div className="w-0.5 h-4 bg-gray-500"></div>
                           </div>
                         </>
                       )}
@@ -784,10 +782,10 @@ export default function ServerConfigPage() {
                           </div>
 
                           {/* Bot Scanner */}
-                          <div className="p-3 rounded-lg border border-green-500/30 bg-green-500/5">
+                          <div className="p-3 rounded-lg border border-gray-500/30 bg-gray-500/5">
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center space-x-2">
-                                <Bot className="h-4 w-4 text-green-400" />
+                                <Bot className="h-4 w-4 text-gray-400" />
                                 <h4 className="font-medium text-white text-sm">Bot Scanner</h4>
                               </div>
                               <Switch
@@ -808,10 +806,10 @@ export default function ServerConfigPage() {
                           </div>
 
                           {/* Alt Detector */}
-                          <div className="p-3 rounded-lg border border-green-600/30 bg-green-600/5">
+                          <div className="p-3 rounded-lg border border-gray-600/30 bg-gray-600/5">
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center space-x-2">
-                                <Eye className="h-4 w-4 text-green-400" />
+                                <Eye className="h-4 w-4 text-gray-400" />
                                 <h4 className="font-medium text-white text-sm">Alt Detector</h4>
                               </div>
                               <Switch
@@ -858,7 +856,7 @@ export default function ServerConfigPage() {
 
                       {/* Connection Line to Welcome Message */}
                       <div className="flex justify-center mt-4">
-                        <div className="w-0.5 h-6 bg-green-500"></div>
+                        <div className="w-0.5 h-6 bg-gray-500"></div>
                       </div>
                     </div>
                   )}
@@ -869,7 +867,7 @@ export default function ServerConfigPage() {
                       <div
                         className={`p-3 rounded-lg border transition-all ${
                           serverConfig.welcome.message
-                            ? "border-green-500/50 bg-green-500/5"
+                            ? "border-gray-500/50 bg-gray-500/5"
                             : "border-gray-500/50 bg-gray-500/5"
                         }`}
                       >
@@ -877,12 +875,12 @@ export default function ServerConfigPage() {
                           <div className="flex items-center space-x-2">
                             <div
                               className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                                serverConfig.welcome.message ? "bg-green-500/20" : "bg-gray-500/20"
+                                serverConfig.welcome.message ? "bg-gray-500/20" : "bg-gray-500/20"
                               }`}
                             >
                               <MessageSquare
                                 className={`h-4 w-4 ${
-                                  serverConfig.welcome.message ? "text-green-400" : "text-gray-400"
+                                  serverConfig.welcome.message ? "text-gray-400" : "text-gray-400"
                                 }`}
                               />
                             </div>
@@ -941,7 +939,7 @@ export default function ServerConfigPage() {
 
                       {/* Connection Line to Role Assignment */}
                       <div className="flex justify-center mt-4">
-                        <div className="w-0.5 h-6 bg-green-500"></div>
+                        <div className="w-0.5 h-6 bg-gray-500"></div>
                       </div>
                     </div>
                   )}
@@ -952,7 +950,7 @@ export default function ServerConfigPage() {
                       <div
                         className={`p-3 rounded-lg border transition-all ${
                           serverConfig.moderation.auto_role.enabled
-                            ? "border-green-500/50 bg-green-500/5"
+                            ? "border-gray-500/50 bg-gray-500/5"
                             : "border-gray-500/50 bg-gray-500/5"
                         }`}
                       >
@@ -960,12 +958,12 @@ export default function ServerConfigPage() {
                           <div className="flex items-center space-x-2">
                             <div
                               className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                                serverConfig.moderation.auto_role.enabled ? "bg-green-500/20" : "bg-gray-500/20"
+                                serverConfig.moderation.auto_role.enabled ? "bg-gray-500/20" : "bg-gray-500/20"
                               }`}
                             >
                               <Crown
                                 className={`h-4 w-4 ${
-                                  serverConfig.moderation.auto_role.enabled ? "text-green-400" : "text-gray-400"
+                                  serverConfig.moderation.auto_role.enabled ? "text-gray-400" : "text-gray-400"
                                 }`}
                               />
                             </div>
@@ -1005,7 +1003,7 @@ export default function ServerConfigPage() {
                                 <SelectValue placeholder="Select a role">
                                   {serverConfig.moderation.auto_role.role_id && (
                                     <div className="flex items-center">
-                                      <div className="w-2 h-2 rounded-full mr-2 bg-green-500" />
+                                      <div className="w-2 h-2 rounded-full mr-2 bg-gray-500" />
                                       {getRoleName(serverConfig.moderation.auto_role.role_id)}
                                     </div>
                                   )}
@@ -1015,7 +1013,7 @@ export default function ServerConfigPage() {
                                 {Object.entries(serverConfig.roles_and_names).map(([id, name]) => (
                                   <SelectItem key={id} value={id}>
                                     <div className="flex items-center">
-                                      <div className="w-2 h-2 rounded-full mr-2 bg-green-500" />
+                                      <div className="w-2 h-2 rounded-full mr-2 bg-gray-500" />
                                       {name}
                                     </div>
                                   </SelectItem>
@@ -1051,7 +1049,7 @@ export default function ServerConfigPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setShowInfoModal(true)}
-                    className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10 w-full sm:w-auto"
+                    className="border-gray-500/50 text-gray-400 hover:bg-gray-500/10 w-full sm:w-auto"
                   >
                     <Info className="h-4 w-4 mr-2" />
                     How we trained our bot
@@ -1105,9 +1103,9 @@ export default function ServerConfigPage() {
                 </div>
 
                 {serverConfig.moderation_level === "lockdown" && (
-                  <Alert className="mt-4 border-red-500/30 bg-red-500/10">
+                  <Alert className="mt-4 border-gray-500/30 bg-gray-500/10">
                     <AlertTriangle className="h-4 w-4" />
-                    <AlertDescription className="text-red-400">
+                    <AlertDescription className="text-gray-400">
                       Lockdown mode enables all security features. Your server will have maximum protection but some
                       legitimate activities may be restricted.
                     </AlertDescription>
@@ -1526,7 +1524,7 @@ export default function ServerConfigPage() {
                         vulnerabilities.
                       </p>
                       <p>
-                        This research became the foundation for every security function we built into Dash. Our bot
+                        This research became the foundation for every security function we built into Sycord. Our bot
                         doesn't just follow generic rules - it understands real attack patterns and adapts to protect
                         your server accordingly.
                       </p>
@@ -1627,7 +1625,7 @@ export default function ServerConfigPage() {
                             <SelectValue placeholder="Select priority role">
                               {serverConfig.support.ticket_system.priority_role_id && (
                                 <div className="flex items-center">
-                                  <div className="w-3 h-3 rounded-full mr-2 bg-green-500" />
+                                  <div className="w-3 h-3 rounded-full mr-2 bg-gray-500" />
                                   {getRoleName(serverConfig.support.ticket_system.priority_role_id)}
                                 </div>
                               )}
@@ -1637,7 +1635,7 @@ export default function ServerConfigPage() {
                             {Object.entries(serverConfig.roles_and_names).map(([id, name]) => (
                               <SelectItem key={id} value={id}>
                                 <div className="flex items-center">
-                                  <div className="w-3 h-3 rounded-full mr-2 bg-green-500" />
+                                  <div className="w-3 h-3 rounded-full mr-2 bg-gray-500" />
                                   {name}
                                 </div>
                               </SelectItem>
@@ -1939,7 +1937,7 @@ export default function ServerConfigPage() {
                                   <SelectValue placeholder="Select role">
                                     {giveawayData.selectedRole && (
                                       <div className="flex items-center">
-                                        <div className="w-3 h-3 rounded-full mr-2 bg-green-500" />
+                                        <div className="w-3 h-3 rounded-full mr-2 bg-gray-500" />
                                         {getRoleName(giveawayData.selectedRole)}
                                       </div>
                                     )}
@@ -1949,7 +1947,7 @@ export default function ServerConfigPage() {
                                   {Object.entries(serverConfig.roles_and_names).map(([id, name]) => (
                                     <SelectItem key={id} value={id}>
                                       <div className="flex items-center">
-                                        <div className="w-3 h-3 rounded-full mr-2 bg-green-500" />
+                                        <div className="w-3 h-3 rounded-full mr-2 bg-gray-500" />
                                         {name}
                                       </div>
                                     </SelectItem>
@@ -2039,10 +2037,10 @@ export default function ServerConfigPage() {
                   </>
                 ) : (
                   /* Giveaway Success State */
-                  <div className="p-6 bg-green-500/10 rounded-lg border border-green-500/30">
+                  <div className="p-6 bg-gray-500/10 rounded-lg border border-gray-500/30">
                     <div className="flex items-center justify-center mb-4">
-                      <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
-                        <Check className="h-6 w-6 text-green-400" />
+                      <div className="w-12 h-12 rounded-full bg-gray-500/20 flex items-center justify-center">
+                        <Check className="h-6 w-6 text-gray-400" />
                       </div>
                     </div>
 

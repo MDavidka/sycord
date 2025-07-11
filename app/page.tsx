@@ -12,14 +12,14 @@ export default function LandingPage() {
       <nav className="glass-card border-b border-white/10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Image src="/bot-icon.png" alt="Dash Bot" width={32} height={32} className="rounded-lg" />
+            <Image src="/bot-icon.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
             <span className="text-2xl font-bold">
-              <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">Dash</span>
+              <span className="text-white">Sycord</span>
             </span>
           </div>
           <div className="flex items-center space-x-4">
             <Link href="/login">
-              <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
+              <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
                 Login
               </Button>
             </Link>
@@ -33,14 +33,11 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 text-center">
         <div className="max-w-4xl mx-auto animate-fade-in">
-          <Badge variant="secondary" className="mb-4 bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
+          <Badge variant="secondary" className="mb-4 bg-gray-500/20 text-gray-300 border-gray-500/30">
             Advanced Discord Bot
           </Badge>
           <h1 className="text-5xl md:text-7xl font-bold mb-6">
-            Meet{" "}
-            <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
-              Dash
-            </span>
+            Meet <span className="text-white">Sycord</span>
           </h1>
           <p className="text-xl md:text-2xl text-gray-300 mb-8 leading-relaxed">
             The intelligent Discord bot that moderates your server, manages tickets, and keeps your community engaged
@@ -67,7 +64,7 @@ export default function LandingPage() {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           <Card className="glass-card hover-glow animate-fade-in">
             <CardHeader>
-              <MessageSquare className="h-12 w-12 text-blue-400 mb-4" />
+              <MessageSquare className="h-12 w-12 text-gray-400 mb-4" />
               <CardTitle className="text-white">Smart Support System</CardTitle>
               <CardDescription className="text-gray-400">
                 Automated ticket system with intelligent responses
@@ -84,7 +81,7 @@ export default function LandingPage() {
 
           <Card className="glass-card hover-glow animate-fade-in">
             <CardHeader>
-              <Shield className="h-12 w-12 text-green-400 mb-4" />
+              <Shield className="h-12 w-12 text-gray-400 mb-4" />
               <CardTitle className="text-white">Advanced Moderation</CardTitle>
               <CardDescription className="text-gray-400">
                 Comprehensive protection with fraud detection and raid protection
@@ -101,7 +98,7 @@ export default function LandingPage() {
 
           <Card className="glass-card hover-glow animate-fade-in">
             <CardHeader>
-              <Users className="h-12 w-12 text-purple-400 mb-4" />
+              <Users className="h-12 w-12 text-gray-400 mb-4" />
               <CardTitle className="text-white">Welcome & Invite Tracking</CardTitle>
               <CardDescription className="text-gray-400">
                 Welcome new members and track who invited them
@@ -118,7 +115,7 @@ export default function LandingPage() {
 
           <Card className="glass-card hover-glow animate-fade-in">
             <CardHeader>
-              <Clock className="h-12 w-12 text-orange-400 mb-4" />
+              <Clock className="h-12 w-12 text-gray-400 mb-4" />
               <CardTitle className="text-white">Smart Announcements</CardTitle>
               <CardDescription className="text-gray-400">
                 Triggered announcements and web-based giveaways
@@ -135,7 +132,7 @@ export default function LandingPage() {
 
           <Card className="glass-card hover-glow animate-fade-in">
             <CardHeader>
-              <Zap className="h-12 w-12 text-yellow-400 mb-4" />
+              <Zap className="h-12 w-12 text-gray-400 mb-4" />
               <CardTitle className="text-white">Real-time Dashboard</CardTitle>
               <CardDescription className="text-gray-400">Monitor and configure your bot from anywhere</CardDescription>
             </CardHeader>
@@ -150,7 +147,7 @@ export default function LandingPage() {
 
           <Card className="glass-card hover-glow animate-fade-in">
             <CardHeader>
-              <Bot className="h-12 w-12 text-pink-400 mb-4" />
+              <Bot className="h-12 w-12 text-gray-400 mb-4" />
               <CardTitle className="text-white">Easy Setup</CardTitle>
               <CardDescription className="text-gray-400">
                 Get started in minutes with our simple setup process
@@ -169,14 +166,11 @@ export default function LandingPage() {
 
       {/* CTA Section */}
       <section className="container mx-auto px-4 py-20">
-        <div className="glass-card neon-border p-12 text-center">
+        <div className="glass-card border border-white/10 p-12 text-center">
           <h2 className="text-4xl font-bold mb-4">Ready to Transform Your Discord Server?</h2>
           <p className="text-xl text-gray-300 mb-8">
-            Join thousands of communities already using{" "}
-            <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent font-bold">
-              Dash
-            </span>{" "}
-            to create better Discord experiences.
+            Join thousands of communities already using <span className="text-white font-bold">Sycord</span> to create
+            better Discord experiences.
           </p>
           <Link href="/login">
             <Button size="lg" className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 hover-glow">
@@ -192,10 +186,9 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="flex items-center space-x-2 mb-4 md:mb-0">
-              <Image src="/bot-icon.png" alt="Dash Bot" width={24} height={24} className="rounded" />
+              <Image src="/bot-icon.png" alt="Sycord Bot" width={24} height={24} className="rounded" />
               <span className="text-lg font-semibold">
-                <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">Dash</span>{" "}
-                Bot
+                <span className="text-white">Sycord</span> Bot
               </span>
             </div>
             <div className="flex items-center space-x-6">
@@ -205,7 +198,7 @@ export default function LandingPage() {
               <Link href="#" className="text-gray-400 hover:text-white transition-colors">
                 <Twitter className="h-5 w-5" />
               </Link>
-              <span className="text-gray-400 text-sm">© 2024 Dash Bot. All rights reserved.</span>
+              <span className="text-gray-400 text-sm">© 2024 Sycord Bot. All rights reserved.</span>
             </div>
           </div>
         </div>
