@@ -142,19 +142,3 @@ export interface DiscordGuild {
   permissions: string
   approximate_member_count?: number
 }
-
-export interface AppSettings {
-  _id?: string
-  maintenanceMode: {
-    enabled: boolean
-    estimatedTime?: string
-  }
-  createdAt?: Date
-  updatedAt?: Date
-}
-
-export interface Announcement {
-  _id?: string
-  message: string
-  createdAt: Date
-}

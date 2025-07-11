@@ -5,15 +5,22 @@ import { Bot, Shield, MessageSquare, Clock, Users, Zap, ArrowRight, Github, Twit
 import Link from "next/link"
 import Image from "next/image"
 import clientPromise from "@/lib/mongodb"
-import type { AppSettings } from "@/lib/types"
+
+interface AppSettings {
+  maintenanceMode: {
+    enabled: boolean
+    estimatedTime?: string
+  }
+}
 
 export default async function LandingPage() {
   let appSettings: AppSettings | null = null
+
   try {
     const client = await clientPromise
     const db = client.db("dash-bot")
-    const settingsCollection = db.collection<AppSettings>("app_settings")
-    appSettings = await settingsCollection.findOne({})
+    const settingsCollection = db.collection("app_settings")
+    appSettings = (await settingsCollection.findOne({})) as AppSettings | null
   } catch (error) {
     console.error("Failed to fetch app settings:", error)
   }

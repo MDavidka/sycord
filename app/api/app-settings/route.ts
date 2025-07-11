@@ -2,19 +2,18 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongodb"
-import type { AppSettings } from "@/lib/types"
 
 export async function GET() {
   try {
     const client = await clientPromise
     const db = client.db("dash-bot")
-    const appSettingsCollection = db.collection<AppSettings>("app_settings")
+    const settings = db.collection("app_settings")
 
-    let appSettings = await appSettingsCollection.findOne({})
+    let appSettings = await settings.findOne({})
 
     if (!appSettings) {
-      // Initialize default settings if none exist
-      const defaultSettings: AppSettings = {
+      // Create default settings if none exist
+      const defaultSettings = {
         maintenanceMode: {
           enabled: false,
           estimatedTime: "30 minutes",
@@ -22,7 +21,8 @@ export async function GET() {
         createdAt: new Date(),
         updatedAt: new Date(),
       }
-      await appSettingsCollection.insertOne(defaultSettings)
+
+      await settings.insertOne(defaultSettings)
       appSettings = defaultSettings
     }
 
@@ -37,7 +37,7 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    // Only allow specific admin user to update app settings
+    // Check if user is admin
     if (!session?.user || session.user.email !== "dmarton336@gmail.com") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
@@ -45,17 +45,20 @@ export async function PUT(request: NextRequest) {
     const body = await request.json()
     const client = await clientPromise
     const db = client.db("dash-bot")
-    const appSettingsCollection = db.collection<AppSettings>("app_settings")
+    const settings = db.collection("app_settings")
 
-    const updatedSettings = await appSettingsCollection.findOneAndUpdate(
-      {}, // Find the single app settings document
+    const updatedSettings = await settings.findOneAndUpdate(
+      {},
       {
         $set: {
           maintenanceMode: body.maintenanceMode,
           updatedAt: new Date(),
         },
       },
-      { returnDocument: "after", upsert: true }, // Create if not exists, return updated document
+      {
+        returnDocument: "after",
+        upsert: true,
+      },
     )
 
     return NextResponse.json(updatedSettings.value)

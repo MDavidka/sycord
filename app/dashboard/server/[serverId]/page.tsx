@@ -230,18 +230,10 @@ export default function ServerConfigPage() {
   const [botToken, setBotToken] = useState("")
   const [showToken, setShowToken] = useState(false)
 
-  // Access+ tab state
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null)
   const [newAnnouncement, setNewAnnouncement] = useState("")
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [dismissedAnnouncements, setDismissedAnnouncements] = useState<string[]>([])
-  const [isAdmin, setIsAdmin] = useState(false)
-
-  useEffect(() => {
-    if (session?.user?.email === "dmarton336@gmail.com") {
-      setIsAdmin(true)
-    }
-  }, [session])
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -285,30 +277,6 @@ export default function ServerConfigPage() {
       console.error("Error loading data:", error)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const fetchAppSettings = async () => {
-    try {
-      const response = await fetch("/api/app-settings")
-      if (response.ok) {
-        const data = await response.json()
-        setAppSettings(data)
-      }
-    } catch (error) {
-      console.error("Error fetching app settings:", error)
-    }
-  }
-
-  const fetchAnnouncements = async () => {
-    try {
-      const response = await fetch("/api/announcements")
-      if (response.ok) {
-        const data = await response.json()
-        setAnnouncements(data.announcements)
-      }
-    } catch (error) {
-      console.error("Error fetching announcements:", error)
     }
   }
 
@@ -442,6 +410,30 @@ export default function ServerConfigPage() {
       customBotName,
       botToken,
     })
+  }
+
+  const fetchAppSettings = async () => {
+    try {
+      const response = await fetch("/api/app-settings")
+      if (response.ok) {
+        const data = await response.json()
+        setAppSettings(data)
+      }
+    } catch (error) {
+      console.error("Error fetching app settings:", error)
+    }
+  }
+
+  const fetchAnnouncements = async () => {
+    try {
+      const response = await fetch("/api/announcements")
+      if (response.ok) {
+        const data = await response.json()
+        setAnnouncements(data.announcements)
+      }
+    } catch (error) {
+      console.error("Error fetching announcements:", error)
+    }
   }
 
   const handleMaintenanceToggle = async (checked: boolean) => {
@@ -725,7 +717,7 @@ export default function ServerConfigPage() {
               <Settings className="h-4 w-4 mr-2" />
               Settings
             </Button>
-            {isAdmin && (
+            {session?.user?.email === "dmarton336@gmail.com" && (
               <Button
                 variant={activeTab === "access-plus" ? "secondary" : "ghost"}
                 size="sm"
@@ -769,7 +761,6 @@ export default function ServerConfigPage() {
                   ))}
               </div>
             )}
-
             {/* Simplified Server Info */}
             <Card className="glass-card">
               <CardContent className="p-4">
@@ -2390,7 +2381,7 @@ export default function ServerConfigPage() {
         )}
 
         {/* Access+ Tab */}
-        {activeTab === "access-plus" && isAdmin && (
+        {activeTab === "access-plus" && session?.user?.email === "dmarton336@gmail.com" && (
           <div className="space-y-6">
             <Card className="glass-card">
               <CardHeader>
