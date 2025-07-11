@@ -1,564 +1,608 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Package, Search, Download, Trash2, Users, Plus, UserCheck, Crown, AlertCircle } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Puzzle, Download, Star, Users, Plus, Trash2, Settings, Crown, UserPlus, UserMinus } from "lucide-react"
 
 interface Plugin {
   _id: string
   name: string
   description: string
-  created_by: string
+  version: string
+  author: string
+  category: string
+  downloads: number
+  rating: number
+  price: number
+  features: string[]
+  is_premium: boolean
   created_at: string
-  installs: number
-  active: boolean
 }
 
 interface UserPlugin {
-  pluginId: string
-  name: string
-  description: string
+  plugin_id: string
+  enabled: boolean
   installed_at: string
 }
 
 interface User {
   _id: string
+  discordId: string
   name: string
   email: string
-  is_tester: boolean
-  joined_since: string
+  is_tester?: boolean
 }
 
-export default function PluginsTab() {
-  const { data: session } = useSession()
-  const [allPlugins, setAllPlugins] = useState<Plugin[]>([])
-  const [userPlugins, setUserPlugins] = useState<UserPlugin[]>([])
-  const [allUsers, setAllUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [activeView, setActiveView] = useState<"store" | "installed" | "admin">("store")
-  const [showCreatePlugin, setShowCreatePlugin] = useState(false)
-  const [newPlugin, setNewPlugin] = useState({ name: "", description: "" })
-  const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
+interface PluginsTabProps {
+  serverId: string
+}
 
-  // Hardcoded admin email for demonstration purposes
-  const isAdmin = session?.user?.email === "dmarton336@gmail.com"
+export function PluginsTab({ serverId }: PluginsTabProps) {
+  const { data: session } = useSession()
+  const [plugins, setPlugins] = useState<Plugin[]>([])
+  const [userPlugins, setUserPlugins] = useState<UserPlugin[]>([])
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [activeTab, setActiveTab] = useState("store")
+
+  // Plugin creation state
+  const [newPlugin, setNewPlugin] = useState({
+    name: "",
+    description: "",
+    version: "1.0.0",
+    author: "",
+    category: "utility",
+    features: "",
+    is_premium: false,
+    price: 0,
+  })
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    fetchPlugins()
+    fetchUserPlugins()
+    checkAdminStatus()
+    if (isAdmin) {
+      fetchUsers()
+    }
+  }, [isAdmin])
 
-  const fetchData = async () => {
+  const fetchPlugins = async () => {
     try {
-      setError("")
-      setSuccess("") // Clear success message on new fetch
-      const [pluginsResponse, userPluginsResponse] = await Promise.all([
-        fetch("/api/plugins"),
-        fetch("/api/user-plugins"),
-      ])
-
-      if (pluginsResponse.ok) {
-        const pluginsData = await pluginsResponse.json()
-        setAllPlugins(pluginsData.plugins || [])
+      const response = await fetch("/api/plugins")
+      if (response.ok) {
+        const data = await response.json()
+        setPlugins(data.plugins || [])
       } else {
-        const errorData = await pluginsResponse.json()
-        console.error("Failed to fetch all plugins:", errorData.error || pluginsResponse.statusText)
-        setError(errorData.error || "Failed to load plugins from store.")
+        console.error("Failed to fetch plugins:", response.statusText)
       }
+    } catch (error) {
+      console.error("Error fetching plugins:", error)
+    }
+  }
 
-      if (userPluginsResponse.ok) {
-        const userPluginsData = await userPluginsResponse.json()
-        setUserPlugins(userPluginsData.plugins || [])
+  const fetchUserPlugins = async () => {
+    try {
+      const response = await fetch("/api/user-plugins")
+      if (response.ok) {
+        const data = await response.json()
+        setUserPlugins(data.plugins || [])
       } else {
-        const errorData = await userPluginsResponse.json()
-        console.error("Failed to fetch user plugins:", errorData.error || userPluginsResponse.statusText)
-        setError(errorData.error || "Failed to load installed plugins.")
+        console.error("Failed to fetch user plugins:", response.statusText)
       }
-
-      // Fetch all users if admin
-      if (isAdmin) {
-        const usersResponse = await fetch("/api/admin/users")
-        if (usersResponse.ok) {
-          const usersData = await usersResponse.json()
-          setAllUsers(usersData.users || [])
-        } else {
-          const errorData = await usersResponse.json()
-          console.error("Failed to fetch users for admin:", errorData.error || usersResponse.statusText)
-          setError(errorData.error || "Failed to load user data for admin panel.")
-        }
-      }
-    } catch (error: any) {
-      console.error("Error fetching data:", error)
-      setError(error.message || "Failed to load data. Please try again.")
+    } catch (error) {
+      console.error("Error fetching user plugins:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handlePluginAction = async (pluginId: string, action: "install" | "uninstall") => {
+  const fetchUsers = async () => {
     try {
-      setError("")
-      setSuccess("")
+      const response = await fetch("/api/admin/users")
+      if (response.ok) {
+        const data = await response.json()
+        setUsers(data.users || [])
+      } else {
+        console.error("Failed to fetch users:", response.statusText)
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error)
+    }
+  }
+
+  const checkAdminStatus = async () => {
+    if (!session?.user?.email) return
+
+    const adminEmails = ["admin@dash-bot.com", "owner@dash-bot.com"]
+    setIsAdmin(adminEmails.includes(session.user.email))
+  }
+
+  const installPlugin = async (pluginId: string) => {
+    try {
       const response = await fetch("/api/user-plugins", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ pluginId, action }),
+        body: JSON.stringify({
+          plugin_id: pluginId,
+          action: "install",
+        }),
       })
 
       if (response.ok) {
-        setSuccess(`Plugin ${action === "install" ? "installed" : "uninstalled"} successfully!`)
-        setTimeout(() => setSuccess(""), 3000)
-        await fetchData()
+        fetchUserPlugins()
       } else {
-        const errorData = await response.json()
-        setError(errorData.error || `Failed to ${action} plugin`)
+        console.error("Failed to install plugin:", response.statusText)
       }
-    } catch (error: any) {
-      console.error("Error managing plugin:", error)
-      setError(error.message || `Failed to ${action} plugin`)
+    } catch (error) {
+      console.error("Error installing plugin:", error)
     }
   }
 
-  const handleCreatePlugin = async () => {
-    if (!newPlugin.name.trim() || !newPlugin.description.trim()) {
-      setError("Please fill in all fields")
-      return
-    }
-
+  const togglePlugin = async (pluginId: string, enabled: boolean) => {
     try {
-      setError("")
-      setSuccess("")
+      const response = await fetch("/api/user-plugins", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          plugin_id: pluginId,
+          action: "toggle",
+          enabled: enabled,
+        }),
+      })
+
+      if (response.ok) {
+        fetchUserPlugins()
+      } else {
+        console.error("Failed to toggle plugin:", response.statusText)
+      }
+    } catch (error) {
+      console.error("Error toggling plugin:", error)
+    }
+  }
+
+  const createPlugin = async () => {
+    try {
       const response = await fetch("/api/plugins", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(newPlugin),
+        body: JSON.stringify({
+          ...newPlugin,
+          features: newPlugin.features.split(",").map((f) => f.trim()),
+          author: session?.user?.name || "Unknown",
+        }),
       })
 
       if (response.ok) {
-        setNewPlugin({ name: "", description: "" })
-        setShowCreatePlugin(false)
-        setSuccess("Plugin created successfully!")
-        setTimeout(() => setSuccess(""), 3000)
-        await fetchData()
+        fetchPlugins()
+        setNewPlugin({
+          name: "",
+          description: "",
+          version: "1.0.0",
+          author: "",
+          category: "utility",
+          features: "",
+          is_premium: false,
+          price: 0,
+        })
       } else {
-        const errorData = await response.json()
-        setError(errorData.error || "Failed to create plugin")
+        console.error("Failed to create plugin:", response.statusText)
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error creating plugin:", error)
-      setError(error.message || "Failed to create plugin")
     }
   }
 
-  const handleDeletePlugin = async (pluginId: string) => {
-    if (!confirm("Are you sure you want to delete this plugin? This action cannot be undone.")) {
-      return
-    }
-
+  const deletePlugin = async (pluginId: string) => {
     try {
-      setError("")
-      setSuccess("")
       const response = await fetch("/api/plugins", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ pluginId }),
+        body: JSON.stringify({ plugin_id: pluginId }),
       })
 
       if (response.ok) {
-        setSuccess("Plugin deleted successfully!")
-        setTimeout(() => setSuccess(""), 3000)
-        await fetchData()
+        fetchPlugins()
       } else {
-        const errorData = await response.json()
-        setError(errorData.error || "Failed to delete plugin")
+        console.error("Failed to delete plugin:", response.statusText)
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error deleting plugin:", error)
-      setError(error.message || "Failed to delete plugin")
     }
   }
 
-  const handleToggleTester = async (userId: string, isTester: boolean) => {
+  const toggleTesterRole = async (userId: string, isTester: boolean) => {
     try {
-      setError("")
-      setSuccess("")
       const response = await fetch("/api/admin/users", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ userId, is_tester: !isTester }),
+        body: JSON.stringify({
+          user_id: userId,
+          is_tester: !isTester,
+        }),
       })
 
       if (response.ok) {
-        setSuccess(`User ${!isTester ? "granted" : "removed"} tester role!`)
-        setTimeout(() => setSuccess(""), 3000)
-        await fetchData()
+        fetchUsers()
       } else {
-        const errorData = await response.json()
-        setError(errorData.error || "Failed to update user")
+        console.error("Failed to toggle tester role:", response.statusText)
       }
-    } catch (error: any) {
-      console.error("Error updating user:", error)
-      setError(error.message || "Failed to update user")
+    } catch (error) {
+      console.error("Error toggling tester role:", error)
     }
   }
 
-  const filteredPlugins = allPlugins.filter(
-    (plugin) =>
-      plugin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      plugin.description.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
-
-  const filteredUserPlugins = userPlugins.filter(
-    (plugin) =>
-      plugin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      plugin.description.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
-
-  const filteredUsers = allUsers.filter(
-    (user) =>
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
-
   const isPluginInstalled = (pluginId: string) => {
-    return userPlugins.some((p) => p.pluginId === pluginId)
+    return userPlugins.some((up) => up.plugin_id === pluginId)
+  }
+
+  const isPluginEnabled = (pluginId: string) => {
+    const userPlugin = userPlugins.find((up) => up.plugin_id === pluginId)
+    return userPlugin?.enabled || false
   }
 
   if (loading) {
     return (
-      <div className="text-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400 mx-auto mb-4"></div>
-        <p className="text-white">Loading plugins...</p>
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     )
   }
 
   return (
-    <Card className="glass-card">
-      <CardHeader>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-          <div>
-            <CardTitle className="text-white flex items-center text-xl">
-              <Package className="h-6 w-6 mr-3" />
-              Plugin Store
-            </CardTitle>
-            <CardDescription className="text-gray-400">
-              Extend your bot's functionality with community plugins
-            </CardDescription>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant={activeView === "store" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setActiveView("store")}
-              className={
-                activeView === "store" ? "bg-white text-black" : "border-white/20 text-white hover:bg-white/10"
-              }
-            >
-              Store
-            </Button>
-            <Button
-              variant={activeView === "installed" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setActiveView("installed")}
-              className={
-                activeView === "installed" ? "bg-white text-black" : "border-white/20 text-white hover:bg-white/10"
-              }
-            >
-              Installed ({userPlugins.length})
-            </Button>
-            {isAdmin && (
-              <Button
-                variant={activeView === "admin" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveView("admin")}
-                className={
-                  activeView === "admin" ? "bg-white text-black" : "border-white/20 text-white hover:bg-white/10"
-                }
-              >
-                <Crown className="h-3 w-3 mr-1" />
-                Admin
-              </Button>
-            )}
-          </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Plugin Store</h2>
+          <p className="text-gray-600">Extend your server's functionality with plugins</p>
         </div>
-      </CardHeader>
-      <CardContent>
-        {/* Error and Success Messages */}
-        {error && (
-          <Alert key="error-alert" className="mb-4 border-red-500/30 bg-red-500/10">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-red-400">{error}</AlertDescription>
-          </Alert>
+        {isAdmin && (
+          <Badge variant="secondary" className="flex items-center space-x-1">
+            <Crown className="w-3 h-3" />
+            <span>Admin</span>
+          </Badge>
         )}
+      </div>
 
-        {success && (
-          <Alert key="success-alert" className="mb-4 border-green-500/30 bg-green-500/10">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="text-green-400">{success}</AlertDescription>
-          </Alert>
-        )}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="store">Plugin Store</TabsTrigger>
+          <TabsTrigger value="installed">My Plugins ({userPlugins.length})</TabsTrigger>
+          {isAdmin && <TabsTrigger value="admin">Admin Panel</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="users">User Management</TabsTrigger>}
+        </TabsList>
 
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder={activeView === "admin" ? "Search users..." : "Search plugins..."}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-black/60 border-white/20 text-white placeholder-gray-400"
-          />
-        </div>
+        {/* Plugin Store */}
+        <TabsContent value="store" className="space-y-4">
+          {plugins.length === 0 ? (
+            <Alert key="no-plugins-alert">
+              <Puzzle className="h-4 w-4" />
+              <AlertDescription>No plugins available in the store yet. Check back later!</AlertDescription>
+            </Alert>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {plugins.map((plugin) => (
+                <Card key={plugin._id} className="relative">
+                  {plugin.is_premium && <Badge className="absolute top-2 right-2 bg-yellow-500">Premium</Badge>}
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{plugin.name}</CardTitle>
+                      <Badge variant="outline">{plugin.category}</Badge>
+                    </div>
+                    <CardDescription>{plugin.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between text-sm text-gray-600">
+                      <span>v{plugin.version}</span>
+                      <span>by {plugin.author}</span>
+                    </div>
 
-        {activeView === "store" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredPlugins.map((plugin) => (
-              <Card key={plugin._id} className="bg-black/20 border-white/10">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                        <Package className="h-4 w-4 text-white" />
+                    <div className="flex items-center space-x-4 text-sm">
+                      <div className="flex items-center space-x-1">
+                        <Download className="w-4 h-4" />
+                        <span>{plugin.downloads}</span>
                       </div>
-                      <div>
-                        <CardTitle className="text-white text-base">{plugin.name}</CardTitle>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <div className="flex items-center text-xs text-gray-400">
-                            <Users className="h-3 w-3 mr-1" />
-                            {plugin.installs}
-                          </div>
-                          {isPluginInstalled(plugin._id) && (
-                            <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
-                              Installed
-                            </Badge>
-                          )}
-                        </div>
+                      <div className="flex items-center space-x-1">
+                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                        <span>{plugin.rating}</span>
                       </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-300 text-sm mb-4 line-clamp-2">{plugin.description}</p>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        handlePluginAction(plugin._id, isPluginInstalled(plugin._id) ? "uninstall" : "install")
-                      }
-                      className={
-                        isPluginInstalled(plugin._id)
-                          ? "bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30"
-                          : "bg-white text-black hover:bg-gray-200"
-                      }
-                      variant={isPluginInstalled(plugin._id) ? "outline" : "default"}
-                    >
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Features:</Label>
+                      <div className="flex flex-wrap gap-1">
+                        {plugin.features.map((feature, index) => (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {feature}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="text-lg font-bold">{plugin.price > 0 ? `$${plugin.price}` : "Free"}</div>
                       {isPluginInstalled(plugin._id) ? (
-                        <>
-                          <Trash2 className="h-3 w-3 mr-1" />
-                          Uninstall
-                        </>
+                        <Badge variant="default">Installed</Badge>
                       ) : (
-                        <>
-                          <Download className="h-3 w-3 mr-1" />
+                        <Button onClick={() => installPlugin(plugin._id)} size="sm">
                           Install
-                        </>
+                        </Button>
                       )}
-                    </Button>
-                    {isAdmin && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDeletePlugin(plugin._id)}
-                        className="bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {activeView === "installed" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredUserPlugins.map((plugin) => (
-              <Card key={plugin.pluginId} className="bg-black/20 border-white/10">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
-                        <Package className="h-4 w-4 text-green-400" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-white text-base">{plugin.name}</CardTitle>
-                        <p className="text-xs text-gray-400">
-                          Installed {new Date(plugin.installed_at).toLocaleDateString()}
-                        </p>
-                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-300 text-sm mb-4 line-clamp-2">{plugin.description}</p>
-                  <Button
-                    size="sm"
-                    onClick={() => handlePluginAction(plugin.pluginId, "uninstall")}
-                    className="bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30"
-                    variant="outline"
-                  >
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    Uninstall
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {activeView === "admin" && isAdmin && (
-          <div className="space-y-6">
-            {/* Create Plugin Section */}
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Plugin Management</h3>
-              <Button
-                onClick={() => setShowCreatePlugin(!showCreatePlugin)}
-                className="bg-white text-black hover:bg-gray-200"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create Plugin
-              </Button>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
+          )}
+        </TabsContent>
 
-            {showCreatePlugin && (
-              <Card className="bg-black/20 border-white/10">
-                <CardHeader>
-                  <CardTitle className="text-white text-base">Create New Plugin</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label className="text-white text-sm mb-2 block">Plugin Name</Label>
-                    <Input
-                      placeholder="Enter plugin name"
-                      value={newPlugin.name}
-                      onChange={(e) => setNewPlugin({ ...newPlugin, name: e.target.value })}
-                      className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-white text-sm mb-2 block">Description</Label>
-                    <Textarea
-                      placeholder="Enter plugin description"
-                      value={newPlugin.description}
-                      onChange={(e) => setNewPlugin({ ...newPlugin, description: e.target.value })}
-                      className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[80px]"
-                    />
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button onClick={handleCreatePlugin} className="bg-white text-black hover:bg-gray-200">
-                      Create Plugin
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setShowCreatePlugin(false)
-                        setNewPlugin({ name: "", description: "" })
-                        setError("")
-                      }}
-                      className="border-white/20 text-white hover:bg-white/10"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+        {/* Installed Plugins */}
+        <TabsContent value="installed" className="space-y-4">
+          {userPlugins.length === 0 ? (
+            <Alert key="no-installed-plugins-alert">
+              <Puzzle className="h-4 w-4" />
+              <AlertDescription>
+                You haven't installed any plugins yet. Browse the store to get started!
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {userPlugins.map((userPlugin) => {
+                const plugin = plugins.find((p) => p._id === userPlugin.plugin_id)
+                if (!plugin) return null
 
-            {/* User Management Section */}
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-4">User Management</h3>
-              <div className="grid grid-cols-1 gap-3">
-                {filteredUsers.map((user) => (
-                  <Card key={user._id} className="bg-black/20 border-white/10">
-                    <CardContent className="p-4">
+                return (
+                  <Card key={userPlugin.plugin_id}>
+                    <CardHeader>
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                            <Users className="h-4 w-4 text-white" />
-                          </div>
-                          <div>
-                            <h4 className="font-medium text-white">{user.name}</h4>
-                            <p className="text-xs text-gray-400">{user.email}</p>
-                            <p className="text-xs text-gray-400">
-                              Joined {new Date(user.joined_since).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {user.is_tester && (
-                            <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">Tester</Badge>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleToggleTester(user._id, user.is_tester)}
-                            className={
-                              user.is_tester
-                                ? "bg-red-500/20 text-red-400 border-red-500/30 hover:bg-red-500/30"
-                                : "bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/30"
-                            }
-                          >
-                            <UserCheck className="h-3 w-3 mr-1" />
-                            {user.is_tester ? "Remove Tester" : "Make Tester"}
-                          </Button>
-                        </div>
+                        <CardTitle className="text-lg">{plugin.name}</CardTitle>
+                        <Switch
+                          checked={userPlugin.enabled}
+                          onCheckedChange={(checked) => togglePlugin(userPlugin.plugin_id, checked)}
+                        />
+                      </div>
+                      <CardDescription>{plugin.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between text-sm text-gray-600">
+                        <span>Installed: {new Date(userPlugin.installed_at).toLocaleDateString()}</span>
+                        <Badge variant={userPlugin.enabled ? "default" : "secondary"}>
+                          {userPlugin.enabled ? "Active" : "Inactive"}
+                        </Badge>
                       </div>
                     </CardContent>
                   </Card>
-                ))}
-              </div>
+                )
+              })}
             </div>
-          </div>
+          )}
+        </TabsContent>
+
+        {/* Admin Panel */}
+        {isAdmin && (
+          <TabsContent value="admin" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Settings className="w-5 h-5" />
+                  <span>Plugin Management</span>
+                </CardTitle>
+                <CardDescription>Create and manage plugins in the store</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button className="w-full">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create New Plugin
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Create New Plugin</DialogTitle>
+                      <DialogDescription>Add a new plugin to the store for users to install.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="name">Plugin Name</Label>
+                          <Input
+                            id="name"
+                            value={newPlugin.name}
+                            onChange={(e) => setNewPlugin({ ...newPlugin, name: e.target.value })}
+                            placeholder="My Awesome Plugin"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="version">Version</Label>
+                          <Input
+                            id="version"
+                            value={newPlugin.version}
+                            onChange={(e) => setNewPlugin({ ...newPlugin, version: e.target.value })}
+                            placeholder="1.0.0"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="description">Description</Label>
+                        <Textarea
+                          id="description"
+                          value={newPlugin.description}
+                          onChange={(e) => setNewPlugin({ ...newPlugin, description: e.target.value })}
+                          placeholder="Describe what your plugin does..."
+                          rows={3}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="category">Category</Label>
+                          <Select
+                            value={newPlugin.category}
+                            onValueChange={(value) => setNewPlugin({ ...newPlugin, category: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="utility">Utility</SelectItem>
+                              <SelectItem value="moderation">Moderation</SelectItem>
+                              <SelectItem value="fun">Fun</SelectItem>
+                              <SelectItem value="music">Music</SelectItem>
+                              <SelectItem value="economy">Economy</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="price">Price ($)</Label>
+                          <Input
+                            id="price"
+                            type="number"
+                            value={newPlugin.price}
+                            onChange={(e) =>
+                              setNewPlugin({ ...newPlugin, price: Number.parseFloat(e.target.value) || 0 })
+                            }
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="features">Features (comma-separated)</Label>
+                        <Input
+                          id="features"
+                          value={newPlugin.features}
+                          onChange={(e) => setNewPlugin({ ...newPlugin, features: e.target.value })}
+                          placeholder="Auto-moderation, Custom commands, Analytics"
+                        />
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="premium"
+                          checked={newPlugin.is_premium}
+                          onCheckedChange={(checked) => setNewPlugin({ ...newPlugin, is_premium: checked })}
+                        />
+                        <Label htmlFor="premium">Premium Plugin</Label>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={createPlugin}>Create Plugin</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Existing Plugins</Label>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {plugins.map((plugin) => (
+                      <div key={plugin._id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div>
+                          <div className="font-medium">{plugin.name}</div>
+                          <div className="text-sm text-gray-600">
+                            v{plugin.version} • {plugin.downloads} downloads
+                          </div>
+                        </div>
+                        <Button variant="destructive" size="sm" onClick={() => deletePlugin(plugin._id)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         )}
 
-        {((activeView === "store" && filteredPlugins.length === 0) ||
-          (activeView === "installed" && filteredUserPlugins.length === 0) ||
-          (activeView === "admin" && filteredUsers.length === 0)) && (
-          <div className="text-center py-12">
-            <Package className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">
-              {activeView === "store"
-                ? "No plugins found"
-                : activeView === "installed"
-                  ? "No plugins installed"
-                  : "No users found"}
-            </h3>
-            <p className="text-gray-400">
-              {activeView === "store"
-                ? "Try adjusting your search terms."
-                : activeView === "installed"
-                  ? "Install plugins from the store to extend your bot's functionality."
-                  : "Try adjusting your search terms."}
-            </p>
-          </div>
+        {/* User Management */}
+        {isAdmin && (
+          <TabsContent value="users" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Users className="w-5 h-5" />
+                  <span>User Management</span>
+                </CardTitle>
+                <CardDescription>Manage user roles and permissions</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Total Users: {users.length}</Label>
+                    <Badge variant="outline">Testers: {users.filter((u) => u.is_tester).length}</Badge>
+                  </div>
+
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {users.map((user) => (
+                      <div key={user._id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div>
+                            <div className="font-medium">{user.name}</div>
+                            <div className="text-sm text-gray-600">{user.email}</div>
+                          </div>
+                          {user.is_tester && (
+                            <Badge variant="secondary" className="text-xs">
+                              Tester
+                            </Badge>
+                          )}
+                        </div>
+                        <Button
+                          variant={user.is_tester ? "destructive" : "default"}
+                          size="sm"
+                          onClick={() => toggleTesterRole(user._id, user.is_tester || false)}
+                        >
+                          {user.is_tester ? (
+                            <>
+                              <UserMinus className="w-4 h-4 mr-1" />
+                              Remove Tester
+                            </>
+                          ) : (
+                            <>
+                              <UserPlus className="w-4 h-4 mr-1" />
+                              Make Tester
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         )}
-      </CardContent>
-    </Card>
+      </Tabs>
+    </div>
   )
 }
