@@ -10,8 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const body = await request.json()
-    const { serverId, serverName, serverIcon } = body
+    const { serverId, serverName, serverIcon } = await request.json()
 
     if (!serverId || !serverName) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
@@ -152,12 +151,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, server: serverConfig })
     } else {
       // Check if server already exists in user's servers array
-      const servers = existingUser.servers || []
-      const existingServerIndex = servers.findIndex((s: any) => s.server_id === serverId)
+      const existingServerIndex = existingUser.servers?.findIndex((s: any) => s.server_id === serverId)
 
       if (existingServerIndex !== -1) {
         // Server already exists, return existing configuration
-        return NextResponse.json({ success: true, server: servers[existingServerIndex] })
+        return NextResponse.json({ success: true, server: existingUser.servers[existingServerIndex] })
       }
 
       // Add new server to existing user's servers array

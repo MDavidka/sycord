@@ -35,6 +35,7 @@ export default function Dashboard() {
   const [availableGuilds, setAvailableGuilds] = useState<DiscordGuild[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  // Add state for the add server modal
   const [showAddServerModal, setShowAddServerModal] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
 
@@ -93,12 +94,10 @@ export default function Dashboard() {
       })
 
       if (response.ok) {
-        // Refresh data to get updated server list
+        // Show success message and redirect to server config
+        // The server config page will handle the "waiting for bot" state
         await fetchData()
-        // Always redirect to server config page
         router.push(`/dashboard/server/${guild.id}`)
-      } else {
-        console.error("Failed to select server")
       }
     } catch (error) {
       console.error("Error selecting server:", error)
@@ -144,7 +143,7 @@ export default function Dashboard() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10 bg-transparent"
+                      className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
                     >
                       <Settings className="h-4 w-4 mr-2" />
                       Admin Panel
