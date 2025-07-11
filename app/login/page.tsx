@@ -37,11 +37,10 @@ export default function LoginPage() {
       <Card className="w-full max-w-md glass-card animate-fade-in">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <Image src="/bot-icon.png" alt="Dash Bot" width={48} height={48} className="rounded-xl" />
+            <Image src="/bot-icon.png" alt="Sycord Bot" width={48} height={48} className="rounded-xl" />
           </div>
           <CardTitle className="text-2xl font-bold text-white">
-            Welcome to{" "}
-            <span className="bg-gradient-to-r from-blue-700 to-blue-900 bg-clip-text text-transparent">Dash</span>
+            Welcome to <span className="text-white">Sycord</span>
           </CardTitle>
           <CardDescription className="text-gray-400">Sign in with Discord to access your bot dashboard</CardDescription>
         </CardHeader>
@@ -49,12 +48,12 @@ export default function LoginPage() {
           <Button
             onClick={handleDiscordLogin}
             disabled={isLoading}
-            className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white hover-glow"
+            className="w-full bg-white hover:bg-gray-200 text-black hover-glow"
             size="lg"
           >
             {isLoading ? (
               <div className="flex items-center">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-black mr-2"></div>
                 Connecting...
               </div>
             ) : (

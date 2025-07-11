@@ -114,6 +114,10 @@ export interface ServerConfig {
     member_leaves: boolean
   }
   last_updated?: string
+  // New fields for custom bot
+  botProfilePictureUrl?: string
+  customBotName?: string
+  botToken?: string
 }
 
 export interface DiscordRole {

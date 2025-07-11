@@ -114,7 +114,7 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400 mx-auto mb-4"></div>
           <p className="text-white">Loading dashboard...</p>
         </div>
       </div>
@@ -131,11 +131,10 @@ export default function Dashboard() {
       <header className="glass-card border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center space-x-4">
-            <Image src="/bot-icon.png" alt="Dash Bot" width={32} height={32} className="rounded-lg" />
+            <Image src="/bot-icon.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
             <div>
               <h1 className="text-2xl font-bold text-white">
-                <span className="bg-gradient-to-r from-blue-700 to-blue-900 bg-clip-text text-transparent">Dash</span>{" "}
-                Dashboard
+                <span className="text-white">Sycord</span> Dashboard
               </h1>
               {isAdmin && (
                 <div className="mt-2">
@@ -143,7 +142,7 @@ export default function Dashboard() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
+                      className="border-gray-500/50 text-gray-400 hover:bg-gray-500/10 bg-transparent"
                     >
                       <Settings className="h-4 w-4 mr-2" />
                       Admin Panel
@@ -188,8 +187,8 @@ export default function Dashboard() {
                             variant={server.isBotAdded ? "default" : "secondary"}
                             className={
                               server.isBotAdded
-                                ? "bg-green-500/20 text-green-400 border-green-500/30"
-                                : "bg-orange-500/20 text-orange-400 border-orange-500/30"
+                                ? "bg-gray-500/20 text-gray-400 border-gray-500/30"
+                                : "bg-gray-500/20 text-gray-400 border-gray-500/30"
                             }
                           >
                             {server.isBotAdded ? "Bot Added" : "Waiting for Bot"}
@@ -237,7 +236,7 @@ export default function Dashboard() {
                   <div>
                     <CardTitle className="text-white text-xl">Add Server to Dashboard</CardTitle>
                     <CardDescription className="text-gray-400">
-                      Select servers where you want to configure the Dash bot
+                      Select servers where you want to configure the Sycord bot
                     </CardDescription>
                   </div>
                   <Button
@@ -309,7 +308,7 @@ export default function Dashboard() {
                                 {guild.owner && (
                                   <Badge
                                     variant="secondary"
-                                    className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-xs"
+                                    className="bg-gray-500/20 text-gray-400 border-gray-500/30 text-xs"
                                   >
                                     <Crown className="h-3 w-3 mr-1" />
                                     Owner
@@ -344,14 +343,14 @@ export default function Dashboard() {
                   <strong>1.</strong> You've selected your servers and dummy configurations have been created.
                 </p>
                 <p>
-                  <strong>2.</strong> Now you need to add the Dash bot to your Discord servers.
+                  <strong>2.</strong> Now you need to add the Sycord bot to your Discord servers.
                 </p>
                 <p>
                   <strong>3.</strong> Once the bot joins, it will automatically update the configuration and you can
                   start customizing settings.
                 </p>
-                <div className="mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/30">
-                  <p className="text-blue-400 text-sm">
+                <div className="mt-4 p-3 bg-gray-500/10 rounded-lg border border-gray-500/30">
+                  <p className="text-gray-400 text-sm">
                     <strong>Bot Invite Link:</strong> Contact the bot developer for the invitation link.
                   </p>
                 </div>

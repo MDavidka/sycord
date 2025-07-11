@@ -48,6 +48,8 @@ import {
   Crown,
   Package,
   Settings,
+  Lock,
+  EyeOff,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -167,6 +169,10 @@ interface ServerConfig {
     total_bots?: number
     total_admins?: number
   }
+  // New fields for custom bot
+  botProfilePictureUrl?: string
+  customBotName?: string
+  botToken?: string
 }
 
 export default function ServerConfigPage() {
@@ -204,6 +210,12 @@ export default function ServerConfigPage() {
   const [linkCopied, setLinkCopied] = useState(false)
   const [giveawayCreated, setGiveawayCreated] = useState(false)
 
+  // Settings tab state
+  const [profilePictureUrl, setProfilePictureUrl] = useState("")
+  const [customBotName, setCustomBotName] = useState("")
+  const [botToken, setBotToken] = useState("")
+  const [showToken, setShowToken] = useState(false)
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login")
@@ -215,6 +227,14 @@ export default function ServerConfigPage() {
       loadData()
     }
   }, [session, serverId])
+
+  useEffect(() => {
+    if (serverConfig) {
+      setProfilePictureUrl(serverConfig.botProfilePictureUrl || "")
+      setCustomBotName(serverConfig.customBotName || "")
+      setBotToken(serverConfig.botToken || "")
+    }
+  }, [serverConfig])
 
   const loadData = async () => {
     try {
@@ -360,6 +380,14 @@ export default function ServerConfigPage() {
     updateServerConfig({
       moderation_level: level,
       moderation: updatedModeration,
+    })
+  }
+
+  const handleSaveBotSettings = async () => {
+    await updateServerConfig({
+      botProfilePictureUrl,
+      customBotName,
+      botToken,
     })
   }
 
@@ -2121,12 +2149,88 @@ export default function ServerConfigPage() {
               <CardHeader>
                 <CardTitle className="text-white flex items-center text-xl">
                   <Settings className="h-6 w-6 mr-3" />
-                  Server Settings
+                  Custom Bot Settings
                 </CardTitle>
-                <CardDescription className="text-gray-400">Manage general server configurations</CardDescription>
+                <CardDescription className="text-gray-400">
+                  Configure your custom bot's appearance and functionality.
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <p className="text-white">Server settings coming soon!</p>
+              <CardContent className="space-y-6">
+                <div>
+                  <Label htmlFor="profile-picture-url" className="text-white text-sm mb-2 block">
+                    Profile Picture URL
+                  </Label>
+                  <Input
+                    id="profile-picture-url"
+                    placeholder="https://example.com/your-bot-avatar.png"
+                    value={profilePictureUrl}
+                    onChange={(e) => setProfilePictureUrl(e.target.value)}
+                    className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Direct URL to your bot's avatar image.</p>
+                </div>
+
+                <div>
+                  <Label htmlFor="custom-bot-name" className="text-white text-sm mb-2 block">
+                    Custom Bot Name
+                  </Label>
+                  <Input
+                    id="custom-bot-name"
+                    placeholder="My Awesome Bot"
+                    value={customBotName}
+                    onChange={(e) => setCustomBotName(e.target.value)}
+                    className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">The name your bot will display in Discord.</p>
+                </div>
+
+                <div>
+                  <Label htmlFor="bot-token" className="text-white text-sm mb-2 block">
+                    Bot Token
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="bot-token"
+                      type={showToken ? "text" : "password"}
+                      placeholder="Your bot token (e.g., MTIzNDU2Nzg5MDEyMzQ1Njc4OQ.ABCDEF.GHIJKLMNOPQRSTUVWXYZ)"
+                      value={botToken}
+                      onChange={(e) => setBotToken(e.target.value)}
+                      className="pl-10 pr-10 bg-black/60 border-white/20 text-white placeholder-gray-400"
+                    />
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 text-gray-400 hover:bg-transparent"
+                      onClick={() => setShowToken(!showToken)}
+                    >
+                      {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <div className="flex items-start space-x-2 text-xs text-gray-400 mt-2 p-2 rounded-md bg-gray-800/50 border border-gray-700/50">
+                    <Info className="h-4 w-4 shrink-0 mt-0.5" />
+                    <p>
+                      By providing your bot token, you acknowledge that Sycord will collect and store this information
+                      to operate your customized bot, in accordance with our{" "}
+                      <Link href="#" className="underline">
+                        Terms of Service
+                      </Link>{" "}
+                      and{" "}
+                      <Link href="#" className="underline">
+                        Privacy Policy
+                      </Link>
+                      .
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleSaveBotSettings}
+                  className="bg-white text-black hover:bg-gray-200 w-full"
+                  disabled={!botToken} // Disable if token is empty
+                >
+                  Start Your Customized Bot
+                </Button>
               </CardContent>
             </Card>
           </div>
