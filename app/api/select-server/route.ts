@@ -150,12 +150,13 @@ export async function POST(request: NextRequest) {
       await users.insertOne(newUser)
       return NextResponse.json({ success: true, server: serverConfig })
     } else {
-      // Check if server already exists in user's servers array
-      const existingServerIndex = existingUser.servers?.findIndex((s: any) => s.server_id === serverId)
+      // Safely access existingUser.servers, defaulting to an empty array if null/undefined
+      const servers = existingUser.servers || []
+      const existingServerIndex = servers.findIndex((s: any) => s.server_id === serverId)
 
       if (existingServerIndex !== -1) {
         // Server already exists, return existing configuration
-        return NextResponse.json({ success: true, server: existingUser.servers[existingServerIndex] })
+        return NextResponse.json({ success: true, server: servers[existingServerIndex] })
       }
 
       // Add new server to existing user's servers array

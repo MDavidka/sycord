@@ -49,6 +49,7 @@ export default function PluginsTab() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
 
+  // Hardcoded admin email for demonstration purposes
   const isAdmin = session?.user?.email === "dmarton336@gmail.com"
 
   useEffect(() => {
@@ -58,6 +59,7 @@ export default function PluginsTab() {
   const fetchData = async () => {
     try {
       setError("")
+      setSuccess("") // Clear success message on new fetch
       const [pluginsResponse, userPluginsResponse] = await Promise.all([
         fetch("/api/plugins"),
         fetch("/api/user-plugins"),
@@ -66,11 +68,19 @@ export default function PluginsTab() {
       if (pluginsResponse.ok) {
         const pluginsData = await pluginsResponse.json()
         setAllPlugins(pluginsData.plugins || [])
+      } else {
+        const errorData = await pluginsResponse.json()
+        console.error("Failed to fetch all plugins:", errorData.error || pluginsResponse.statusText)
+        setError(errorData.error || "Failed to load plugins from store.")
       }
 
       if (userPluginsResponse.ok) {
         const userPluginsData = await userPluginsResponse.json()
         setUserPlugins(userPluginsData.plugins || [])
+      } else {
+        const errorData = await userPluginsResponse.json()
+        console.error("Failed to fetch user plugins:", errorData.error || userPluginsResponse.statusText)
+        setError(errorData.error || "Failed to load installed plugins.")
       }
 
       // Fetch all users if admin
@@ -79,11 +89,15 @@ export default function PluginsTab() {
         if (usersResponse.ok) {
           const usersData = await usersResponse.json()
           setAllUsers(usersData.users || [])
+        } else {
+          const errorData = await usersResponse.json()
+          console.error("Failed to fetch users for admin:", errorData.error || usersResponse.statusText)
+          setError(errorData.error || "Failed to load user data for admin panel.")
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching data:", error)
-      setError("Failed to load data. Please try again.")
+      setError(error.message || "Failed to load data. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -92,6 +106,7 @@ export default function PluginsTab() {
   const handlePluginAction = async (pluginId: string, action: "install" | "uninstall") => {
     try {
       setError("")
+      setSuccess("")
       const response = await fetch("/api/user-plugins", {
         method: "POST",
         headers: {
@@ -108,9 +123,9 @@ export default function PluginsTab() {
         const errorData = await response.json()
         setError(errorData.error || `Failed to ${action} plugin`)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error managing plugin:", error)
-      setError(`Failed to ${action} plugin`)
+      setError(error.message || `Failed to ${action} plugin`)
     }
   }
 
@@ -122,6 +137,7 @@ export default function PluginsTab() {
 
     try {
       setError("")
+      setSuccess("")
       const response = await fetch("/api/plugins", {
         method: "POST",
         headers: {
@@ -140,9 +156,9 @@ export default function PluginsTab() {
         const errorData = await response.json()
         setError(errorData.error || "Failed to create plugin")
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating plugin:", error)
-      setError("Failed to create plugin")
+      setError(error.message || "Failed to create plugin")
     }
   }
 
@@ -153,6 +169,7 @@ export default function PluginsTab() {
 
     try {
       setError("")
+      setSuccess("")
       const response = await fetch("/api/plugins", {
         method: "DELETE",
         headers: {
@@ -169,15 +186,16 @@ export default function PluginsTab() {
         const errorData = await response.json()
         setError(errorData.error || "Failed to delete plugin")
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting plugin:", error)
-      setError("Failed to delete plugin")
+      setError(error.message || "Failed to delete plugin")
     }
   }
 
   const handleToggleTester = async (userId: string, isTester: boolean) => {
     try {
       setError("")
+      setSuccess("")
       const response = await fetch("/api/admin/users", {
         method: "PUT",
         headers: {
@@ -194,9 +212,9 @@ export default function PluginsTab() {
         const errorData = await response.json()
         setError(errorData.error || "Failed to update user")
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating user:", error)
-      setError("Failed to update user")
+      setError(error.message || "Failed to update user")
     }
   }
 
@@ -284,14 +302,14 @@ export default function PluginsTab() {
       <CardContent>
         {/* Error and Success Messages */}
         {error && (
-          <Alert className="mb-4 border-red-500/30 bg-red-500/10">
+          <Alert key="error-alert" className="mb-4 border-red-500/30 bg-red-500/10">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="text-red-400">{error}</AlertDescription>
           </Alert>
         )}
 
         {success && (
-          <Alert className="mb-4 border-green-500/30 bg-green-500/10">
+          <Alert key="success-alert" className="mb-4 border-green-500/30 bg-green-500/10">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="text-green-400">{success}</AlertDescription>
           </Alert>

@@ -169,24 +169,6 @@ interface ServerConfig {
   }
 }
 
-// Define PluginsTab component
-const PluginsTabComponent = () => {
-  return (
-    <Card className="glass-card">
-      <CardHeader>
-        <CardTitle className="text-white flex items-center text-xl">
-          <Package className="h-6 w-6 mr-3" />
-          Plugins
-        </CardTitle>
-        <CardDescription className="text-gray-400">Extend your server's functionality with plugins</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-white">Coming soon!</p>
-      </CardContent>
-    </Card>
-  )
-}
-
 export default function ServerConfigPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -688,16 +670,16 @@ export default function ServerConfigPage() {
                   {/* Step 1: User Join Settings */}
                   <div className="relative">
                     <div
-                      className={`p-4 rounded-lg border transition-all ${
+                      className={`p-3 rounded-lg border transition-all ${
                         serverConfig.welcome.enabled
                           ? "border-green-500/50 bg-green-500/5"
                           : "border-gray-500/50 bg-gray-500/5"
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-2">
                           <div
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            className={`w-7 h-7 rounded-lg flex items-center justify-center ${
                               serverConfig.welcome.enabled ? "bg-green-500/20" : "bg-gray-500/20"
                             }`}
                           >
@@ -706,7 +688,7 @@ export default function ServerConfigPage() {
                             />
                           </div>
                           <div>
-                            <h3 className="font-medium text-white">User Join Settings</h3>
+                            <h3 className="font-medium text-white text-sm">User Join Settings</h3>
                             <p className="text-xs text-gray-400">Enable welcome system</p>
                           </div>
                         </div>
@@ -745,14 +727,14 @@ export default function ServerConfigPage() {
                               },
                             })
                           }
-                          className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
                             serverConfig.moderation.suspicious_accounts.enabled
                               ? "bg-green-500/20 border border-green-500/50"
                               : "bg-gray-500/20 border border-gray-500/50"
                           }`}
                         >
                           <Shield
-                            className={`h-5 w-5 ${
+                            className={`h-4 w-4 ${
                               serverConfig.moderation.suspicious_accounts.enabled ? "text-green-400" : "text-gray-400"
                             }`}
                           />
@@ -781,11 +763,11 @@ export default function ServerConfigPage() {
 
                       {/* 3-Way Options */}
                       {serverConfig.moderation.suspicious_accounts.enabled && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
                           {/* Suspicious Account Scanner */}
-                          <div className="p-3 rounded-lg border border-orange-500/30 bg-orange-500/5">
+                          <div className="p-3 rounded-lg border border-gray-700/30 bg-gray-700/5">
                             <div className="flex items-center space-x-2 mb-2">
-                              <UserCheck className="h-4 w-4 text-orange-400" />
+                              <UserCheck className="h-4 w-4 text-gray-400" />
                               <h4 className="font-medium text-white text-sm">Suspicious Scanner</h4>
                             </div>
                             <div>
@@ -812,10 +794,10 @@ export default function ServerConfigPage() {
                           </div>
 
                           {/* Bot Scanner */}
-                          <div className="p-3 rounded-lg border border-blue-500/30 bg-blue-500/5">
+                          <div className="p-3 rounded-lg border border-green-500/30 bg-green-500/5">
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center space-x-2">
-                                <Bot className="h-4 w-4 text-blue-400" />
+                                <Bot className="h-4 w-4 text-green-400" />
                                 <h4 className="font-medium text-white text-sm">Bot Scanner</h4>
                               </div>
                               <Switch
@@ -836,10 +818,10 @@ export default function ServerConfigPage() {
                           </div>
 
                           {/* Alt Detector */}
-                          <div className="p-3 rounded-lg border border-purple-500/30 bg-purple-500/5">
+                          <div className="p-3 rounded-lg border border-green-600/30 bg-green-600/5">
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center space-x-2">
-                                <Eye className="h-4 w-4 text-purple-400" />
+                                <Eye className="h-4 w-4 text-green-400" />
                                 <h4 className="font-medium text-white text-sm">Alt Detector</h4>
                               </div>
                               <Switch
@@ -895,27 +877,27 @@ export default function ServerConfigPage() {
                   {serverConfig.welcome.enabled && (
                     <div className="relative">
                       <div
-                        className={`p-4 rounded-lg border transition-all ${
+                        className={`p-3 rounded-lg border transition-all ${
                           serverConfig.welcome.message
-                            ? "border-blue-500/50 bg-blue-500/5"
+                            ? "border-green-500/50 bg-green-500/5"
                             : "border-gray-500/50 bg-gray-500/5"
                         }`}
                       >
                         <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center space-x-3">
+                          <div className="flex items-center space-x-2">
                             <div
-                              className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                                serverConfig.welcome.message ? "bg-blue-500/20" : "bg-gray-500/20"
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                                serverConfig.welcome.message ? "bg-green-500/20" : "bg-gray-500/20"
                               }`}
                             >
                               <MessageSquare
                                 className={`h-4 w-4 ${
-                                  serverConfig.welcome.message ? "text-blue-400" : "text-gray-400"
+                                  serverConfig.welcome.message ? "text-green-400" : "text-gray-400"
                                 }`}
                               />
                             </div>
                             <div>
-                              <h3 className="font-medium text-white">Welcome Message</h3>
+                              <h3 className="font-medium text-white text-sm">Welcome Message</h3>
                               <p className="text-xs text-gray-400">Send message to new members</p>
                             </div>
                           </div>
@@ -978,16 +960,16 @@ export default function ServerConfigPage() {
                   {serverConfig.welcome.enabled && (
                     <div className="relative">
                       <div
-                        className={`p-4 rounded-lg border transition-all ${
+                        className={`p-3 rounded-lg border transition-all ${
                           serverConfig.moderation.auto_role.enabled
                             ? "border-green-500/50 bg-green-500/5"
                             : "border-gray-500/50 bg-gray-500/5"
                         }`}
                       >
                         <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center space-x-3">
+                          <div className="flex items-center space-x-2">
                             <div
-                              className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center ${
                                 serverConfig.moderation.auto_role.enabled ? "bg-green-500/20" : "bg-gray-500/20"
                               }`}
                             >
@@ -998,7 +980,7 @@ export default function ServerConfigPage() {
                               />
                             </div>
                             <div>
-                              <h3 className="font-medium text-white">Role Assignment</h3>
+                              <h3 className="font-medium text-white text-sm">Role Assignment</h3>
                               <p className="text-xs text-gray-400">Auto-assign roles to new members</p>
                             </div>
                           </div>
@@ -1029,11 +1011,11 @@ export default function ServerConfigPage() {
                                 })
                               }
                             >
-                              <SelectTrigger className="bg-black/60 border-white/20 h-9">
+                              <SelectTrigger className="bg-black/60 border-white/20 h-8">
                                 <SelectValue placeholder="Select a role">
                                   {serverConfig.moderation.auto_role.role_id && (
                                     <div className="flex items-center">
-                                      <div className="w-2 h-2 rounded-full mr-2 bg-blue-500" />
+                                      <div className="w-2 h-2 rounded-full mr-2 bg-green-500" />
                                       {getRoleName(serverConfig.moderation.auto_role.role_id)}
                                     </div>
                                   )}
@@ -1043,7 +1025,7 @@ export default function ServerConfigPage() {
                                 {Object.entries(serverConfig.roles_and_names).map(([id, name]) => (
                                   <SelectItem key={id} value={id}>
                                     <div className="flex items-center">
-                                      <div className="w-2 h-2 rounded-full mr-2 bg-blue-500" />
+                                      <div className="w-2 h-2 rounded-full mr-2 bg-green-500" />
                                       {name}
                                     </div>
                                   </SelectItem>
@@ -1967,7 +1949,7 @@ export default function ServerConfigPage() {
                                   <SelectValue placeholder="Select role">
                                     {giveawayData.selectedRole && (
                                       <div className="flex items-center">
-                                        <div className="w-3 h-3 rounded-full mr-2 bg-purple-500" />
+                                        <div className="w-3 h-3 rounded-full mr-2 bg-green-500" />
                                         {getRoleName(giveawayData.selectedRole)}
                                       </div>
                                     )}
@@ -1977,7 +1959,7 @@ export default function ServerConfigPage() {
                                   {Object.entries(serverConfig.roles_and_names).map(([id, name]) => (
                                     <SelectItem key={id} value={id}>
                                       <div className="flex items-center">
-                                        <div className="w-3 h-3 rounded-full mr-2 bg-purple-500" />
+                                        <div className="w-3 h-3 rounded-full mr-2 bg-green-500" />
                                         {name}
                                       </div>
                                     </SelectItem>
