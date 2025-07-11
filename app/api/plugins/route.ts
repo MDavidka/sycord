@@ -40,8 +40,8 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString(),
       installs: 0,
       active: true,
-      iconUrl: iconUrl || null,
-      thumbnailUrl: thumbnailUrl || null,
+      iconUrl: iconUrl || null, // Save iconUrl
+      thumbnailUrl: thumbnailUrl || null, // Save thumbnailUrl
     }
 
     const result = await db.collection("plugins").insertOne(plugin)
@@ -67,9 +67,11 @@ export async function DELETE(request: NextRequest) {
     const { pluginId } = await request.json()
     const { db } = await connectToDatabase()
 
+    // Delete the plugin
     await db.collection("plugins").deleteOne({ _id: new ObjectId(pluginId) })
 
-    await db.collection("users").updateMany({}, { $pull: { plugins: { pluginId } } })
+    // Remove plugin from all users who have it installed
+    await db.collection("users").updateMany({}, { $pull: { plugins: { pluginId: pluginId } } })
 
     return NextResponse.json({ success: true })
   } catch (error) {

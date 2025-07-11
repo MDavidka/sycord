@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Package, Search, Download, Trash2, Users, Plus, UserCheck, Crown, AlertCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import Image from "next/image" // Import Image component
 
 interface Plugin {
   _id: string
@@ -337,19 +336,9 @@ export default function PluginsTab() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center space-x-3">
-                      {plugin.iconUrl ? (
-                        <Image
-                          src={plugin.iconUrl || "/placeholder.svg"}
-                          alt={`${plugin.name} icon`}
-                          width={32}
-                          height={32}
-                          className="rounded-lg object-cover"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                          <Package className="h-4 w-4 text-white" />
-                        </div>
-                      )}
+                      <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                        <Package className="h-4 w-4 text-white" />
+                      </div>
                       <div>
                         <CardTitle className="text-white text-base">{plugin.name}</CardTitle>
                         <div className="flex items-center space-x-2 mt-1">
@@ -368,17 +357,6 @@ export default function PluginsTab() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {plugin.thumbnailUrl && (
-                    <div className="mb-4">
-                      <Image
-                        src={plugin.thumbnailUrl || "/placeholder.svg"}
-                        alt={`${plugin.name} thumbnail`}
-                        width={400}
-                        height={200}
-                        className="rounded-md object-cover w-full h-auto"
-                      />
-                    </div>
-                  )}
                   <p className="text-gray-300 text-sm mb-4 line-clamp-2">{plugin.description}</p>
                   <div className="flex items-center space-x-2">
                     <Button
@@ -429,19 +407,9 @@ export default function PluginsTab() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex items-center space-x-3">
-                      {plugin.iconUrl ? (
-                        <Image
-                          src={plugin.iconUrl || "/placeholder.svg"}
-                          alt={`${plugin.name} icon`}
-                          width={32}
-                          height={32}
-                          className="rounded-lg object-cover"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
-                          <Package className="h-4 w-4 text-green-400" />
-                        </div>
-                      )}
+                      <div className="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+                        <Package className="h-4 w-4 text-green-400" />
+                      </div>
                       <div>
                         <CardTitle className="text-white text-base">{plugin.name}</CardTitle>
                         <p className="text-xs text-gray-400">
@@ -452,17 +420,6 @@ export default function PluginsTab() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {plugin.thumbnailUrl && (
-                    <div className="mb-4">
-                      <Image
-                        src={plugin.thumbnailUrl || "/placeholder.svg"}
-                        alt={`${plugin.name} thumbnail`}
-                        width={400}
-                        height={200}
-                        className="rounded-md object-cover w-full h-auto"
-                      />
-                    </div>
-                  )}
                   <p className="text-gray-300 text-sm mb-4 line-clamp-2">{plugin.description}</p>
                   <Button
                     size="sm"
@@ -500,7 +457,7 @@ export default function PluginsTab() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label className="text-white text-sm mb-2 block">Plugin Name *</Label>
+                    <Label className="text-white text-sm mb-2 block">Plugin Name</Label>
                     <Input
                       placeholder="Enter plugin name"
                       value={newPlugin.name}
@@ -509,30 +466,12 @@ export default function PluginsTab() {
                     />
                   </div>
                   <div>
-                    <Label className="text-white text-sm mb-2 block">Description *</Label>
+                    <Label className="text-white text-sm mb-2 block">Description</Label>
                     <Textarea
                       placeholder="Enter plugin description"
                       value={newPlugin.description}
                       onChange={(e) => setNewPlugin({ ...newPlugin, description: e.target.value })}
                       className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[80px]"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-white text-sm mb-2 block">Icon URL (Optional)</Label>
-                    <Input
-                      placeholder="https://example.com/icon.png"
-                      value={newPlugin.iconUrl}
-                      onChange={(e) => setNewPlugin({ ...newPlugin, iconUrl: e.target.value })}
-                      className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-white text-sm mb-2 block">Thumbnail URL (Optional)</Label>
-                    <Input
-                      placeholder="https://example.com/thumbnail.png"
-                      value={newPlugin.thumbnailUrl}
-                      onChange={(e) => setNewPlugin({ ...newPlugin, thumbnailUrl: e.target.value })}
-                      className="bg-black/60 border-white/20 text-white placeholder-gray-400"
                     />
                   </div>
                   <div className="flex space-x-2">
@@ -543,7 +482,7 @@ export default function PluginsTab() {
                       variant="outline"
                       onClick={() => {
                         setShowCreatePlugin(false)
-                        setNewPlugin({ name: "", description: "", iconUrl: "", thumbnailUrl: "" })
+                        setNewPlugin({ name: "", description: "" })
                         setError("")
                       }}
                       className="border-white/20 text-white hover:bg-white/10"
