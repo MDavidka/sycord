@@ -50,6 +50,7 @@ import {
   Settings,
   Lock,
   EyeOff,
+  Megaphone,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -175,6 +176,19 @@ interface ServerConfig {
   botToken?: string
 }
 
+interface AppSettings {
+  maintenanceMode: {
+    enabled: boolean
+    estimatedTime?: string
+  }
+}
+
+interface Announcement {
+  _id: string
+  message: string
+  createdAt: string
+}
+
 export default function ServerConfigPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -216,6 +230,19 @@ export default function ServerConfigPage() {
   const [botToken, setBotToken] = useState("")
   const [showToken, setShowToken] = useState(false)
 
+  // Access+ tab state
+  const [appSettings, setAppSettings] = useState<AppSettings | null>(null)
+  const [newAnnouncement, setNewAnnouncement] = useState("")
+  const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [dismissedAnnouncements, setDismissedAnnouncements] = useState<string[]>([])
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    if (session?.user?.email === "dmarton336@gmail.com") {
+      setIsAdmin(true)
+    }
+  }, [session])
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login")
@@ -225,6 +252,8 @@ export default function ServerConfigPage() {
   useEffect(() => {
     if (session && serverId) {
       loadData()
+      fetchAppSettings()
+      fetchAnnouncements()
     }
   }, [session, serverId])
 
@@ -256,6 +285,30 @@ export default function ServerConfigPage() {
       console.error("Error loading data:", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchAppSettings = async () => {
+    try {
+      const response = await fetch("/api/app-settings")
+      if (response.ok) {
+        const data = await response.json()
+        setAppSettings(data)
+      }
+    } catch (error) {
+      console.error("Error fetching app settings:", error)
+    }
+  }
+
+  const fetchAnnouncements = async () => {
+    try {
+      const response = await fetch("/api/announcements")
+      if (response.ok) {
+        const data = await response.json()
+        setAnnouncements(data.announcements)
+      }
+    } catch (error) {
+      console.error("Error fetching announcements:", error)
     }
   }
 
@@ -389,6 +442,54 @@ export default function ServerConfigPage() {
       customBotName,
       botToken,
     })
+  }
+
+  const handleMaintenanceToggle = async (checked: boolean) => {
+    try {
+      const response = await fetch("/api/app-settings", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          maintenanceMode: {
+            enabled: checked,
+            estimatedTime: checked ? "30 minutes" : "", // Default estimate
+          },
+        }),
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setAppSettings(data)
+      }
+    } catch (error) {
+      console.error("Error updating app settings:", error)
+    }
+  }
+
+  const handleSendAnnouncement = async () => {
+    if (!newAnnouncement.trim()) return
+
+    try {
+      const response = await fetch("/api/announcements", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: newAnnouncement }),
+      })
+      if (response.ok) {
+        setNewAnnouncement("")
+        fetchAnnouncements() // Refresh announcements
+      }
+    } catch (error) {
+      console.error("Error sending announcement:", error)
+    }
+  }
+
+  const handleDismissAnnouncement = (id: string) => {
+    setDismissedAnnouncements((prev) => [...prev, id])
+    // In a real app, you might persist this to user settings in DB
   }
 
   if (status === "loading" || loading) {
@@ -624,6 +725,19 @@ export default function ServerConfigPage() {
               <Settings className="h-4 w-4 mr-2" />
               Settings
             </Button>
+            {isAdmin && (
+              <Button
+                variant={activeTab === "access-plus" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setActiveTab("access-plus")}
+                className={`${
+                  activeTab === "access-plus" ? "bg-white text-black" : "text-white hover:bg-white/10"
+                } transition-colors flex-shrink-0 text-sm px-4 h-9`}
+              >
+                <Lock className="h-4 w-4 mr-2" />
+                Access+
+              </Button>
+            )}
           </nav>
         </div>
       </div>
@@ -632,6 +746,30 @@ export default function ServerConfigPage() {
         {/* Home Tab */}
         {activeTab === "home" && (
           <div className="space-y-6">
+            {/* Announcements */}
+            {announcements.filter((ann) => !dismissedAnnouncements.includes(ann._id)).length > 0 && (
+              <div className="space-y-4">
+                {announcements
+                  .filter((ann) => !dismissedAnnouncements.includes(ann._id))
+                  .map((ann) => (
+                    <Alert key={ann._id} className="border-gray-500/30 bg-gray-500/10">
+                      <Megaphone className="h-4 w-4" />
+                      <AlertDescription className="text-gray-400 flex justify-between items-center">
+                        <span>{ann.message}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDismissAnnouncement(ann._id)}
+                          className="text-gray-400 hover:bg-gray-500/20"
+                        >
+                          Dismiss
+                        </Button>
+                      </AlertDescription>
+                    </Alert>
+                  ))}
+              </div>
+            )}
+
             {/* Simplified Server Info */}
             <Card className="glass-card">
               <CardContent className="p-4">
@@ -2156,6 +2294,21 @@ export default function ServerConfigPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Bot Preview */}
+                <div className="flex items-center space-x-4 p-4 rounded-lg border border-white/10 bg-black/20">
+                  <Image
+                    src={profilePictureUrl || "/placeholder.svg?height=64&width=64"}
+                    alt={customBotName || "Bot Preview"}
+                    width={64}
+                    height={64}
+                    className="rounded-full object-cover"
+                  />
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">{customBotName || "Your Custom Bot Name"}</h3>
+                    <p className="text-sm text-gray-400">Bot Preview</p>
+                  </div>
+                </div>
+
                 <div>
                   <Label htmlFor="profile-picture-url" className="text-white text-sm mb-2 block">
                     Profile Picture URL
@@ -2231,6 +2384,87 @@ export default function ServerConfigPage() {
                 >
                   Start Your Customized Bot
                 </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Access+ Tab */}
+        {activeTab === "access-plus" && isAdmin && (
+          <div className="space-y-6">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center text-xl">
+                  <Lock className="h-6 w-6 mr-3" />
+                  Access+ Settings
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  Manage global application access and send announcements.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Maintenance Mode */}
+                <div className="flex items-center justify-between p-4 rounded-lg border border-white/10 bg-black/20">
+                  <div>
+                    <h3 className="font-medium text-white text-base">Maintenance Mode</h3>
+                    <p className="text-sm text-gray-400">
+                      {appSettings?.maintenanceMode.enabled
+                        ? `Application is in maintenance. Estimated: ${appSettings.maintenanceMode.estimatedTime}`
+                        : "Application is fully operational."}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={appSettings?.maintenanceMode.enabled || false}
+                    onCheckedChange={handleMaintenanceToggle}
+                  />
+                </div>
+
+                {/* Send Announcement */}
+                <div>
+                  <h3 className="font-medium text-white text-base mb-2">Send New Announcement</h3>
+                  <Textarea
+                    placeholder="Type your announcement here..."
+                    value={newAnnouncement}
+                    onChange={(e) => setNewAnnouncement(e.target.value)}
+                    className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[80px] mb-3"
+                  />
+                  <Button
+                    onClick={handleSendAnnouncement}
+                    className="bg-white text-black hover:bg-gray-200 w-full"
+                    disabled={!newAnnouncement.trim()}
+                  >
+                    <Megaphone className="h-4 w-4 mr-2" />
+                    Send Announcement
+                  </Button>
+                </div>
+
+                {/* Current Announcements */}
+                {announcements.length > 0 && (
+                  <div>
+                    <h3 className="font-medium text-white text-base mb-2">Active Announcements</h3>
+                    <div className="space-y-3">
+                      {announcements.map((ann) => (
+                        <div
+                          key={ann._id}
+                          className="flex items-center justify-between p-3 rounded-lg border border-gray-700/30 bg-gray-700/5"
+                        >
+                          <p className="text-sm text-gray-300">{ann.message}</p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              // In a real app, you'd likely have a DELETE API for announcements
+                              setAnnouncements((prev) => prev.filter((a) => a._id !== ann._id))
+                            }}
+                            className="text-gray-400 hover:bg-gray-500/20"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

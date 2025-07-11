@@ -4,8 +4,23 @@ import { Badge } from "@/components/ui/badge"
 import { Bot, Shield, MessageSquare, Clock, Users, Zap, ArrowRight, Github, Twitter } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import clientPromise from "@/lib/mongodb"
+import type { AppSettings } from "@/lib/types"
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  let appSettings: AppSettings | null = null
+  try {
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const settingsCollection = db.collection<AppSettings>("app_settings")
+    appSettings = await settingsCollection.findOne({})
+  } catch (error) {
+    console.error("Failed to fetch app settings:", error)
+  }
+
+  const isMaintenanceMode = appSettings?.maintenanceMode.enabled || false
+  const maintenanceTime = appSettings?.maintenanceMode.estimatedTime || "30 minutes"
+
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Navigation */}
@@ -44,12 +59,18 @@ export default function LandingPage() {
             with smart automation.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/login">
-              <Button size="lg" className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 hover-glow">
-                Add to Discord
-                <ArrowRight className="ml-2 h-5 w-5" />
+            {isMaintenanceMode ? (
+              <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
+                Under Maintenance ({maintenanceTime})
               </Button>
-            </Link>
+            ) : (
+              <Link href="/login">
+                <Button size="lg" className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 hover-glow">
+                  Add to Discord
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </section>
@@ -172,12 +193,18 @@ export default function LandingPage() {
             Join thousands of communities already using <span className="text-white font-bold">Sycord</span> to create
             better Discord experiences.
           </p>
-          <Link href="/login">
-            <Button size="lg" className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 hover-glow">
-              Get Started Now
-              <ArrowRight className="ml-2 h-5 w-5" />
+          {isMaintenanceMode ? (
+            <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
+              Under Maintenance ({maintenanceTime})
             </Button>
-          </Link>
+          ) : (
+            <Link href="/login">
+              <Button size="lg" className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 hover-glow">
+                Get Started Now
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+          )}
         </div>
       </section>
 
