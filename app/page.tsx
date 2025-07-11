@@ -34,7 +34,7 @@ export default async function LandingPage() {
       <nav className="glass-card border-b border-white/10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Image src="/bot-icon.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
+            <Image src="/new-blue-logo.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
             <span className="text-2xl font-bold">
               <span className="text-white">Sycord</span>
             </span>
@@ -220,7 +220,7 @@ export default async function LandingPage() {
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="flex items-center space-x-2 mb-4 md:mb-0">
-              <Image src="/bot-icon.png" alt="Sycord Bot" width={24} height={24} className="rounded" />
+              <Image src="/new-blue-logo.png" alt="Sycord Bot" width={24} height={24} className="rounded" />
               <span className="text-lg font-semibold">
                 <span className="text-white">Sycord</span> Bot
               </span>

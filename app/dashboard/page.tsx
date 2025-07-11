@@ -131,7 +131,7 @@ export default function Dashboard() {
       <header className="glass-card border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center space-x-4">
-            <Image src="/new-bot-logo.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
+            <Image src="/new-blue-logo.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
             <div>
               <h1 className="text-2xl font-bold text-white">
                 <span className="text-white">Sycord</span> Dashboard

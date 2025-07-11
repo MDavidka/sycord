@@ -512,7 +512,7 @@ export default function ServerConfigPage() {
                     <ArrowLeft className="h-5 w-5" />
                   </Button>
                 </Link>
-                <Image src="/bot-icon.png" alt="Sycord Bot" width={28} height={28} className="rounded-lg" />
+                <Image src="/new-blue-logo.png" alt="Sycord Bot" width={28} height={28} className="rounded-lg" />
                 <div>
                   <h1 className="text-lg font-bold text-white">
                     <span className="text-white">Sycord</span>
@@ -582,7 +582,7 @@ export default function ServerConfigPage() {
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Image src="/bot-icon.png" alt="Sycord Bot" width={28} height={28} className="rounded-lg" />
+              <Image src="/new-blue-logo.png" alt="Sycord Bot" width={28} height={28} className="rounded-lg" />
               <div>
                 <h1 className="text-lg font-bold text-white">
                   <span className="text-white">Sycord</span>
