@@ -37,14 +37,14 @@ export async function POST(request: NextRequest) {
     const { db } = await connectToDatabase()
 
     if (action === "install") {
-      // Get plugin details
+      // Get plugin details, including new iconUrl and thumbnailUrl
       const plugin = await db.collection("plugins").findOne({ _id: new ObjectId(pluginId) })
 
       if (!plugin) {
         return NextResponse.json({ error: "Plugin not found" }, { status: 404 })
       }
 
-      // Add plugin to user's installed plugins
+      // Add plugin to user's installed plugins, including iconUrl and thumbnailUrl
       await db.collection("users").updateOne(
         { email: session.user.email },
         {
@@ -54,6 +54,8 @@ export async function POST(request: NextRequest) {
               name: plugin.name,
               description: plugin.description,
               installed_at: new Date().toISOString(),
+              iconUrl: plugin.iconUrl || null, // Include iconUrl
+              thumbnailUrl: plugin.thumbnailUrl || null, // Include thumbnailUrl
             },
           },
         },
@@ -77,3 +79,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
+</merged_code>

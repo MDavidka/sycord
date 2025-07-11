@@ -9,6 +9,27 @@ export interface User {
   servers: ServerConfig[]
 }
 
+export interface Plugin {
+  _id: string
+  name: string
+  description: string
+  created_by: string
+  created_at: string
+  installs: number
+  active: boolean
+  iconUrl?: string // Add this
+  thumbnailUrl?: string // Add this
+}
+
+export interface UserPlugin {
+  pluginId: string
+  name: string
+  description: string
+  installed_at: string
+  iconUrl?: string // Add this
+  thumbnailUrl?: string // Add this
+}
+
 export interface ServerConfig {
   server_id: string
   server_name: string

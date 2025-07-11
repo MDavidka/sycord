@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { name, description } = await request.json()
+    const { name, description, iconUrl, thumbnailUrl } = await request.json()
 
     if (!name || !description) {
       return NextResponse.json({ error: "Name and description are required" }, { status: 400 })
@@ -40,6 +40,8 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString(),
       installs: 0,
       active: true,
+      iconUrl: iconUrl || null, // Save iconUrl
+      thumbnailUrl: thumbnailUrl || null, // Save thumbnailUrl
     }
 
     const result = await db.collection("plugins").insertOne(plugin)
