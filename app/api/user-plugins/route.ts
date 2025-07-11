@@ -37,39 +37,32 @@ export async function POST(request: NextRequest) {
     const { db } = await connectToDatabase()
 
     if (action === "install") {
-      // Get plugin details, including new iconUrl and thumbnailUrl
       const plugin = await db.collection("plugins").findOne({ _id: new ObjectId(pluginId) })
 
       if (!plugin) {
         return NextResponse.json({ error: "Plugin not found" }, { status: 404 })
       }
 
-      // Add plugin to user's installed plugins, including iconUrl and thumbnailUrl
       await db.collection("users").updateOne(
         { email: session.user.email },
         {
           $addToSet: {
             plugins: {
-              pluginId: pluginId,
+              pluginId,
               name: plugin.name,
               description: plugin.description,
               installed_at: new Date().toISOString(),
-              iconUrl: plugin.iconUrl || null, // Include iconUrl
-              thumbnailUrl: plugin.thumbnailUrl || null, // Include thumbnailUrl
+              iconUrl: plugin.iconUrl || null,
+              thumbnailUrl: plugin.thumbnailUrl || null,
             },
           },
         },
       )
 
-      // Increment install count
       await db.collection("plugins").updateOne({ _id: new ObjectId(pluginId) }, { $inc: { installs: 1 } })
     } else if (action === "uninstall") {
-      // Remove plugin from user's installed plugins
-      await db
-        .collection("users")
-        .updateOne({ email: session.user.email }, { $pull: { plugins: { pluginId: pluginId } } })
+      await db.collection("users").updateOne({ email: session.user.email }, { $pull: { plugins: { pluginId } } })
 
-      // Decrement install count
       await db.collection("plugins").updateOne({ _id: new ObjectId(pluginId) }, { $inc: { installs: -1 } })
     }
 
@@ -79,4 +72,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
-</merged_code>
