@@ -19,8 +19,6 @@ interface Plugin {
   created_at: string
   installs: number
   active: boolean
-  iconUrl?: string // Added
-  thumbnailUrl?: string // Added
 }
 
 interface UserPlugin {
@@ -28,8 +26,6 @@ interface UserPlugin {
   name: string
   description: string
   installed_at: string
-  iconUrl?: string // Added
-  thumbnailUrl?: string // Added
 }
 
 interface User {
@@ -49,7 +45,7 @@ export default function PluginsTab() {
   const [searchTerm, setSearchTerm] = useState("")
   const [activeView, setActiveView] = useState<"store" | "installed" | "admin">("store")
   const [showCreatePlugin, setShowCreatePlugin] = useState(false)
-  const [newPlugin, setNewPlugin] = useState({ name: "", description: "", iconUrl: "", thumbnailUrl: "" }) // Updated
+  const [newPlugin, setNewPlugin] = useState({ name: "", description: "" })
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
 
@@ -135,7 +131,7 @@ export default function PluginsTab() {
 
   const handleCreatePlugin = async () => {
     if (!newPlugin.name.trim() || !newPlugin.description.trim()) {
-      setError("Please fill in all required fields (Name, Description).")
+      setError("Please fill in all fields")
       return
     }
 
@@ -151,7 +147,7 @@ export default function PluginsTab() {
       })
 
       if (response.ok) {
-        setNewPlugin({ name: "", description: "", iconUrl: "", thumbnailUrl: "" }) // Reset all fields
+        setNewPlugin({ name: "", description: "" })
         setShowCreatePlugin(false)
         setSuccess("Plugin created successfully!")
         setTimeout(() => setSuccess(""), 3000)
