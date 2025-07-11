@@ -1,191 +1,133 @@
-import type { DefaultSession } from "next-auth"
-
-// Extend the NextAuth session to include custom properties
-declare module "next-auth" {
-  interface Session {
-    accessToken?: string
-    user: {
-      id: string
-    } & DefaultSession["user"]
-  }
-
-  interface JWT {
-    accessToken?: string
-    refreshToken?: string
-    userId?: string
-  }
-}
-
 export interface User {
-  id: string
+  _id?: string
+  discordId: string
   name: string
   email: string
-  image?: string
-  discordId: string
-  accessToken?: string
-  refreshToken?: string
-}
-
-export interface Server {
-  serverId: string
-  serverName: string
-  serverIcon?: string
-  ownerId: string
-  isBotAdded: boolean
-  createdAt: Date
-  updatedAt: Date
+  password?: string
+  joined_since: string
+  is_tester?: boolean // Add this line
+  servers: ServerConfig[]
 }
 
 export interface ServerConfig {
-  serverId: string
-  serverName: string
-  serverIcon?: string
-  isBotAdded: boolean
-  moderationLevel: "off" | "on" | "lockdown"
-  rolesAndNames: { [key: string]: string }
-  channels?: { [key: string]: string }
+  server_id: string
+  server_name: string
+  server_icon?: string
+  is_bot_added: boolean
+  roles_and_names: { [key: string]: string } // <id>:<name>
+  channels: { [key: string]: string } // <id>:<name>
+  server_stats: {
+    total_members: number
+    total_bots: number
+    total_admins: number
+  }
+  moderation_level: "off" | "on" | "lockdown" // New 3-way moderation level
   welcome: {
     enabled: boolean
-    channelId?: string
+    channel_id?: string
     message?: string
-    dmEnabled?: boolean
+    dm_enabled?: boolean
   }
   moderation: {
-    linkFilter: {
+    // Basic filters
+    link_filter: {
       enabled: boolean
       config: "all_links" | "whitelist_only" | "phishing_only"
       whitelist?: string[]
     }
-    badWordFilter: {
+    bad_word_filter: {
       enabled: boolean
-      customWords?: string[]
+      custom_words?: string[]
     }
-    raidProtection: {
+    raid_protection: {
       enabled: boolean
       threshold?: number
     }
-    suspiciousAccounts: {
+    suspicious_accounts: {
       enabled: boolean
-      minAgeDays?: number
+      min_age_days?: number
     }
-    autoRole: {
+    auto_role: {
       enabled: boolean
-      roleId?: string
+      role_id?: string
     }
-    permissionAbuse: {
+
+    // Advanced security features
+    permission_abuse: {
       enabled: boolean
-      notifyOwnerOnRoleChange: boolean
-      monitorAdminActions: boolean
+      notify_owner_on_role_change: boolean
+      monitor_admin_actions: boolean
     }
-    maliciousBotDetection: {
+    malicious_bot_detection: {
       enabled: boolean
-      newBotNotifications: boolean
-      botActivityMonitoring: boolean
-      botTimeoutThreshold: number
+      new_bot_notifications: boolean
+      bot_activity_monitoring: boolean
+      bot_timeout_threshold: number // actions per minute
     }
-    tokenWebhookAbuse: {
+    token_webhook_abuse: {
       enabled: boolean
-      webhookCreationMonitor: boolean
-      webhookAutoRevoke: boolean
-      webhookVerificationTimeout: number
-      leakedWebhookScanner: boolean
+      webhook_creation_monitor: boolean
+      webhook_auto_revoke: boolean
+      webhook_verification_timeout: number // seconds
+      leaked_webhook_scanner: boolean
     }
-    inviteHijacking: {
+    invite_hijacking: {
       enabled: boolean
-      inviteLinkMonitor: boolean
-      vanityUrlWatcher: boolean
+      invite_link_monitor: boolean
+      vanity_url_watcher: boolean
     }
-    massPingProtection: {
+    mass_ping_protection: {
       enabled: boolean
-      antiMentionFlood: boolean
-      mentionRateLimit: number
-      messageCooldownOnRaid: boolean
-      cooldownDuration: number
+      anti_mention_flood: boolean
+      mention_rate_limit: number // mentions per minute
+      message_cooldown_on_raid: boolean
+      cooldown_duration: number // seconds
     }
-    maliciousFileScanner: {
+    malicious_file_scanner: {
       enabled: boolean
-      suspiciousAttachmentBlocker: boolean
-      autoFileFilter: boolean
-      allowedFileTypes?: string[]
+      suspicious_attachment_blocker: boolean
+      auto_file_filter: boolean
+      allowed_file_types?: string[]
     }
   }
   support: {
-    ticketSystem: {
+    ticket_system: {
       enabled: boolean
-      channelId?: string
-      priorityRoleId?: string
+      channel_id?: string
+      priority_role_id?: string
     }
-    autoAnswer: {
+    auto_answer: {
       enabled: boolean
-      qaPairs?: string
+      qa_pairs?: string
     }
   }
   giveaway: {
     enabled: boolean
-    defaultChannelId?: string
+    default_channel_id?: string
   }
   logs: {
     enabled: boolean
-    channelId?: string
-    messageEdits: boolean
-    modActions: boolean
-    memberJoins: boolean
-    memberLeaves: boolean
+    channel_id?: string
+    message_edits: boolean
+    mod_actions: boolean
+    member_joins: boolean
+    member_leaves: boolean
   }
-  serverStats?: {
-    totalMembers?: number
-    totalBots?: number
-    totalAdmins?: number
-  }
-  lastUpdated?: Date
+  last_updated?: string
 }
 
-export interface BotSettings {
-  serverId: string
-  name: string
-  avatar: string
-  status: "online" | "idle" | "dnd" | "offline"
-  version: string
-  updatedAt: Date
-}
-
-export interface Announcement {
-  _id: string
-  title: string
-  message: string
-  type: "info" | "warning" | "success"
-  active: boolean
-  createdAt: Date
-  updatedAt: Date
-}
-
-export interface Plugin {
+export interface DiscordRole {
   id: string
   name: string
-  description: string
-  version: string
-  author: string
-  enabled: boolean
-  category: string
-  permissions: string[]
-  commands: string[]
+  color: number
+  position: number
+  permissions: string
 }
 
-export interface BotServer {
-  serverId: string
-  serverName: string
-  serverIcon?: string
-  memberCount: number
-  addedAt: Date
-  isActive: boolean
-}
-
-export interface UserServer {
-  serverId: string
-  serverName: string
-  serverIcon?: string
-  isBotAdded: boolean
-  addedAt?: Date
+export interface DiscordChannel {
+  id: string
+  name: string
+  type: number
 }
 
 export interface DiscordGuild {

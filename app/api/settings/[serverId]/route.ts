@@ -1,229 +1,56 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { connectToDatabase } from "@/lib/mongodb"
+import clientPromise from "@/lib/mongodb"
 
 export async function GET(request: NextRequest, { params }: { params: { serverId: string } }) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
+
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { db } = await connectToDatabase()
-    const { serverId } = params
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const settings = db.collection("server_settings")
 
-    // Get user ID from session
-    const userId = session.user.email.replace(/[^a-zA-Z0-9]/g, "_")
+    const serverSettings = await settings.findOne({
+      serverId: params.serverId,
+      ownerId: session.user.id,
+    })
 
-    // Try to find existing settings in new structure
-    const userDoc = await db.collection("users").findOne({ userId })
-    const serverSettings = userDoc?.servers?.[serverId]
+    if (!serverSettings) {
+      // Return default settings if none exist
+      const defaultSettings = {
+        serverId: params.serverId,
+        serverName: "Unknown Server",
+        ownerId: session.user.id,
+        settings: {
+          aiAnswersEnabled: false,
+          contentModerationEnabled: false,
+          badWordFilterEnabled: false,
+          badLinkDetectionEnabled: false,
+          autoApproveEnabled: false,
+          timedAnnouncementsEnabled: false,
+          memberCountThreshold: 100,
+          announcementChannel: "",
+          moderationChannel: "",
+          customBadWords: [],
+          trustedRoles: [],
+          suspiciousUserThreshold: 3,
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
 
-    if (serverSettings) {
-      return NextResponse.json({
-        serverId,
-        serverName: serverSettings.serverName || "Unknown Server",
-        userId,
-        botStatus: serverSettings.botStatus || "online",
-        serverStats: serverSettings.serverStats || {
-          totalMembers: 0,
-          totalBots: 0,
-          totalAdmins: 0,
-        },
-        changelog: serverSettings.changelog || {
-          visible: true,
-          title: "Új funkciók érkeztek!",
-          content: "Frissítettük a moderációs rendszert és hozzáadtunk új beállításokat.",
-          version: "v2.1.0",
-          date: "2024-01-15",
-        },
-        moderation: serverSettings.moderation || {
-          moderationLevel: "basic",
-          linkFilter: {
-            enabled: false,
-            config: "phishing_only",
-            whitelist: [],
-          },
-          badWordFilter: {
-            enabled: false,
-            customWords: [],
-          },
-          raidProtection: {
-            enabled: false,
-            threshold: 10,
-          },
-          suspiciousAccounts: {
-            enabled: false,
-            minAgeDays: 7,
-          },
-          autoRole: {
-            enabled: false,
-            roleId: "",
-          },
-        },
-        support: serverSettings.support || {
-          welcome: {
-            enabled: false,
-            channelId: "",
-            message: "Üdvözlünk {user} a {server} szerveren!",
-            dmEnabled: false,
-          },
-          ticketSystem: {
-            enabled: false,
-            channelId: "",
-            priorityRoleId: "",
-            categories: ["Általános támogatás", "Technikai probléma", "Jelentés", "Egyéb"],
-          },
-          autoAnswer: {
-            enabled: false,
-            qaPairs: "",
-          },
-        },
-        events: serverSettings.events || {
-          dailyMessages: {
-            enabled: false,
-            time: "09:00",
-            channelId: "",
-            message: "Jó reggelt mindenkinek! 🌅",
-          },
-          joinLeave: {
-            enabled: false,
-            joinChannelId: "",
-            leaveChannelId: "",
-            joinMessage: "🎉 {user} csatlakozott a szerverhez!",
-            leaveMessage: "👋 {user} elhagyta a szervert.",
-          },
-          keywordReactions: {
-            enabled: false,
-            keywords: [],
-          },
-        },
-        integrations: serverSettings.integrations || {
-          giveaway: {
-            enabled: false,
-            defaultChannelId: "",
-          },
-        },
-        plugins: serverSettings.plugins || {
-          enabled: [],
-          available: ["Zene Bot", "Szavazás Rendszer", "Gazdasági Rendszer"],
-        },
-        settings: serverSettings.settings || {
-          logs: {
-            enabled: false,
-            channelId: "",
-            messageEdits: false,
-            modActions: false,
-            memberJoins: false,
-            memberLeaves: false,
-          },
-        },
-      })
+      await settings.insertOne(defaultSettings)
+      return NextResponse.json(defaultSettings)
     }
 
-    // Return default settings if none found
-    return NextResponse.json({
-      serverId,
-      serverName: "Unknown Server",
-      userId,
-      botStatus: "online",
-      serverStats: {
-        totalMembers: 0,
-        totalBots: 0,
-        totalAdmins: 0,
-      },
-      changelog: {
-        visible: true,
-        title: "Új funkciók érkeztek!",
-        content: "Frissítettük a moderációs rendszert és hozzáadtunk új beállításokat.",
-        version: "v2.1.0",
-        date: "2024-01-15",
-      },
-      moderation: {
-        moderationLevel: "basic",
-        linkFilter: {
-          enabled: false,
-          config: "phishing_only",
-          whitelist: [],
-        },
-        badWordFilter: {
-          enabled: false,
-          customWords: [],
-        },
-        raidProtection: {
-          enabled: false,
-          threshold: 10,
-        },
-        suspiciousAccounts: {
-          enabled: false,
-          minAgeDays: 7,
-        },
-        autoRole: {
-          enabled: false,
-          roleId: "",
-        },
-      },
-      support: {
-        welcome: {
-          enabled: false,
-          channelId: "",
-          message: "Üdvözlünk {user} a {server} szerveren!",
-          dmEnabled: false,
-        },
-        ticketSystem: {
-          enabled: false,
-          channelId: "",
-          priorityRoleId: "",
-          categories: ["Általános támogatás", "Technikai probléma", "Jelentés", "Egyéb"],
-        },
-        autoAnswer: {
-          enabled: false,
-          qaPairs: "",
-        },
-      },
-      events: {
-        dailyMessages: {
-          enabled: false,
-          time: "09:00",
-          channelId: "",
-          message: "Jó reggelt mindenkinek! 🌅",
-        },
-        joinLeave: {
-          enabled: false,
-          joinChannelId: "",
-          leaveChannelId: "",
-          joinMessage: "🎉 {user} csatlakozott a szerverhez!",
-          leaveMessage: "👋 {user} elhagyta a szervert.",
-        },
-        keywordReactions: {
-          enabled: false,
-          keywords: [],
-        },
-      },
-      integrations: {
-        giveaway: {
-          enabled: false,
-          defaultChannelId: "",
-        },
-      },
-      plugins: {
-        enabled: [],
-        available: ["Zene Bot", "Szavazás Rendszer", "Gazdasági Rendszer"],
-      },
-      settings: {
-        logs: {
-          enabled: false,
-          channelId: "",
-          messageEdits: false,
-          modActions: false,
-          memberJoins: false,
-          memberLeaves: false,
-        },
-      },
-    })
+    return NextResponse.json(serverSettings)
   } catch (error) {
-    console.error("Error fetching server settings:", error)
+    console.error("Error fetching settings:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -231,38 +58,33 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
 export async function PUT(request: NextRequest, { params }: { params: { serverId: string } }) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
+
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { db } = await connectToDatabase()
-    const { serverId } = params
-    const settings = await request.json()
+    const body = await request.json()
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const settings = db.collection("server_settings")
 
-    // Get user ID from session
-    const userId = session.user.email.replace(/[^a-zA-Z0-9]/g, "_")
-
-    // Update settings in new folder structure: users/[userId]/servers/[serverId]/
-    const updateResult = await db.collection("users").updateOne(
-      { userId },
+    const updatedSettings = await settings.findOneAndUpdate(
+      {
+        serverId: params.serverId,
+        ownerId: session.user.id,
+      },
       {
         $set: {
-          [`servers.${serverId}`]: {
-            ...settings,
-            lastUpdated: new Date(),
-          },
+          settings: body.settings,
+          updatedAt: new Date(),
         },
       },
-      { upsert: true },
+      { returnDocument: "after", upsert: true },
     )
 
-    if (updateResult.acknowledged) {
-      return NextResponse.json({ success: true, message: "Settings updated successfully" })
-    } else {
-      return NextResponse.json({ error: "Failed to update settings" }, { status: 500 })
-    }
+    return NextResponse.json(updatedSettings.value)
   } catch (error) {
-    console.error("Error updating server settings:", error)
+    console.error("Error updating settings:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

@@ -1,140 +1,45 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth/next"
+import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { connectToDatabase } from "@/lib/mongodb"
+import clientPromise from "@/lib/mongodb"
 
 export async function GET(request: NextRequest, { params }: { params: { serverId: string } }) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { serverId } = params
-    const { db } = await connectToDatabase()
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const users = db.collection("users")
 
-    // Check if user has access to this server
-    const userServer = await db.collection("user_servers").findOne({
-      userId: session.user.id,
-      serverId: serverId,
+    // Find user by discordId
+    const user = await users.findOne({ discordId: session.user.id })
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    // Find the specific server in the user's servers array
+    const server = user.servers?.find((s: any) => s.server_id === params.serverId)
+
+    if (!server) {
+      return NextResponse.json({ error: "Server configuration not found" }, { status: 404 })
+    }
+
+    return NextResponse.json({
+      user: {
+        name: user.name,
+        email: user.email,
+        joined_since: user.joined_since,
+      },
+      server,
+      isBotAdded: server.is_bot_added,
     })
-
-    if (!userServer) {
-      return NextResponse.json({ error: "Server not found or access denied" }, { status: 404 })
-    }
-
-    // Get server configuration
-    let config = await db.collection("server_configs").findOne({ serverId })
-
-    if (!config) {
-      // Create default config if none exists
-      const defaultConfig = {
-        serverId,
-        serverName: userServer.serverName,
-        serverIcon: userServer.serverIcon,
-        isBotAdded: false,
-        moderationLevel: "off",
-        rolesAndNames: {},
-        channels: {},
-        welcome: {
-          enabled: false,
-          channelId: "",
-          message: "Welcome to the server!",
-          dmEnabled: false,
-        },
-        moderation: {
-          linkFilter: {
-            enabled: false,
-            config: "phishing_only",
-            whitelist: [],
-          },
-          badWordFilter: {
-            enabled: false,
-            customWords: [],
-          },
-          raidProtection: {
-            enabled: false,
-            threshold: 10,
-          },
-          suspiciousAccounts: {
-            enabled: false,
-            minAgeDays: 7,
-          },
-          autoRole: {
-            enabled: false,
-            roleId: "",
-          },
-          permissionAbuse: {
-            enabled: false,
-            notifyOwnerOnRoleChange: true,
-            monitorAdminActions: true,
-          },
-          maliciousBotDetection: {
-            enabled: false,
-            newBotNotifications: true,
-            botActivityMonitoring: true,
-            botTimeoutThreshold: 300,
-          },
-          tokenWebhookAbuse: {
-            enabled: false,
-            webhookCreationMonitor: true,
-            webhookAutoRevoke: true,
-            webhookVerificationTimeout: 60,
-            leakedWebhookScanner: true,
-          },
-          inviteHijacking: {
-            enabled: false,
-            inviteLinkMonitor: true,
-            vanityUrlWatcher: true,
-          },
-          massPingProtection: {
-            enabled: false,
-            antiMentionFlood: true,
-            mentionRateLimit: 5,
-            messageCooldownOnRaid: true,
-            cooldownDuration: 300,
-          },
-          maliciousFileScanner: {
-            enabled: false,
-            suspiciousAttachmentBlocker: true,
-            autoFileFilter: true,
-            allowedFileTypes: ["jpg", "jpeg", "png", "gif", "pdf", "txt"],
-          },
-        },
-        support: {
-          ticketSystem: {
-            enabled: false,
-            channelId: "",
-            priorityRoleId: "",
-          },
-          autoAnswer: {
-            enabled: false,
-            qaPairs: "",
-          },
-        },
-        giveaway: {
-          enabled: false,
-          defaultChannelId: "",
-        },
-        logs: {
-          enabled: false,
-          channelId: "",
-          messageEdits: true,
-          modActions: true,
-          memberJoins: true,
-          memberLeaves: true,
-        },
-        lastUpdated: new Date(),
-      }
-
-      await db.collection("server_configs").insertOne(defaultConfig)
-      config = defaultConfig
-    }
-
-    return NextResponse.json({ config })
   } catch (error) {
-    console.error("Error fetching server config:", error)
+    console.error("Error fetching user config:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -143,39 +48,38 @@ export async function PUT(request: NextRequest, { params }: { params: { serverId
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { serverId } = params
-    const updates = await request.json()
-    const { db } = await connectToDatabase()
+    const body = await request.json()
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const users = db.collection("users")
 
-    // Check if user has access to this server
-    const userServer = await db.collection("user_servers").findOne({
-      userId: session.user.id,
-      serverId: serverId,
-    })
-
-    if (!userServer) {
-      return NextResponse.json({ error: "Server not found or access denied" }, { status: 404 })
-    }
-
-    // Update server configuration
-    await db.collection("server_configs").updateOne(
-      { serverId },
+    // Update the specific server configuration in the user's servers array
+    const updateResult = await users.updateOne(
+      {
+        discordId: session.user.id,
+        "servers.server_id": params.serverId,
+      },
       {
         $set: {
-          ...updates,
-          lastUpdated: new Date(),
+          "servers.$": {
+            ...body.server,
+            last_updated: new Date().toISOString(),
+          },
         },
       },
-      { upsert: true },
     )
+
+    if (updateResult.modifiedCount === 0) {
+      return NextResponse.json({ error: "Failed to update configuration or server not found" }, { status: 500 })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("Error updating server config:", error)
+    console.error("Error updating user config:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

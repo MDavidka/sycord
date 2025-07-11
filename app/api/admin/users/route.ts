@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import clientPromise from "@/lib/mongodb"
+import { connectToDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
 
 export async function GET() {
@@ -12,11 +12,22 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const client = await clientPromise
-    const db = client.db("dash-bot")
-    const usersCollection = db.collection("users")
+    const { db } = await connectToDatabase()
 
-    const users = await usersCollection.find({}).sort({ joined_since: -1 }).toArray()
+    const users = await db
+      .collection("users")
+      .find(
+        {},
+        {
+          projection: {
+            name: 1,
+            email: 1,
+            is_tester: 1,
+            joined_since: 1,
+          },
+        },
+      )
+      .toArray()
 
     return NextResponse.json({ users })
   } catch (error) {
@@ -34,11 +45,9 @@ export async function PUT(request: NextRequest) {
     }
 
     const { userId, is_tester } = await request.json()
-    const client = await clientPromise
-    const db = client.db("dash-bot")
-    const usersCollection = db.collection("users")
+    const { db } = await connectToDatabase()
 
-    await usersCollection.updateOne({ _id: new ObjectId(userId) }, { $set: { is_tester } })
+    await db.collection("users").updateOne({ _id: new ObjectId(userId) }, { $set: { is_tester } })
 
     return NextResponse.json({ success: true })
   } catch (error) {

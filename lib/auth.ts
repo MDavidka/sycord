@@ -1,6 +1,6 @@
 import type { NextAuthOptions } from "next-auth"
 import DiscordProvider from "next-auth/providers/discord"
-import { connectToDatabase } from "./mongodb"
+import clientPromise from "./mongodb"
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -15,26 +15,40 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async jwt({ token, account }) {
+      if (account) {
+        token.accessToken = account.access_token
+      }
+      return token
+    },
+    async session({ session, token }) {
+      session.accessToken = token.accessToken as string
+      if (token.sub) {
+        session.user.id = token.sub
+      }
+      return session
+    },
     async signIn({ user, account, profile }) {
       if (account?.provider === "discord") {
         try {
-          const { db } = await connectToDatabase()
+          const client = await clientPromise
+          const db = client.db("dash-bot")
+          const users = db.collection("users")
 
-          // Create or update user in database
-          await db.collection("users").updateOne(
-            { discordId: user.id },
+          const discordProfile = profile as any
+
+          await users.updateOne(
+            { discordId: discordProfile.id },
             {
               $set: {
-                discordId: user.id,
-                name: user.name,
-                email: user.email,
-                image: user.image,
-                accessToken: account.access_token,
-                refreshToken: account.refresh_token,
-                updatedAt: new Date(),
+                discordId: discordProfile.id,
+                username: discordProfile.username,
+                discriminator: discordProfile.discriminator,
+                avatar: discordProfile.avatar,
+                email: discordProfile.email,
+                lastLogin: new Date(),
               },
               $setOnInsert: {
-                servers: [],
                 createdAt: new Date(),
               },
             },
@@ -49,24 +63,8 @@ export const authOptions: NextAuthOptions = {
       }
       return true
     },
-    async jwt({ token, account, user }) {
-      if (account) {
-        token.accessToken = account.access_token
-        token.refreshToken = account.refresh_token
-        token.userId = user.id
-      }
-      return token
-    },
-    async session({ session, token }) {
-      session.accessToken = token.accessToken as string
-      session.user.id = token.userId as string
-      return session
-    },
   },
   pages: {
     signIn: "/login",
-  },
-  session: {
-    strategy: "jwt",
   },
 }

@@ -4,34 +4,6 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 0 0% 9%;
-    --radius: 0.5rem;
-    --chart-1: 0 0% 20%;
-    --chart-2: 0 0% 30%;
-    --chart-3: 0 0% 40%;
-    --chart-4: 0 0% 50%;
-    --chart-5: 0 0% 60%;
-  }
-
-  .dark {
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
     --card: 0 0% 3.9%;
@@ -51,11 +23,7 @@
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
     --ring: 0 0% 83.1%;
-    --chart-1: 0 0% 80%;
-    --chart-2: 0 0% 70%;
-    --chart-3: 0 0% 60%;
-    --chart-4: 0 0% 50%;
-    --chart-5: 0 0% 40%;
+    --radius: 0.75rem;
   }
 }
 
@@ -65,50 +33,31 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    background: linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #000000 100%);
+    min-height: 100vh;
   }
 }
 
 @layer components {
-  .mobile-optimized {
-    @apply px-4 sm:px-6 lg:px-8;
-  }
-
-  .modern-card {
-    @apply bg-card border border-border shadow-sm hover:shadow-md transition-all duration-200 rounded-lg;
-  }
-
-  .gradient-bg {
-    background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--muted)) 100%);
-  }
-
-  .animate-fade-in {
-    animation: fadeIn 0.5s ease-in-out;
-  }
-
-  .animate-slide-up {
-    animation: slideUp 0.6s ease-out;
-  }
-
-  .animate-bounce-in {
-    animation: bounceIn 0.8s ease-out;
-  }
-
   .glass-card {
-    @apply bg-card/80 backdrop-blur-sm border border-border/50;
+    @apply bg-black/40 backdrop-blur-xl border border-white/10 rounded-xl;
+  }
+
+  .neon-border {
+    @apply border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.3)];
   }
 
   .hover-glow {
-    @apply hover:shadow-lg hover:shadow-primary/10 transition-all duration-300;
+    @apply transition-all duration-300 hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:border-cyan-400/50;
   }
 
-  .vercel-gradient {
-    background: linear-gradient(to right, #000, #333);
+  .mobile-block {
+    @apply p-4 rounded-xl bg-black/60 border border-white/10 backdrop-blur-sm;
   }
+}
 
-  .vercel-border {
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-  }
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-in-out;
 }
 
 @keyframes fadeIn {
@@ -122,94 +71,17 @@
   }
 }
 
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
 @keyframes slideUp {
   from {
-    opacity: 0;
     transform: translateY(20px);
+    opacity: 0;
   }
   to {
-    opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes bounceIn {
-  0% {
-    opacity: 0;
-    transform: scale(0.3);
-  }
-  50% {
     opacity: 1;
-    transform: scale(1.05);
   }
-  70% {
-    transform: scale(0.9);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* Mobile optimizations */
-@media (max-width: 640px) {
-  .mobile-optimized {
-    @apply px-3;
-  }
-}
-
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground));
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary));
-}
-
-/* Vercel-inspired focus styles */
-.focus-visible\:ring-2:focus-visible {
-  outline: 2px solid transparent;
-  outline-offset: 2px;
-  box-shadow: 0 0 0 2px hsl(var(--ring));
-}
-
-/* Typography improvements */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-weight: 600;
-  letter-spacing: -0.025em;
-}
-
-/* Button improvements */
-button {
-  font-weight: 500;
-}
-
-/* Card improvements */
-.card-hover {
-  transition: all 0.2s ease;
-}
-
-.card-hover:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.dark .card-hover:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
