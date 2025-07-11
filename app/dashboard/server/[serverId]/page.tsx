@@ -439,16 +439,6 @@ export default function ServerConfigPage() {
                 is added, you'll be able to configure all settings.
               </p>
               <div className="space-y-4">
-                <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/30 text-left">
-                  <h3 className="font-medium text-blue-400 mb-2">What happens next?</h3>
-                  <ul className="text-sm text-gray-300 space-y-1">
-                    <li>• Dummy configuration has been saved to the database</li>
-                    <li>• Add the Dash bot to your Discord server</li>
-                    <li>• Bot will automatically update the configuration</li>
-                    <li>• All roles and channels will be populated</li>
-                    <li>• You can then customize all settings</li>
-                  </ul>
-                </div>
                 <Link href="/dashboard">
                   <Button
                     variant="outline"
