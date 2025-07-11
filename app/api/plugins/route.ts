@@ -1,14 +1,22 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { connectToDatabase } from "@/lib/mongodb"
-import { ObjectId } from "mongodb"
+import clientPromise from "@/lib/mongodb"
+import type { Plugin } from "@/lib/types"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const { db } = await connectToDatabase()
+    const session = await getServerSession(authOptions)
 
-    const plugins = await db.collection("plugins").find({ active: true }).sort({ created_at: -1 }).toArray()
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const pluginsCollection = db.collection<Plugin>("plugins")
+
+    const plugins = await pluginsCollection.find({}).toArray()
 
     return NextResponse.json({ plugins })
   } catch (error) {
@@ -21,59 +29,80 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session || session.user?.email !== "dmarton336@gmail.com") {
+    if (!session?.user?.email === "dmarton336@gmail.com") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { name, description } = await request.json()
+    const body = await request.json()
+    const { name, description, iconUrl, thumbnailUrl } = body
 
     if (!name || !description) {
       return NextResponse.json({ error: "Name and description are required" }, { status: 400 })
     }
 
-    const { db } = await connectToDatabase()
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const pluginsCollection = db.collection<Plugin>("plugins")
 
-    const plugin = {
+    const newPlugin: Plugin = {
       name,
       description,
       created_by: session.user.email,
       created_at: new Date().toISOString(),
       installs: 0,
       active: true,
+      iconUrl: iconUrl || "",
+      thumbnailUrl: thumbnailUrl || "",
     }
 
-    const result = await db.collection("plugins").insertOne(plugin)
+    const result = await pluginsCollection.insertOne(newPlugin)
 
-    return NextResponse.json({
-      success: true,
-      plugin: { ...plugin, _id: result.insertedId },
-    })
+    return NextResponse.json({ message: "Plugin created successfully", pluginId: result.insertedId })
   } catch (error) {
     console.error("Error creating plugin:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
-export async function DELETE(request: NextRequest) {
+export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session || session.user?.email !== "dmarton336@gmail.com") {
+    if (!session?.user?.email === "dmarton336@gmail.com") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { pluginId } = await request.json()
-    const { db } = await connectToDatabase()
+    const body = await request.json()
+    const { _id, name, description, active, iconUrl, thumbnailUrl } = body
 
-    // Delete the plugin
-    await db.collection("plugins").deleteOne({ _id: new ObjectId(pluginId) })
+    if (!_id) {
+      return NextResponse.json({ error: "Plugin ID is required" }, { status: 400 })
+    }
 
-    // Remove plugin from all users who have it installed
-    await db.collection("users").updateMany({}, { $pull: { plugins: { pluginId: pluginId } } })
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const pluginsCollection = db.collection<Plugin>("plugins")
 
-    return NextResponse.json({ success: true })
+    const updateDoc: Partial<Plugin> = {
+      name,
+      description,
+      active,
+      iconUrl,
+      thumbnailUrl,
+    }
+
+    const result = await pluginsCollection.updateOne(
+      { _id: new (await import("mongodb")).ObjectId(_id) },
+      { $set: updateDoc },
+    )
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ error: "Plugin not found" }, { status: 404 })
+    }
+
+    return NextResponse.json({ message: "Plugin updated successfully" })
   } catch (error) {
-    console.error("Error deleting plugin:", error)
+    console.error("Error updating plugin:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
