@@ -68,7 +68,7 @@ export default function PluginsTab() {
       const response = await fetch("/api/user-plugins")
       if (response.ok) {
         const data = await response.json()
-        setUserPlugins(data.installedPlugins)
+        setUserPlugins(data.installedPlugins) // Corrected to installedPlugins
       }
     } catch (error) {
       console.error("Error fetching user plugins:", error)
@@ -107,11 +107,11 @@ export default function PluginsTab() {
   const handleInstallPlugin = async (pluginId: string) => {
     try {
       const response = await fetch("/api/user-plugins", {
-        method: "POST",
+        method: "POST", // Changed to POST
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ pluginId }),
+        body: JSON.stringify({ pluginId, action: "install" }), // Added action: "install"
       })
       if (response.ok) {
         fetchUserPlugins()
@@ -127,11 +127,11 @@ export default function PluginsTab() {
   const handleUninstallPlugin = async (pluginId: string) => {
     try {
       const response = await fetch("/api/user-plugins", {
-        method: "DELETE",
+        method: "POST", // Changed to POST
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ pluginId }),
+        body: JSON.stringify({ pluginId, action: "uninstall" }), // Added action: "uninstall"
       })
       if (response.ok) {
         fetchUserPlugins()

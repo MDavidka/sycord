@@ -1,24 +1,29 @@
+import type { ObjectId } from "mongodb"
+
 export interface User {
-  _id?: string
-  discordId: string
-  name: string
+  _id: ObjectId
   email: string
-  password?: string
-  joined_since: string
-  is_tester?: boolean // Add this line
-  servers: ServerConfig[]
+  name?: string
+  image?: string
+  servers?: {
+    serverId: string
+    serverName: string
+    serverIcon?: string
+    isBotAdded: boolean
+  }[]
+  plugins?: UserPlugin[] // Changed from downloaded_plugins to plugins
 }
 
 export interface Plugin {
   _id: string
   name: string
   description: string
-  created_by: string
-  created_at: string
-  installs: number
+  iconUrl?: string
+  thumbnailUrl?: string
   active: boolean
-  iconUrl?: string // Added
-  thumbnailUrl?: string // Added
+  installs: number
+  createdAt: string
+  updatedAt: string
 }
 
 export interface UserPlugin {
@@ -26,8 +31,8 @@ export interface UserPlugin {
   name: string
   description: string
   installed_at: string
-  iconUrl?: string // Added
-  thumbnailUrl?: string // Added
+  iconUrl?: string
+  thumbnailUrl?: string
 }
 
 export interface ServerConfig {
@@ -35,14 +40,8 @@ export interface ServerConfig {
   server_name: string
   server_icon?: string
   is_bot_added: boolean
-  roles_and_names: { [key: string]: string } // <id>:<name>
-  channels: { [key: string]: string } // <id>:<name>
-  server_stats: {
-    total_members: number
-    total_bots: number
-    total_admins: number
-  }
-  moderation_level: "off" | "on" | "lockdown" // New 3-way moderation level
+  moderation_level: "off" | "on" | "lockdown"
+  roles_and_names: { [key: string]: string }
   welcome: {
     enabled: boolean
     channel_id?: string
@@ -50,7 +49,6 @@ export interface ServerConfig {
     dm_enabled?: boolean
   }
   moderation: {
-    // Basic filters
     link_filter: {
       enabled: boolean
       config: "all_links" | "whitelist_only" | "phishing_only"
@@ -72,8 +70,6 @@ export interface ServerConfig {
       enabled: boolean
       role_id?: string
     }
-
-    // Advanced security features
     permission_abuse: {
       enabled: boolean
       notify_owner_on_role_change: boolean
@@ -83,13 +79,13 @@ export interface ServerConfig {
       enabled: boolean
       new_bot_notifications: boolean
       bot_activity_monitoring: boolean
-      bot_timeout_threshold: number // actions per minute
+      bot_timeout_threshold: number
     }
     token_webhook_abuse: {
       enabled: boolean
       webhook_creation_monitor: boolean
       webhook_auto_revoke: boolean
-      webhook_verification_timeout: number // seconds
+      webhook_verification_timeout: number
       leaked_webhook_scanner: boolean
     }
     invite_hijacking: {
@@ -100,9 +96,9 @@ export interface ServerConfig {
     mass_ping_protection: {
       enabled: boolean
       anti_mention_flood: boolean
-      mention_rate_limit: number // mentions per minute
+      mention_rate_limit: number
       message_cooldown_on_raid: boolean
-      cooldown_duration: number // seconds
+      cooldown_duration: number
     }
     malicious_file_scanner: {
       enabled: boolean
@@ -135,31 +131,13 @@ export interface ServerConfig {
     member_leaves: boolean
   }
   last_updated?: string
-  // New fields for custom bot
+  channels?: { [key: string]: string }
+  server_stats?: {
+    total_members?: number
+    total_bots?: number
+    total_admins?: number
+  }
   botProfilePictureUrl?: string
   customBotName?: string
   botToken?: string
-}
-
-export interface DiscordRole {
-  id: string
-  name: string
-  color: number
-  position: number
-  permissions: string
-}
-
-export interface DiscordChannel {
-  id: string
-  name: string
-  type: number
-}
-
-export interface DiscordGuild {
-  id: string
-  name: string
-  icon?: string
-  owner: boolean
-  permissions: string
-  approximate_member_count?: number
 }
