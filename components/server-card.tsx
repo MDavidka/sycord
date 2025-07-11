@@ -88,5 +88,3 @@ export function ServerCard({ server, botAdded = false }: ServerCardProps) {
     </Card>
   )
 }
-
-export default ServerCard
