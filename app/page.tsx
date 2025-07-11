@@ -1,241 +1,166 @@
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Bot, Shield, MessageSquare, Clock, Users, Zap, ArrowRight, Github, Twitter } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import clientPromise from "@/lib/mongodb"
 
-interface AppSettings {
-  maintenanceMode: {
-    enabled: boolean
-    estimatedTime?: string
-  }
-}
-
-export default async function LandingPage() {
-  let appSettings: AppSettings | null = null
-
-  try {
-    const client = await clientPromise
-    const db = client.db("dash-bot")
-    const settingsCollection = db.collection("app_settings")
-    appSettings = (await settingsCollection.findOne({})) as AppSettings | null
-  } catch (error) {
-    console.error("Failed to fetch app settings:", error)
-  }
-
-  const isMaintenanceMode = appSettings?.maintenanceMode.enabled || false
-  const maintenanceTime = appSettings?.maintenanceMode.estimatedTime || "30 minutes"
-
+export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Navigation */}
-      <nav className="glass-card border-b border-white/10">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Image src="/new-blue-logo.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
-            <span className="text-2xl font-bold">
-              <span className="text-white">Sycord</span>
-            </span>
-          </div>
-          <div className="flex items-center space-x-4">
-            <Link href="/login">
-              <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
-                Login
-              </Button>
-            </Link>
-            <Link href="/login">
-              <Button className="bg-white text-black hover:bg-gray-200">Get Started</Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
+    <div className="flex flex-col min-h-screen bg-black text-white">
+      {/* Header */}
+      <header className="px-4 lg:px-6 h-14 flex items-center justify-between glass-card border-b border-white/10">
+        <Link className="flex items-center justify-center" href="#">
+          <Image src="/new-blue-logo.png" alt="Sycord Logo" width={32} height={32} className="rounded-lg" />
+          <span className="sr-only">Sycord</span>
+        </Link>
+        <nav className="ml-auto flex gap-4 sm:gap-6">
+          <Link className="text-sm font-medium hover:underline underline-offset-4" href="#">
+            Features
+          </Link>
+          <Link className="text-sm font-medium hover:underline underline-offset-4" href="#">
+            Pricing
+          </Link>
+          <Link className="text-sm font-medium hover:underline underline-offset-4" href="#">
+            Contact
+          </Link>
+          <Link className="text-sm font-medium hover:underline underline-offset-4" href="/login">
+            Login
+          </Link>
+        </nav>
+      </header>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20 text-center">
-        <div className="max-w-4xl mx-auto animate-fade-in">
-          <Badge variant="secondary" className="mb-4 bg-gray-500/20 text-gray-300 border-gray-500/30">
-            Advanced Discord Bot
-          </Badge>
-          <h1 className="text-5xl md:text-7xl font-bold mb-6">
-            Meet <span className="text-white">Sycord</span>
-          </h1>
-          <p className="text-xl md:text-2xl text-gray-300 mb-8 leading-relaxed">
-            The intelligent Discord bot that moderates your server, manages tickets, and keeps your community engaged
-            with smart automation.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {isMaintenanceMode ? (
-              <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
-                Under Maintenance ({maintenanceTime})
-              </Button>
-            ) : (
-              <Link href="/login">
-                <Button size="lg" className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 hover-glow">
-                  Add to Discord
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-            )}
+      <main className="flex-1">
+        <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-gradient-to-b from-black to-gray-900">
+          <div className="container px-4 md:px-6">
+            <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_550px]">
+              <div className="flex flex-col justify-center space-y-4">
+                <div className="space-y-2">
+                  <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none text-white">
+                    Advanced Discord Bot Security
+                  </h1>
+                  <p className="max-w-[600px] text-gray-400 md:text-xl">
+                    Protect your community from raids, scams, and malicious activity with Sycord's cutting-edge AI.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 min-[400px]:flex-row">
+                  <Link
+                    className="inline-flex h-10 items-center justify-center rounded-md bg-white px-8 text-sm font-medium text-black shadow transition-colors hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 disabled:pointer-events-none disabled:opacity-50"
+                    href="/dashboard"
+                  >
+                    Get Started
+                  </Link>
+                  <Link
+                    className="inline-flex h-10 items-center justify-center rounded-md border border-white/20 bg-transparent px-8 text-sm font-medium shadow-sm transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 disabled:pointer-events-none disabled:opacity-50 text-white"
+                    href="#"
+                  >
+                    Learn More
+                  </Link>
+                </div>
+              </div>
+              <Image
+                alt="Hero"
+                className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last lg:aspect-square"
+                height="400"
+                src="/placeholder.svg?height=400&width=400"
+                width="400"
+              />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Features Section */}
-      <section className="container mx-auto px-4 py-20">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold mb-4">Powerful Features</h2>
-          <p className="text-xl text-gray-400">Everything you need to manage and grow your Discord community</p>
-        </div>
+        {/* Features Section */}
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-gray-950">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center">
+              <div className="space-y-2">
+                <div className="inline-block rounded-lg bg-gray-800 px-3 py-1 text-sm text-gray-300">Key Features</div>
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl text-white">
+                  Comprehensive Protection for Your Discord Server
+                </h2>
+                <p className="max-w-[900px] text-gray-400 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                  Sycord offers a suite of powerful features designed to keep your community safe and thriving.
+                </p>
+              </div>
+            </div>
+            <div className="mx-auto grid max-w-5xl items-start gap-8 py-12 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-1 glass-card p-6 rounded-lg">
+                <h3 className="text-lg font-bold text-white">AI-Powered Moderation</h3>
+                <p className="text-sm text-gray-400">
+                  Our advanced AI detects and neutralizes threats like spam, phishing, and malicious links in real-time.
+                </p>
+              </div>
+              <div className="grid gap-1 glass-card p-6 rounded-lg">
+                <h3 className="text-lg font-bold text-white">Raid Protection</h3>
+                <p className="text-sm text-gray-400">
+                  Automated systems to prevent and mitigate mass joining, ping, and bot raids.
+                </p>
+              </div>
+              <div className="grid gap-1 glass-card p-6 rounded-lg">
+                <h3 className="text-lg font-bold text-white">Customizable Filters</h3>
+                <p className="text-sm text-gray-400">
+                  Tailor content filters, bad word lists, and link scanning to fit your community's needs.
+                </p>
+              </div>
+              <div className="grid gap-1 glass-card p-6 rounded-lg">
+                <h3 className="text-lg font-bold text-white">User Verification</h3>
+                <p className="text-sm text-gray-400">
+                  Implement account age checks and other verification steps for new members.
+                </p>
+              </div>
+              <div className="grid gap-1 glass-card p-6 rounded-lg">
+                <h3 className="text-lg font-bold text-white">Role Management</h3>
+                <p className="text-sm text-gray-400">
+                  Automate role assignments and monitor for suspicious permission changes.
+                </p>
+              </div>
+              <div className="grid gap-1 glass-card p-6 rounded-lg">
+                <h3 className="text-lg font-bold text-white">Detailed Logging</h3>
+                <p className="text-sm text-gray-400">
+                  Keep track of all moderation actions, member activity, and bot events with comprehensive logs.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <Card className="glass-card hover-glow animate-fade-in">
-            <CardHeader>
-              <MessageSquare className="h-12 w-12 text-gray-400 mb-4" />
-              <CardTitle className="text-white">Smart Support System</CardTitle>
-              <CardDescription className="text-gray-400">
-                Automated ticket system with intelligent responses
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="text-sm text-gray-300 space-y-2">
-                <li>• Automated ticket management</li>
-                <li>• Custom response system</li>
-                <li>• User reporting features</li>
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card hover-glow animate-fade-in">
-            <CardHeader>
-              <Shield className="h-12 w-12 text-gray-400 mb-4" />
-              <CardTitle className="text-white">Advanced Moderation</CardTitle>
-              <CardDescription className="text-gray-400">
-                Comprehensive protection with fraud detection and raid protection
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="text-sm text-gray-300 space-y-2">
-                <li>• Suspicious account filtering</li>
-                <li>• Advanced fraud protection</li>
-                <li>• Raid protection</li>
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card hover-glow animate-fade-in">
-            <CardHeader>
-              <Users className="h-12 w-12 text-gray-400 mb-4" />
-              <CardTitle className="text-white">Welcome & Invite Tracking</CardTitle>
-              <CardDescription className="text-gray-400">
-                Welcome new members and track who invited them
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="text-sm text-gray-300 space-y-2">
-                <li>• Custom welcome messages</li>
-                <li>• Invite tracking system</li>
-                <li>• Auto role assignment</li>
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card hover-glow animate-fade-in">
-            <CardHeader>
-              <Clock className="h-12 w-12 text-gray-400 mb-4" />
-              <CardTitle className="text-white">Smart Announcements</CardTitle>
-              <CardDescription className="text-gray-400">
-                Triggered announcements and web-based giveaways
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="text-sm text-gray-300 space-y-2">
-                <li>• Time-based triggers</li>
-                <li>• Member count milestones</li>
-                <li>• Web giveaway system</li>
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card hover-glow animate-fade-in">
-            <CardHeader>
-              <Zap className="h-12 w-12 text-gray-400 mb-4" />
-              <CardTitle className="text-white">Real-time Dashboard</CardTitle>
-              <CardDescription className="text-gray-400">Monitor and configure your bot from anywhere</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="text-sm text-gray-300 space-y-2">
-                <li>• Live server statistics</li>
-                <li>• Feature toggles</li>
-                <li>• Configuration management</li>
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card hover-glow animate-fade-in">
-            <CardHeader>
-              <Bot className="h-12 w-12 text-gray-400 mb-4" />
-              <CardTitle className="text-white">Easy Setup</CardTitle>
-              <CardDescription className="text-gray-400">
-                Get started in minutes with our simple setup process
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="text-sm text-gray-300 space-y-2">
-                <li>• One-click Discord integration</li>
-                <li>• Guided configuration</li>
-                <li>• 24/7 support</li>
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="container mx-auto px-4 py-20">
-        <div className="glass-card border border-white/10 p-12 text-center">
-          <h2 className="text-4xl font-bold mb-4">Ready to Transform Your Discord Server?</h2>
-          <p className="text-xl text-gray-300 mb-8">
-            Join thousands of communities already using <span className="text-white font-bold">Sycord</span> to create
-            better Discord experiences.
-          </p>
-          {isMaintenanceMode ? (
-            <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
-              Under Maintenance ({maintenanceTime})
-            </Button>
-          ) : (
-            <Link href="/login">
-              <Button size="lg" className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 hover-glow">
+        {/* Call to Action Section */}
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-black">
+          <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
+            <div className="space-y-3">
+              <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight text-white">
+                Ready to Secure Your Discord?
+              </h2>
+              <p className="mx-auto max-w-[600px] text-gray-400 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                Join thousands of communities trusting Sycord to keep their servers safe and clean.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 min-[400px]:flex-row justify-center">
+              <Link
+                className="inline-flex h-10 items-center justify-center rounded-md bg-white px-8 text-sm font-medium text-black shadow transition-colors hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 disabled:pointer-events-none disabled:opacity-50"
+                href="/dashboard"
+              >
                 Get Started Now
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-          )}
-        </div>
-      </section>
+              </Link>
+              <Link
+                className="inline-flex h-10 items-center justify-center rounded-md border border-white/20 bg-transparent px-8 text-sm font-medium shadow-sm transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 disabled:pointer-events-none disabled:opacity-50 text-white"
+                href="#"
+              >
+                Contact Sales
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 glass-card">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex flex-col md:flex-row items-center justify-between">
-            <div className="flex items-center space-x-2 mb-4 md:mb-0">
-              <Image src="/new-blue-logo.png" alt="Sycord Bot" width={24} height={24} className="rounded" />
-              <span className="text-lg font-semibold">
-                <span className="text-white">Sycord</span> Bot
-              </span>
-            </div>
-            <div className="flex items-center space-x-6">
-              <Link href="#" className="text-gray-400 hover:text-white transition-colors">
-                <Github className="h-5 w-5" />
-              </Link>
-              <Link href="#" className="text-gray-400 hover:text-white transition-colors">
-                <Twitter className="h-5 w-5" />
-              </Link>
-              <span className="text-gray-400 text-sm">© 2024 Sycord Bot. All rights reserved.</span>
-            </div>
-          </div>
-        </div>
+      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t border-white/10 glass-card">
+        <p className="text-xs text-gray-400">&copy; 2024 Sycord. All rights reserved.</p>
+        <nav className="sm:ml-auto flex gap-4 sm:gap-6">
+          <Link className="text-xs hover:underline underline-offset-4 text-gray-400" href="#">
+            Terms of Service
+          </Link>
+          <Link className="text-xs hover:underline underline-offset-4 text-gray-400" href="#">
+            Privacy
+          </Link>
+        </nav>
       </footer>
     </div>
   )

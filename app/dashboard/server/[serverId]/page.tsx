@@ -738,29 +738,6 @@ export default function ServerConfigPage() {
         {/* Home Tab */}
         {activeTab === "home" && (
           <div className="space-y-6">
-            {/* Announcements */}
-            {announcements.filter((ann) => !dismissedAnnouncements.includes(ann._id)).length > 0 && (
-              <div className="space-y-4">
-                {announcements
-                  .filter((ann) => !dismissedAnnouncements.includes(ann._id))
-                  .map((ann) => (
-                    <Alert key={ann._id} className="border-gray-500/30 bg-gray-500/10">
-                      <Megaphone className="h-4 w-4" />
-                      <AlertDescription className="text-gray-400 flex justify-between items-center">
-                        <span>{ann.message}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDismissAnnouncement(ann._id)}
-                          className="text-gray-400 hover:bg-gray-500/20"
-                        >
-                          Dismiss
-                        </Button>
-                      </AlertDescription>
-                    </Alert>
-                  ))}
-              </div>
-            )}
             {/* Simplified Server Info */}
             <Card className="glass-card">
               <CardContent className="p-4">
@@ -803,6 +780,30 @@ export default function ServerConfigPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Announcements - Moved here */}
+            {announcements.filter((ann) => !dismissedAnnouncements.includes(ann._id)).length > 0 && (
+              <div className="space-y-4">
+                {announcements
+                  .filter((ann) => !dismissedAnnouncements.includes(ann._id))
+                  .map((ann) => (
+                    <Alert key={ann._id} className="border-gray-500/30 bg-gray-500/10">
+                      <Megaphone className="h-4 w-4" />
+                      <AlertDescription className="text-gray-400 flex justify-between items-center">
+                        <span>{ann.message}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDismissAnnouncement(ann._id)}
+                          className="text-gray-400 hover:bg-gray-500/20"
+                        >
+                          Dismiss
+                        </Button>
+                      </AlertDescription>
+                    </Alert>
+                  ))}
+              </div>
+            )}
 
             {/* Welcome Flow System */}
             <Card className="glass-card">
@@ -1087,7 +1088,7 @@ export default function ServerConfigPage() {
                               }
                               className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[80px] text-sm"
                             />
-                            <p className="text-xs text-gray-400">
+                            <p className="text-xs text-gray-400 mt-2">
                               Use {"{user}"} for username and {"{server}"} for server name
                             </p>
                           </div>
