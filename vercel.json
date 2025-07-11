@@ -1,0 +1,10 @@
+{
+  // Tell Vercel this is a Next.js project
+  "framework": "nextjs",
+
+  // Allow pnpm to refresh the lock-file during install
+  "installCommand": "pnpm install --no-frozen-lockfile",
+
+  // Keep the default build command
+  "buildCommand": "pnpm run build"
+}
