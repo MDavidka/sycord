@@ -53,6 +53,7 @@ import {
   BarChart3,
   CheckCircle,
   AlertCircle,
+  Flag,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -1730,7 +1731,7 @@ export default function ServerConfigPage() {
                     }
                     alt={server.name}
                   />
-                  <AvatarFallback>{server.name.substring(0, 2)}</AvatarFallback>
+                  <AvatarFallback>{server.name ? server.name.substring(0, 2) : "S"}</AvatarFallback>
                 </Avatar>
               </Link>
             ))}
@@ -2323,11 +2324,20 @@ export default function ServerConfigPage() {
         <Dialog open={showFlagStaffWarning} onOpenChange={setShowFlagStaffWarning}>
           <DialogContent className="sm:max-w-[425px] bg-black/80 border border-white/20 text-white">
             <DialogHeader>
-              <DialogTitle>Confirm Flag Staff</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-white flex items-center">
+                <Flag className="h-5 w-5 mr-2 text-white" /> {/* Changed to text-white */}
+                Flag Staff Member
+              </DialogTitle>
+              <DialogDescription className="text-gray-400">
                 Are you sure you want to flag this staff member? This will set their reputation to 5.
               </DialogDescription>
             </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-gray-300">
+                Flagging a staff member will reduce their reputation score to 5. This action is irreversible for the
+                current reputation cycle.
+              </p>
+            </div>
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={() => setShowFlagStaffWarning(false)}>
                 Cancel
