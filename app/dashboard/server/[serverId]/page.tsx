@@ -352,7 +352,7 @@ export default function ServerConfigPage() {
                 color: "#5865F2",
                 footer: "Support Team",
               },
-              settings: configData.server.support?.ticket_system?.settings || {
+              settings: serverConfig?.support?.ticket_system?.settings || { // Use serverConfig for existing settings
                 autoAnswer: { enabled: false, qa_pairs: "" },
                 blockedUsers: { enabled: false, userIds: [] },
                 inactivityClose: { enabled: false, timeoutMinutes: 30 },
@@ -557,7 +557,7 @@ export default function ServerConfigPage() {
 
   const handleManageCollectedData = async () => {
     try {
-      const response = await fetch("/api/admin/users/route.ts") // Assuming this endpoint exists and returns user data
+      const response = await fetch("/api/admin/users") // Corrected path, removed .ts
       if (response.ok) {
         const data = await response.json()
         setCollectedData(data)
