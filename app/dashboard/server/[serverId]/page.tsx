@@ -2310,12 +2310,12 @@ export default function ServerConfigPage() {
                                       ...serverConfig.support.ticket_system.embed,
                                       footer: e.target.value,
                                     },
-                                  },\
-                                })
-                              }\
-                              className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-                            />
-                          </div>
+                                  },
+                                },
+                              })
+                            }
+                            className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                          />
                         </div>
                       </DialogContent>
                     </Dialog>
@@ -3396,5 +3396,5 @@ export default function ServerConfigPage() {
         )}
       </div>
     </div>
-  )\
+  );\
 }
