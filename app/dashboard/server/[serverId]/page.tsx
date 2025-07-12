@@ -22,7 +22,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog"
 import {
@@ -333,7 +332,7 @@ export default function ServerConfigPage() {
 
   useEffect(() => {
     if (serverConfig) {
-      setProfilePictureUrl(serverConfig.botProfilePictureUrl || "")
+      setProfilePictureUrl(serverConfig.botProfilePictureUrl || "https://sycord.com/new-blue-logo.png")
       setCustomBotName(serverConfig.customBotName || "")
       setBotToken(serverConfig.botToken || "")
     }
@@ -963,7 +962,7 @@ export default function ServerConfigPage() {
               >
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
                       <Users className="h-6 w-6 text-white" />
                     </div>
                     <div>
@@ -993,7 +992,7 @@ export default function ServerConfigPage() {
               >
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
                       <MessageSquare className="h-6 w-6 text-white" />
                     </div>
                     <div>
@@ -2940,41 +2939,41 @@ export default function ServerConfigPage() {
 
             {/* Lockdown Warning Dialog */}
             <Dialog open={showLockdownWarning} onOpenChange={setShowLockdownWarning}>
-              <DialogContent className="glass-card max-w-md">
+              <DialogContent className="glass-card max-w-lg">
                 <DialogHeader>
-                  <DialogTitle className="text-white flex items-center">
-                    <Lock className="h-5 w-5 mr-2" />
+                  <DialogTitle className="text-white flex items-center text-xl">
+                    <Lock className="h-6 w-6 mr-3" />
                     Lockdown Confirmation
                   </DialogTitle>
-                  <DialogDescription className="text-gray-400">
+                  <DialogDescription className="text-gray-400 text-base">
                     Are you sure you want to activate Lockdown Mode?
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <p className="text-gray-300">
-                    Activating lockdown mode will lock all channels in your server, preventing members from sending
-                    messages. This is intended for severe raid situations.
+                <div className="space-y-6">
+                  <p className="text-gray-300 leading-relaxed">
+                    Activating lockdown mode will enable all security features and restrict server activity. This is
+                    intended for severe security situations and will provide maximum protection.
                   </p>
                   <div className="flex justify-center">
                     <Image
-                      src="/placeholder.svg?height=150&width=250"
+                      src="/lockdown-active.png"
                       alt="Lockdown Active"
-                      width={250}
-                      height={150}
-                      className="rounded-lg"
+                      width={400}
+                      height={200}
+                      className="rounded-lg border border-white/10"
                     />
                   </div>
                 </div>
-                <DialogFooter>
+                <DialogFooter className="flex gap-3">
                   <Button
                     variant="outline"
                     onClick={() => setShowLockdownWarning(false)}
-                    className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                    className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent flex-1"
                   >
                     Cancel
                   </Button>
-                  <Button onClick={confirmLockdown} className="bg-white text-black hover:bg-gray-100">
-                    Lock Channels
+                  <Button onClick={confirmLockdown} className="bg-white text-black hover:bg-gray-100 flex-1">
+                    Activate Lockdown
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -2995,7 +2994,7 @@ export default function ServerConfigPage() {
                 >
                   <CardContent className="p-6">
                     <div className="flex items-center space-x-4 mb-4">
-                      <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
                         <Users className="h-6 w-6 text-white" />
                       </div>
                       <div>
@@ -3027,7 +3026,7 @@ export default function ServerConfigPage() {
                 >
                   <CardContent className="p-6">
                     <div className="flex items-center space-x-4 mb-4">
-                      <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
                         <MessageSquare className="h-6 w-6 text-white" />
                       </div>
                       <div>
@@ -3058,179 +3057,42 @@ export default function ServerConfigPage() {
               </div>
             )}
 
-            {/* Staff Insights Section */}
+            {/* Staff Management Section */}
             {activeSupportSection === "staff" && (
               <div className="space-y-6">
-                {/* Back Button */}
-                <Button
-                  variant="ghost"
-                  onClick={() => setActiveSupportSection(null)}
-                  className="text-white hover:bg-gray-100 hover:text-gray-900"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2 text-white" />
-                  Back to Support
-                </Button>
+                <div className="flex items-center gap-2 mb-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setActiveSupportSection(null)}
+                    className="flex items-center gap-2 text-white hover:bg-gray-100 hover:text-gray-900"
+                  >
+                    <ArrowLeft className="h-4 w-4 text-white" />
+                    Back to Overview
+                  </Button>
+                </div>
 
-                {/* Staff Insights Content - Keep existing staff insights card content */}
                 <Card className="glass-card">
                   <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-white flex items-center text-xl">
-                          <Users className="h-6 w-6 mr-3" />
-                          Staff Insights
-                        </CardTitle>
-                        <CardDescription className="text-gray-400">
-                          Monitor your support staff performance and reputation
-                        </CardDescription>
-                      </div>
-                      <Dialog open={showReputationInfo} onOpenChange={setShowReputationInfo}>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-gray-400 hover:bg-gray-100 hover:text-gray-900"
-                          >
-                            <Info className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="glass-card max-w-md">
-                          <DialogHeader>
-                            <DialogTitle className="text-white flex items-center">
-                              <Image
-                                src="/new-blue-logo.png"
-                                alt="Sycord"
-                                width={20}
-                                height={20}
-                                className="rounded mr-2"
-                              />
-                              Reputation System
-                            </DialogTitle>
-                            <DialogDescription className="text-gray-400">
-                              How our staff reputation system works
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="text-gray-300 space-y-3 text-sm">
-                            <p>
-                              The reputation system tracks staff performance and prevents abuse of moderation powers.
-                            </p>
-                            <p>
-                              Staff members start with a configurable max reputation. Each moderation action (kicks,
-                              bans, timeouts) reduces reputation by 1 point.
-                            </p>
-                            <p>
-                              When reputation reaches 0, the staff member is temporarily blocked from performing
-                              moderation actions until their reputation resets.
-                            </p>
-                            <p>
-                              Reputation automatically resets to max reputation every 24 hours to allow continued
-                              moderation while preventing spam actions.
-                            </p>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
+                    <CardTitle className="flex items-center gap-2 text-white">
+                      <BarChart3 className="h-5 w-5" />
+                      Staff Insights Configuration
+                    </CardTitle>
+                    <CardDescription className="text-gray-400">
+                      Monitor staff activity and performance metrics
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-white">Staff Members</h3>
-                      <div className="flex items-center space-x-2">
-                        <Label htmlFor="max-rep" className="text-white text-sm">
-                          Max Rep:
-                        </Label>
-                        <Input
-                          id="max-rep"
-                          type="number"
-                          min="1"
-                          max="100"
-                          value={serverConfig.support.max_reputation_score}
-                          onChange={(e) =>
-                            updateServerConfig({
-                              support: {
-                                ...serverConfig.support,
-                                max_reputation_score: Number.parseInt(e.target.value) || 20,
-                              },
-                            })
-                          }
-                          className="bg-black/60 border-white/20 text-white h-7 w-20 text-xs"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Staff List */}
-                    <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-                      {serverConfig.support?.staff?.length > 0 ? (
-                        serverConfig.support.staff.map((staff) => (
-                          <div
-                            key={staff.userId}
-                            className="flex items-center justify-between p-4 rounded-lg border border-white/10 bg-black/20"
-                          >
-                            <div className="flex items-center space-x-3">
-                              <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
-                                <Users className="h-5 w-5 text-gray-400" />
-                              </div>
-                              <div>
-                                <h4 className="font-medium text-white">{staff.username}</h4>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center space-x-4">
-                              {/* Reputation Bar with Sycord Logo */}
-                              {serverConfig.support.reputation_enabled && (
-                                <div className="flex items-center space-x-2">
-                                  <Image
-                                    src="/new-blue-logo.png"
-                                    alt="Sycord"
-                                    width={16}
-                                    height={16}
-                                    className="rounded"
-                                  />
-                                  <div className="w-24">
-                                    <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
-                                      <span>Rep.</span>
-                                      <span>
-                                        {staff.reputation}/{serverConfig.support.max_reputation_score}
-                                      </span>
-                                    </div>
-                                    <Progress
-                                      value={(staff.reputation / serverConfig.support.max_reputation_score) * 100}
-                                      className="h-2 bg-gray-800"
-                                      indicatorClassName="bg-blue-800"
-                                    />
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Flag Staff Button */}
-                              <Button
-                                onClick={() => handleFlagStaffClick(staff.userId)}
-                                variant="outline"
-                                size="sm"
-                                className="border-red-500/50 text-red-400 hover:bg-red-500/10"
-                                disabled={staff.reputation === 0}
-                              >
-                                <Flag className="h-4 w-4 text-white" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-8">
-                          <Users className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                          <p className="text-gray-400">No staff members found</p>
-                          <p className="text-sm text-gray-500">
-                            Staff members will appear here automatically when they join your server
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between pt-4">
                       <div>
-                        <h3 className="font-medium text-white text-base">Enable Reputation System</h3>
-                        <p className="text-sm text-gray-400">Track and manage staff reputation</p>
+                        <Label htmlFor="staff-insights" className="text-white">
+                          Enable Staff Insights
+                        </Label>
+                        <p className="text-sm text-gray-400">Track staff activity and generate performance reports</p>
                       </div>
                       <Switch
-                        checked={serverConfig.support.reputation_enabled}
+                        id="staff-insights"
+                        checked={serverConfig.support?.reputation_enabled || false}
                         onCheckedChange={(checked) =>
                           updateServerConfig({
                             support: {
@@ -3241,6 +3103,234 @@ export default function ServerConfigPage() {
                         }
                       />
                     </div>
+
+                    <Separator className="bg-white/20" />
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="reputation-system" className="text-white">
+                          Reputation System
+                        </Label>
+                        <p className="text-sm text-gray-400">Enable staff reputation tracking and rewards</p>
+                      </div>
+                      <Switch
+                        id="reputation-system"
+                        checked={serverConfig.support?.reputation_enabled || false}
+                        onCheckedChange={(checked) =>
+                          updateServerConfig({
+                            support: {
+                              ...serverConfig.support,
+                              reputation_enabled: checked,
+                            },
+                          })
+                        }
+                      />
+                    </div>
+
+                    {/* Staff List */}
+                    {serverConfig.support?.staff && serverConfig.support.staff.length > 0 && (
+                      <div className="space-y-4">
+                        <h4 className="text-white font-medium">Staff Members</h4>
+                        <div className="space-y-2">
+                          {serverConfig.support.staff.map((staff) => (
+                            <div
+                              key={staff.userId}
+                              className="flex items-center justify-between p-3 rounded-md bg-black/20 border border-white/10"
+                            >
+                              <div className="flex items-center space-x-3">
+                                <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center">
+                                  <span className="text-white text-sm">{staff.username.charAt(0)}</span>
+                                </div>
+                                <div>
+                                  <p className="text-white font-medium">{staff.username}</p>
+                                  <div className="flex items-center space-x-2">
+                                    <Progress
+                                      value={(staff.reputation / staff.maxReputation) * 100}
+                                      className="w-20 h-2"
+                                    />
+                                    <span className="text-xs text-gray-400">
+                                      {staff.reputation}/{staff.maxReputation}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleFlagStaffClick(staff.userId)}
+                                className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                              >
+                                <Flag className="h-4 w-4 mr-2 text-white" />
+                                Flag
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4 mt-6">
+                      <Card className="glass-card">
+                        <CardContent className="pt-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-400">Active Staff</p>
+                              <p className="text-2xl font-bold text-white">12</p>
+                            </div>
+                            <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
+                              <Users className="h-8 w-8 text-gray-400" />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="glass-card">
+                        <CardContent className="pt-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-400">Avg. Response Time</p>
+                              <p className="text-2xl font-bold text-white">2.3m</p>
+                            </div>
+                            <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
+                              <BarChart3 className="h-8 w-8 text-gray-400" />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Ticket System Section */}
+            {activeSupportSection === "tickets" && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setActiveSupportSection(null)}
+                    className="flex items-center gap-2 text-white hover:bg-gray-100 hover:text-gray-900"
+                  >
+                    <ArrowLeft className="h-4 w-4 text-white" />
+                    Back to Overview
+                  </Button>
+                </div>
+
+                <Card className="glass-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-white">
+                      <Ticket className="h-5 w-5" />
+                      Ticket System Configuration
+                    </CardTitle>
+                    <CardDescription className="text-gray-400">
+                      Manage support tickets and user inquiries
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label htmlFor="ticket-system" className="text-white">
+                          Enable Ticket System
+                        </Label>
+                        <p className="text-sm text-gray-400">Allow users to create support tickets</p>
+                      </div>
+                      <Switch
+                        id="ticket-system"
+                        checked={serverConfig.support?.ticket_system?.enabled || false}
+                        onCheckedChange={(checked) =>
+                          updateServerConfig({
+                            support: {
+                              ...serverConfig.support,
+                              ticket_system: {
+                                ...serverConfig.support?.ticket_system,
+                                enabled: checked,
+                                embed: serverConfig.support?.ticket_system?.embed || {
+                                  title: "Support Ticket",
+                                  description: "Click the button below to create a support ticket.",
+                                  color: "#5865F2",
+                                  footer: "Support Team",
+                                },
+                                settings: serverConfig.support?.ticket_system?.settings || {
+                                  autoAnswer: { enabled: false, qa_pairs: "" },
+                                  blockedUsers: { enabled: false, userIds: [] },
+                                  inactivityClose: { enabled: false, timeoutMinutes: 30 },
+                                  logging: { enabled: false },
+                                },
+                              },
+                            },
+                          })
+                        }
+                      />
+                    </div>
+
+                    <Separator className="bg-white/20" />
+
+                    <div className="space-y-2">
+                      <Label htmlFor="ticket-category" className="text-white">
+                        Ticket Category ID
+                      </Label>
+                      <Input
+                        id="ticket-category"
+                        placeholder="Enter Discord category ID"
+                        value={serverConfig.support?.ticket_system?.channel_id || ""}
+                        onChange={(e) =>
+                          updateServerConfig({
+                            support: {
+                              ...serverConfig.support,
+                              ticket_system: { ...serverConfig.support.ticket_system, channel_id: e.target.value },
+                            },
+                          })
+                        }
+                        className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                      />
+                      <p className="text-sm text-gray-400">Discord category where ticket channels will be created</p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4 mt-6">
+                      <Card className="glass-card">
+                        <CardContent className="pt-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-400">Open Tickets</p>
+                              <p className="text-2xl font-bold text-white">8</p>
+                            </div>
+                            <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
+                              <AlertCircle className="h-8 w-8 text-yellow-500" />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="glass-card">
+                        <CardContent className="pt-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-400">Resolved Today</p>
+                              <p className="text-2xl font-bold text-white">15</p>
+                            </div>
+                            <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
+                              <CheckCircle className="h-8 w-8 text-green-500" />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="glass-card">
+                        <CardContent className="pt-6">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-gray-400">Total This Week</p>
+                              <p className="text-2xl font-bold text-white">47</p>
+                            </div>
+                            <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
+                              <Ticket className="h-8 w-8 text-gray-400" />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -3248,22 +3338,16 @@ export default function ServerConfigPage() {
 
             {/* Flag Staff Warning Dialog */}
             <Dialog open={showFlagStaffWarning} onOpenChange={setShowFlagStaffWarning}>
-              <DialogContent className="glass-card max-w-md">
+              <DialogContent className="glass-card">
                 <DialogHeader>
                   <DialogTitle className="text-white flex items-center">
-                    <Flag className="h-5 w-5 mr-2 text-white" />
+                    <Flag className="h-5 w-5 mr-2" />
                     Flag Staff Member
                   </DialogTitle>
                   <DialogDescription className="text-gray-400">
-                    Are you sure you want to flag this staff member?
+                    This will reduce the staff member's reputation score to 5. Are you sure you want to continue?
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <p className="text-gray-300">
-                    Flagging a staff member will reduce their reputation score to 5. This action is irreversible for the
-                    current reputation cycle.
-                  </p>
-                </div>
                 <DialogFooter>
                   <Button
                     variant="outline"
@@ -3278,281 +3362,64 @@ export default function ServerConfigPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-
-            {/* Ticket System */}
-            {activeSupportSection === "tickets" && (
-              <Card className="glass-card">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center text-xl">
-                    <MessageSquare className="h-6 w-6 mr-3" />
-                    Ticket System
-                  </CardTitle>
-                  <CardDescription className="text-gray-400">
-                    Configure ticket system and customize embed appearance
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium text-white text-base">Enable Ticket System</h3>
-                      <p className="text-sm text-gray-400">Allow users to create support tickets</p>
-                    </div>
-                    <Switch
-                      checked={serverConfig.support?.ticket_system?.enabled || false}
-                      onCheckedChange={(checked) =>
-                        updateServerConfig({
-                          support: {
-                            ...serverConfig.support,
-                            ticket_system: {
-                              ...serverConfig.support.ticket_system,
-                              enabled: checked,
-                              embed: serverConfig.support?.ticket_system?.embed || {
-                                title: "Support Ticket",
-                                description: "Click the button below to create a support ticket.",
-                                color: "#5865F2",
-                                footer: "Support Team",
-                              },
-                              settings: serverConfig.support?.ticket_system?.settings || {
-                                autoAnswer: { enabled: false, qa_pairs: "" },
-                                blockedUsers: { enabled: false, userIds: [] },
-                                inactivityClose: { enabled: false, timeoutMinutes: 30 },
-                                logging: { enabled: false },
-                              },
-                            },
-                          },
-                        })
-                      }
-                    />
-                  </div>
-
-                  {serverConfig.support?.ticket_system?.enabled && (
-                    <div className="space-y-6">
-                      {/* Embed Preview - Top */}
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-white font-medium">Embed Preview</h4>
-                          <Dialog open={showEmbedSettings} onOpenChange={setShowEmbedSettings}>
-                            <DialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
-                              >
-                                <Settings className="h-4 w-4 mr-2 text-white" />
-                                Customize
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="glass-card max-w-2xl">
-                              <DialogHeader>
-                                <DialogTitle className="text-white">Customize Embed</DialogTitle>
-                                <DialogDescription className="text-gray-400">
-                                  Customize the appearance of your ticket embed
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <div>
-                                  <Label className="text-white text-sm mb-2 block">Title</Label>
-                                  <Input
-                                    placeholder="Support Ticket"
-                                    value={serverConfig.support.ticket_system.embed?.title || ""}
-                                    onChange={(e) =>
-                                      updateServerConfig({
-                                        support: {
-                                          ...serverConfig.support,
-                                          ticket_system: {
-                                            ...serverConfig.support.ticket_system.embed,
-                                            title: e.target.value,
-                                          },
-                                        },
-                                      })
-                                    }
-                                    className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-                                  />
-                                </div>
-
-                                <div>
-                                  <Label className="text-white text-sm mb-2 block">Description</Label>
-                                  <Textarea
-                                    placeholder="Click the button below to create a support ticket."
-                                    value={serverConfig.support.ticket_system.embed?.description || ""}
-                                    onChange={(e) =>
-                                      updateServerConfig({
-                                        support: {
-                                          ...serverConfig.support,
-                                          ticket_system: {
-                                            ...serverConfig.support.ticket_system.embed,
-                                            description: e.target.value,
-                                          },
-                                        },
-                                      })
-                                    }
-                                    className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[100px]"
-                                  />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <Label className="text-white text-sm mb-2 block">Color</Label>
-                                    <Input
-                                      type="color"
-                                      value={serverConfig.support.ticket_system.embed?.color || "#5865F2"}
-                                      onChange={(e) =>
-                                        updateServerConfig({
-                                          support: {
-                                            ...serverConfig.support,
-                                            ticket_system: {
-                                              ...serverConfig.support.ticket_system.embed,
-                                              color: e.target.value,
-                                            },
-                                          },
-                                        })
-                                      }
-                                      className="bg-black/60 border-white/20 h-10"
-                                    />
-                                  </div>
-
-                                  <div>
-                                    <Label className="text-white text-sm mb-2 block">Thumbnail URL</Label>
-                                    <Input
-                                      placeholder="https://example.com/image.png"
-                                      value={serverConfig.support.ticket_system.embed?.thumbnail || ""}
-                                      onChange={(e) =>
-                                        updateServerConfig({
-                                          support: {
-                                            ...serverConfig.support,
-                                            ticket_system: {
-                                              ...serverConfig.support.ticket_system.embed,
-                                              thumbnail: e.target.value,
-                                            },
-                                          },
-                                        })
-                                      }
-                                      className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-                                    />
-                                  </div>
-                                </div>
-
-                                <div>
-                                  <Label className="text-white text-sm mb-2 block">Footer Text</Label>
-                                  <Input
-                                    placeholder="Support Team"
-                                    value={serverConfig.support.ticket_system.embed?.footer || ""}
-                                    onChange={(e) =>
-                                      updateServerConfig({
-                                        support: {
-                                          ...serverConfig.support,
-                                          ticket_system: {
-                                            ...serverConfig.support.ticket_system.embed,
-                                            footer: e.target.value,
-                                          },
-                                        },
-                                      })
-                                    }
-                                    className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-                                  />
-                                </div>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        </div>
-
-                        {/* Preview */}
-                        <div
-                          className="border-l-4 bg-gray-800/50 p-4 rounded-r-lg"
-                          style={{ borderLeftColor: serverConfig.support.ticket_system.embed?.color || "#5865F2" }}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              {serverConfig.support.ticket_system.embed?.title && (
-                                <h3 className="text-white font-semibold mb-2">
-                                  {serverConfig.support.ticket_system.embed?.title}
-                                </h3>
-                              )}
-                              {serverConfig.support.ticket_system.embed?.description && (
-                                <p className="text-gray-300">{serverConfig.support.ticket_system.embed?.description}</p>
-                              )}
-                            </div>
-                            {serverConfig.support.ticket_system.embed?.thumbnail && (
-                              <div className="ml-4">
-                                <Image
-                                  src={serverConfig.support.ticket_system.embed?.thumbnail || "/placeholder.svg"}
-                                  alt="Thumbnail"
-                                  width={50}
-                                  height={50}
-                                  className="rounded-md"
-                                />
-                              </div>
-                            )}
-                          </div>
-                          {serverConfig.support.ticket_system.embed?.footer && (
-                            <p className="text-gray-400 text-sm mt-2">
-                              {serverConfig.support.ticket_system.embed?.footer}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Category Select */}
-                      <div>
-                        <Label className="text-white text-sm mb-2 block">Ticket Category</Label>
-                        <Select
-                          value={serverConfig.support?.ticket_system?.channel_id || ""}
-                          onValueChange={(value) =>
-                            updateServerConfig({
-                              support: {
-                                ...serverConfig.support,
-                                ticket_system: {
-                                  ...serverConfig.support.ticket_system,
-                                  channel_id: value,
-                                },
-                              },
-                            })
-                          }
-                        >
-                          <SelectTrigger className="bg-black/60 border-white/20 h-8">
-                            <SelectValue placeholder="Select a category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {serverConfig.channels &&
-                              Object.entries(serverConfig.channels).map(([channelId, channelName]) => (
-                                <SelectItem key={channelId} value={channelId}>
-                                  {channelName}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Send Embed Button */}
-                      <Button onClick={sendTicketEmbed} className="bg-white text-black hover:bg-gray-100">
-                        Send Ticket Embed
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
           </div>
         )}
 
         {/* Events Tab */}
-        {activeTab === "events" && <div className="space-y-6">{renderEventContent()}</div>}
+        {activeTab === "events" && renderEventContent()}
 
         {/* Integrations Tab */}
         {activeTab === "integrations" && (
           <div className="space-y-6">
             <Card className="glass-card">
               <CardHeader>
-                <CardTitle className="text-white flex items-center text-xl">
-                  <LinkIcon className="h-6 w-6 mr-3" />
-                  Integrations
-                </CardTitle>
-                <CardDescription className="text-gray-400">
-                  Connect your server with other services and platforms
-                </CardDescription>
+                <CardTitle className="text-white text-xl">Integrations</CardTitle>
+                <CardDescription className="text-gray-400">Connect external services to your server</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <p className="text-gray-400">Integrations are coming soon! Stay tuned for updates.</p>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card className="glass-card">
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <div className="w-10 h-10 bg-gray-600 rounded-lg flex items-center justify-center">
+                          <Webhook className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-medium">Webhooks</h3>
+                          <p className="text-sm text-gray-400">Send messages via webhooks</p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                      >
+                        Configure
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="glass-card">
+                    <CardContent className="p-4">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <div className="w-10 h-10 bg-gray-600 rounded-lg flex items-center justify-center">
+                          <Mail className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-medium">Email Notifications</h3>
+                          <p className="text-sm text-gray-400">Get notified via email</p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                      >
+                        Configure
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -3564,218 +3431,197 @@ export default function ServerConfigPage() {
         {/* Settings Tab */}
         {activeTab === "settings" && (
           <div className="space-y-6">
-            {/* Bot Profile Header */}
+            {/* Bot Customization */}
             <Card className="glass-card">
               <CardHeader>
-                <CardTitle className="text-white flex items-center text-xl">
-                  <Bot className="h-6 w-6 mr-3" />
-                  Bot Configuration
-                </CardTitle>
+                <CardTitle className="text-white text-xl">Bot Customization</CardTitle>
                 <CardDescription className="text-gray-400">
                   Customize your bot's appearance and settings
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center space-x-6">
-                  {/* Bot Avatar */}
+                {/* Bot Profile Header */}
+                <div className="flex items-center space-x-4 p-4 rounded-lg bg-black/20 border border-white/10">
                   <div className="relative">
-                    <Avatar className="w-20 h-20 border-4 border-blue-500">
+                    <Avatar className="w-16 h-16">
                       <AvatarImage src={profilePictureUrl || "/placeholder.svg"} alt="Bot Avatar" />
-                      <AvatarFallback className="text-2xl font-bold bg-blue-800 text-white">
+                      <AvatarFallback className="bg-blue-600 text-white text-lg">
                         {customBotName ? customBotName.charAt(0) : "S"}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-background"></div>
                   </div>
-
-                  {/* Bot Info */}
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold text-white mb-1">{customBotName || "Sycord"}</h2>
-                    <p className="text-gray-400 mb-2">Discord Bot</p>
-                    <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/50">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                      Online
-                    </Badge>
+                  <div>
+                    <h3 className="text-white font-semibold text-lg">{customBotName || "Sycord Bot"}</h3>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-sm text-gray-400">Online</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Customization Form */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Bot Settings Form */}
+                <div className="space-y-4">
                   <div>
-                    <Label className="text-white text-sm mb-2 block">Bot Name</Label>
+                    <Label htmlFor="bot-name" className="text-white">
+                      Bot Name
+                    </Label>
                     <Input
-                      placeholder="Enter bot name"
+                      id="bot-name"
+                      placeholder="Enter custom bot name"
                       value={customBotName}
                       onChange={(e) => setCustomBotName(e.target.value)}
                       className="bg-black/60 border-white/20 text-white placeholder-gray-400"
                     />
                   </div>
+
                   <div>
-                    <Label className="text-white text-sm mb-2 block">Profile Picture URL</Label>
+                    <Label htmlFor="profile-picture" className="text-white">
+                      Profile Picture URL
+                    </Label>
                     <Input
-                      placeholder="https://example.com/avatar.png"
+                      id="profile-picture"
+                      placeholder="https://example.com/image.png"
                       value={profilePictureUrl}
                       onChange={(e) => setProfilePictureUrl(e.target.value)}
                       className="bg-black/60 border-white/20 text-white placeholder-gray-400"
                     />
                   </div>
-                </div>
 
-                <div>
-                  <Label className="text-white text-sm mb-2 block">Bot Token (Optional)</Label>
-                  <div className="relative">
-                    <Input
-                      type={showToken ? "text" : "password"}
-                      placeholder="Enter bot token for custom bot"
-                      value={botToken}
-                      onChange={(e) => setBotToken(e.target.value)}
-                      className="bg-black/60 border-white/20 text-white placeholder-gray-400 pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-                      onClick={() => setShowToken(!showToken)}
-                    >
-                      {showToken ? <Eye className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
+                  <div>
+                    <Label htmlFor="bot-token" className="text-white">
+                      Bot Token
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="bot-token"
+                        type={showToken ? "text" : "password"}
+                        placeholder="Enter your bot token"
+                        value={botToken}
+                        onChange={(e) => setBotToken(e.target.value)}
+                        className="bg-black/60 border-white/20 text-white placeholder-gray-400 pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-white"
+                        onClick={() => setShowToken(!showToken)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">Leave empty to use the default Sycord bot</p>
-                </div>
 
-                <Button onClick={handleSaveBotSettings} className="bg-white text-black hover:bg-gray-100">
-                  Save Bot Settings
-                </Button>
+                  <Button onClick={handleSaveBotSettings} className="bg-white text-black hover:bg-gray-100">
+                    Save Bot Settings
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
             {/* Settings Options */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="glass-card cursor-pointer hover:bg-white/5 transition-colors group">
-                <CardHeader className="text-center">
-                  <div className="mx-auto w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center group-hover:bg-red-500/30 transition-colors">
-                    <Mail className="w-6 h-6 text-red-400" />
-                  </div>
-                  <CardTitle className="text-white">Report Problem</CardTitle>
-                  <CardDescription className="text-gray-400">Contact our support team for assistance</CardDescription>
-                </CardHeader>
-                <CardContent>
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-white text-xl">Settings</CardTitle>
+                <CardDescription className="text-gray-400">Manage your account and data</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
                   <Button
-                    className="w-full bg-transparent border-white/20 text-white hover:bg-gray-100 hover:text-gray-900"
                     variant="outline"
-                    onClick={() => window.open("mailto:support@sycord.com", "_blank")}
+                    className="w-full justify-start border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
                   >
-                    <LinkIcon className="w-4 h-4 mr-2" />
-                    Email Support
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    Report Problem
                   </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="glass-card cursor-pointer hover:bg-white/5 transition-colors group">
-                <CardHeader className="text-center">
-                  <div className="mx-auto w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
-                    <Download className="w-6 h-6 text-green-400" />
-                  </div>
-                  <CardTitle className="text-white">Manage Data</CardTitle>
-                  <CardDescription className="text-gray-400">Download your collected user data as JSON</CardDescription>
-                </CardHeader>
-                <CardContent>
                   <Button
-                    className="w-full bg-transparent border-white/20 text-white hover:bg-gray-100 hover:text-gray-900"
                     variant="outline"
                     onClick={downloadUserData}
+                    className="w-full justify-start border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
                   >
-                    <Download className="w-4 h-4 mr-2" />
-                    Download Data
+                    <Download className="h-4 w-4 mr-2" />
+                    Manage Data
                   </Button>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Footer with Terms and Privacy */}
-            <Card className="glass-card">
-              <CardContent className="p-6">
-                <div className="text-center space-y-4">
-                  <div className="flex items-center justify-center space-x-6 text-sm">
-                    <Button variant="link" size="sm" className="text-gray-400 hover:text-white p-0">
-                      Terms of Service
-                    </Button>
-                    <Button variant="link" size="sm" className="text-gray-400 hover:text-white p-0">
-                      Privacy Policy
-                    </Button>
-                    <Button variant="link" size="sm" className="text-gray-400 hover:text-white p-0">
-                      Support
-                    </Button>
-                  </div>
-                  <Separator className="bg-white/20" />
-                  <div className="text-xs text-gray-500">
-                    <p>© 2024 Sycord. All rights reserved.</p>
-                    <p className="mt-1">
-                      We collect minimal data necessary for bot functionality. Your data is never sold or shared with
-                      third parties.
-                    </p>
-                  </div>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Footer */}
+            <div className="text-center text-sm text-gray-400 space-y-2">
+              <div className="flex justify-center space-x-4">
+                <Link href="/terms" className="hover:text-white transition-colors">
+                  Terms of Service
+                </Link>
+                <Link href="/privacy" className="hover:text-white transition-colors">
+                  Privacy Policy
+                </Link>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Access+ Tab */}
+        {/* Access+ Tab (Admin Only) */}
         {activeTab === "access-plus" && session?.user?.email === "dmarton336@gmail.com" && (
           <div className="space-y-6">
-            {/* App Settings */}
             <Card className="glass-card">
               <CardHeader>
-                <CardTitle className="text-white flex items-center text-xl">
-                  <Settings className="h-6 w-6 mr-3" />
-                  App Settings
-                </CardTitle>
-                <CardDescription className="text-gray-400">Manage global app settings</CardDescription>
+                <CardTitle className="text-white text-xl">Access+ Admin Panel</CardTitle>
+                <CardDescription className="text-gray-400">Administrative controls and settings</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Maintenance Mode */}
                 <div className="flex items-center justify-between">
                   <div>
                     <Label htmlFor="maintenance-mode" className="text-white">
                       Maintenance Mode
                     </Label>
-                    <p className="text-sm text-gray-400">Enable or disable maintenance mode for the entire app</p>
+                    <p className="text-sm text-gray-400">Enable maintenance mode for the entire application</p>
                   </div>
                   <Switch
                     id="maintenance-mode"
-                    checked={appSettings?.maintenanceMode.enabled || false}
+                    checked={appSettings?.maintenanceMode?.enabled || false}
                     onCheckedChange={handleMaintenanceToggle}
                   />
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* Announcements */}
-            <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center text-xl">
-                  <Megaphone className="h-6 w-6 mr-3" />
-                  Announcements
-                </CardTitle>
-                <CardDescription className="text-gray-400">Send global announcements to all users</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <Label htmlFor="new-announcement" className="text-white">
-                    New Announcement
+                <Separator className="bg-white/20" />
+
+                {/* Send Announcement */}
+                <div className="space-y-3">
+                  <Label htmlFor="announcement" className="text-white">
+                    Send Global Announcement
                   </Label>
                   <Textarea
-                    id="new-announcement"
-                    placeholder="Enter your announcement message"
+                    id="announcement"
+                    placeholder="Enter announcement message..."
                     value={newAnnouncement}
                     onChange={(e) => setNewAnnouncement(e.target.value)}
-                    className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[80px]"
+                    className="bg-black/60 border-white/20 text-white placeholder-gray-400"
                   />
+                  <Button onClick={handleSendAnnouncement} className="bg-white text-black hover:bg-gray-100">
+                    <Megaphone className="h-4 w-4 mr-2" />
+                    Send Announcement
+                  </Button>
                 </div>
-                <Button onClick={handleSendAnnouncement} className="bg-white text-black hover:bg-gray-100">
-                  Send Announcement
-                </Button>
+
+                <Separator className="bg-white/20" />
+
+                {/* Recent Announcements */}
+                <div className="space-y-3">
+                  <h4 className="text-white font-medium">Recent Announcements</h4>
+                  {announcements.length > 0 ? (
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {announcements.slice(0, 5).map((ann) => (
+                        <div key={ann._id} className="p-2 rounded bg-black/20 border border-white/10">
+                          <p className="text-white text-sm">{ann.message}</p>
+                          <p className="text-xs text-gray-400">{new Date(ann.createdAt).toLocaleString()}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 text-sm">No announcements yet</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>
