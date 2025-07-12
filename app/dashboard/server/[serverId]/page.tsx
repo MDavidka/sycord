@@ -1836,7 +1836,11 @@ export default function ServerConfigPage() {
                         className="rounded"
                       />
                     ) : (
-                      <div className="w-5 h-5 bg-gray-600 rounded"></div>
+                      <Avatar className="w-5 h-5">
+                        <AvatarFallback className="text-xs bg-gray-600 text-white">
+                          {serverConfig.server_name ? serverConfig.server_name.charAt(0) : "S"}
+                        </AvatarFallback>
+                      </Avatar>
                     )}
                     <span className="truncate max-w-32">{serverConfig.server_name}</span>
                     <ChevronDown className="h-4 w-4" />
@@ -3063,7 +3067,7 @@ export default function ServerConfigPage() {
                   onClick={() => setActiveSupportSection(null)}
                   className="text-white hover:bg-gray-100 hover:text-gray-900"
                 >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  <ArrowLeft className="h-4 w-4 mr-2 text-white" />
                   Back to Support
                 </Button>
 
