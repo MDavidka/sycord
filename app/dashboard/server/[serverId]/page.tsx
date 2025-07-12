@@ -54,7 +54,6 @@ import {
   Package,
   Settings,
   Lock,
-  EyeOff,
   Megaphone,
   Flag,
   LifeBuoy,
@@ -63,6 +62,7 @@ import {
   BarChart3,
   CheckCircle,
   AlertCircle,
+  Mail,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -73,6 +73,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
 import { Textarea } from "@/components/ui/textarea"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 // Define UserData interface
 interface UserData {
@@ -219,6 +220,16 @@ interface ServerConfig {
     member_joins: boolean
     member_leaves: boolean
   }
+  invite_tracking: {
+    enabled: boolean
+    channel_id?: string
+    track_joins: boolean
+    track_leaves: boolean
+  }
+  automatic_tasks: {
+    enabled: boolean
+    tasks: { id: string; name: string; type: string; status: string }[]
+  }
   last_updated?: string
   channels?: { [key: string]: string }
   server_stats?: {
@@ -246,6 +257,7 @@ interface Announcement {
 }
 
 type SupportView = "overview" | "staff-insights" | "tickets"
+type EventView = "overview" | "automatic-task" | "giveaway" | "logger" | "invite-track"
 
 export default function ServerConfigPage() {
   const { data: session, status } = useSession()
@@ -271,6 +283,7 @@ export default function ServerConfigPage() {
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState("home") // Changed default active tab to "home"
   const [supportView, setSupportView] = useState<SupportView>("overview")
+  const [activeEventSection, setActiveEventSection] = useState<EventView>("overview")
 
   // Giveaway state
   const [giveawayStep, setGiveawayStep] = useState(1)
@@ -348,6 +361,7 @@ export default function ServerConfigPage() {
             max_reputation_score: configData.server.support?.max_reputation_score ?? 20,
             ticket_system: {
               ...configData.server.support?.ticket_system,
+              enabled: configData.server.support?.ticket_system?.enabled ?? false,
               embed: configData.server.support?.ticket_system?.embed || {
                 title: "Support Ticket",
                 description: "Click the button below to create a support ticket.",
@@ -361,6 +375,23 @@ export default function ServerConfigPage() {
                 logging: { enabled: false },
               },
             },
+          },
+          logs: {
+            ...configData.server.logs,
+            enabled: configData.server.logs?.enabled ?? false,
+            message_edits: configData.server.logs?.message_edits ?? false,
+            mod_actions: configData.server.logs?.mod_actions ?? false,
+            member_joins: configData.server.logs?.member_joins ?? false,
+            member_leaves: configData.server.logs?.member_leaves ?? false,
+          },
+          invite_tracking: {
+            enabled: configData.server.invite_tracking?.enabled ?? false,
+            track_joins: configData.server.invite_tracking?.track_joins ?? false,
+            track_leaves: configData.server.invite_tracking?.track_leaves ?? false,
+          },
+          automatic_tasks: {
+            enabled: configData.server.automatic_tasks?.enabled ?? false,
+            tasks: configData.server.automatic_tasks?.tasks ?? [],
           },
         }
         setServerConfig(initialConfig)
@@ -923,82 +954,747 @@ export default function ServerConfigPage() {
       default:
         return (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
+              {" "}
+              {/* Changed to grid-cols-1 for vertical stacking */}
               <Card
                 className="glass-card cursor-pointer hover:bg-white/5 transition-colors"
-                onClick={() => setSupportView("staff-insights")}
+                onClick={() => setActiveSupportSection("staff")}
               >
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-white">
-                    <Eye className="h-5 w-5 text-blue-500" />
-                    Staff Insights
-                  </CardTitle>
-                  <CardDescription className="text-gray-400">Monitor staff performance and activity</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-gray-400">Status</p>
-                      <Badge
-                        variant={serverConfig.support?.reputation_enabled ? "default" : "secondary"}
-                        className={`${serverConfig.support?.reputation_enabled ? "bg-white text-black" : "bg-gray-100 text-gray-900"}`}
-                      >
-                        {serverConfig.support?.reputation_enabled ? "Enabled" : "Disabled"}
-                      </Badge>
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                      <Users className="h-6 w-6 text-blue-400" />
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-400">Active Staff</p>
-                      <p className="text-2xl font-bold text-white">12</p>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Staff Insights</h3>
+                      <p className="text-sm text-gray-400">Monitor staff performance and reputation</p>
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${serverConfig.support?.reputation_enabled ? "bg-green-500" : "bg-gray-400"}`}
-                      />
-                      <span className="text-sm text-gray-400">
-                        Reputation System {serverConfig.support?.reputation_enabled ? "Active" : "Inactive"}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Status:</span>
+                      <span
+                        className={`${serverConfig.support?.reputation_enabled ? "text-green-400" : "text-gray-400"}`}
+                      >
+                        {serverConfig.support?.reputation_enabled ? "Enabled" : "Disabled"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Active Staff:</span>
+                      <span className="text-white">{serverConfig.support?.staff?.length || 0}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card
+                className="glass-card cursor-pointer hover:bg-white/5 transition-colors"
+                onClick={() => setActiveSupportSection("tickets")}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                      <MessageSquare className="h-6 w-6 text-purple-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Ticket System</h3>
+                      <p className="text-sm text-gray-400">Configure support tickets and embeds</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Status:</span>
+                      <span
+                        className={`${serverConfig.support?.ticket_system?.enabled ? "text-green-400" : "text-gray-400"}`}
+                      >
+                        {serverConfig.support?.ticket_system?.enabled ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Channel:</span>
+                      <span className="text-white">
+                        {serverConfig.support?.ticket_system?.channel_id
+                          ? getChannelName(serverConfig.support.ticket_system.channel_id)
+                          : "Not set"}
                       </span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
+            </div>
+          </div>
+        )
+    }
+  }
 
-              <Card
-                className="glass-card cursor-pointer hover:bg-white/5 transition-colors"
-                onClick={() => setSupportView("tickets")}
-              >
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-white">
-                    <MessageSquare className="h-5 w-5 text-green-500" />
-                    Ticket System
-                  </CardTitle>
-                  <CardDescription className="text-gray-400">Manage support tickets and user inquiries</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-gray-400">Status</p>
-                      <Badge
-                        variant={serverConfig.support?.ticket_system?.enabled ? "default" : "secondary"}
-                        className={`${serverConfig.support?.ticket_system?.enabled ? "bg-white text-black" : "bg-gray-100 text-gray-900"}`}
+  const renderEventContent = () => {
+    switch (activeEventSection) {
+      case "automatic-task":
+        return (
+          <div className="space-y-6">
+            <Button
+              variant="ghost"
+              onClick={() => setActiveEventSection("overview")}
+              className="text-white hover:bg-gray-100 hover:text-gray-900"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Overview
+            </Button>
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center text-xl">
+                  <Clock className="h-6 w-6 mr-3" /> Automatic Tasks
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  Automate actions and schedule tasks for your server.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="auto-tasks" className="text-white">
+                      Enable Automatic Tasks
+                    </Label>
+                    <p className="text-sm text-gray-400">Enable scheduled tasks and automated actions.</p>
+                  </div>
+                  <Switch
+                    id="auto-tasks"
+                    checked={serverConfig.automatic_tasks?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateServerConfig({
+                        automatic_tasks: { ...serverConfig.automatic_tasks, enabled: checked },
+                      })
+                    }
+                  />
+                </div>
+                <Separator className="bg-white/20" />
+                {serverConfig.automatic_tasks?.enabled && (
+                  <div className="space-y-4">
+                    <h4 className="text-white font-medium">Scheduled Tasks</h4>
+                    {serverConfig.automatic_tasks.tasks?.length > 0 ? (
+                      <div className="space-y-2">
+                        {serverConfig.automatic_tasks.tasks.map((task) => (
+                          <div
+                            key={task.id}
+                            className="flex items-center justify-between p-3 rounded-md bg-black/20 border border-white/10"
+                          >
+                            <span className="text-white">{task.name}</span>
+                            <Badge variant="secondary" className="bg-gray-100 text-gray-900">
+                              {task.status}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-400 text-sm">No automatic tasks configured yet.</p>
+                    )}
+                    <Button
+                      variant="outline"
+                      className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                    >
+                      <Plus className="h-4 w-4 mr-2" /> Add New Task
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )
+      case "giveaway":
+        return (
+          <div className="space-y-6">
+            <Button
+              variant="ghost"
+              onClick={() => setActiveEventSection("overview")}
+              className="text-white hover:bg-gray-100 hover:text-gray-900"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Overview
+            </Button>
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center text-xl">
+                  <Gift className="h-6 w-6 mr-3" /> Giveaway System
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  Configure and manage giveaways for your server
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {giveawayStep === 1 && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white">Step 1: Select Giveaway Method</h3>
+                    <p className="text-gray-400">Choose how you want to create the giveaway</p>
+                    <div className="flex space-x-4">
+                      <Button
+                        onClick={() => handleMethodSelect("server")}
+                        className="bg-white text-black hover:bg-gray-100"
                       >
-                        {serverConfig.support?.ticket_system?.enabled ? "Enabled" : "Disabled"}
-                      </Badge>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-400">Open Tickets</p>
-                      <p className="text-2xl font-bold text-white">8</p>
+                        Create on Server
+                      </Button>
+                      <Button
+                        onClick={() => handleMethodSelect("link")}
+                        className="bg-white text-black hover:bg-gray-100"
+                      >
+                        Create with Link
+                      </Button>
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-2 h-2 rounded-full ${serverConfig.support?.ticket_system?.channel_id ? "bg-green-500" : "bg-gray-400"}`}
-                      />
-                      <span className="text-sm text-gray-400">
-                        Category {serverConfig.support?.ticket_system?.channel_id ? "Configured" : "Not Set"}
+                )}
+
+                {giveawayStep === 2 && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white">Step 2: Configure Giveaway</h3>
+                    <p className="text-gray-400">Enter the details for your giveaway</p>
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-white text-sm mb-2 block">Title</Label>
+                        <Input
+                          placeholder="Summer Giveaway"
+                          value={giveawayData.title}
+                          onChange={(e) => setGiveawayData({ ...giveawayData, title: e.target.value })}
+                          className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-white text-sm mb-2 block">Prize</Label>
+                        <Input
+                          placeholder="Gaming PC"
+                          value={giveawayData.prize}
+                          onChange={(e) => setGiveawayData({ ...giveawayData, prize: e.target.value })}
+                          className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-white text-sm mb-2 block">Description</Label>
+                        <Textarea
+                          placeholder="Enter the description for the giveaway"
+                          value={giveawayData.description}
+                          onChange={(e) => setGiveawayData({ ...giveawayData, description: e.target.value })}
+                          className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[80px]"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-white text-sm mb-2 block">End Date</Label>
+                        <Input
+                          type="datetime-local"
+                          value={giveawayData.endDate}
+                          onChange={(e) => setGiveawayData({ ...giveawayData, endDate: e.target.value })}
+                          className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-white text-sm mb-2 block">Number of Winners</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={giveawayData.winners}
+                          onChange={(e) =>
+                            setGiveawayData({ ...giveawayData, winners: Number.parseInt(e.target.value) })
+                          }
+                          className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                        />
+                      </div>
+                      {giveawayData.method === "server" && (
+                        <div>
+                          <Label className="text-white text-sm mb-2 block">Channel</Label>
+                          <Select
+                            value={giveawayData.channel}
+                            onValueChange={(value) => setGiveawayData({ ...giveawayData, channel: value })}
+                          >
+                            <SelectTrigger className="bg-black/60 border-white/20 h-8">
+                              <SelectValue placeholder="Select a channel" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {serverConfig.channels &&
+                                Object.entries(serverConfig.channels).map(([channelId, channelName]) => (
+                                  <SelectItem key={channelId} value={channelId}>
+                                    {channelName}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      {giveawayData.method === "link" && (
+                        <div>
+                          <Label className="text-white text-sm mb-2 block">Custom URL (Optional)</Label>
+                          <Input
+                            placeholder="custom-giveaway-url"
+                            value={giveawayData.customUrl}
+                            onChange={(e) => setGiveawayData({ ...giveawayData, customUrl: e.target.value })}
+                            className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex justify-between">
+                      <Button
+                        variant="outline"
+                        onClick={handlePrevStep}
+                        className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                      >
+                        Previous
+                      </Button>
+                      <Button onClick={handleNextStep} className="bg-white text-black hover:bg-gray-100">
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {giveawayStep === 3 && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white">Step 3: Set Requirements</h3>
+                    <p className="text-gray-400">Set the requirements for users to enter the giveaway</p>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-white text-sm">Require Server Membership</Label>
+                          <p className="text-xs text-gray-400">Users must be a member of the server</p>
+                        </div>
+                        <Switch
+                          checked={giveawayData.requireMembership}
+                          onCheckedChange={(checked) =>
+                            setGiveawayData({ ...giveawayData, requireMembership: checked })
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-white text-sm">Require Specific Role</Label>
+                          <p className="text-xs text-gray-400">Users must have a specific role</p>
+                        </div>
+                        <Switch
+                          checked={giveawayData.requireRole}
+                          onCheckedChange={(checked) => setGiveawayData({ ...giveawayData, requireRole: checked })}
+                        />
+                      </div>
+                      {giveawayData.requireRole && (
+                        <div>
+                          <Label className="text-white text-sm mb-2 block">Select Role</Label>
+                          <Select
+                            value={giveawayData.selectedRole}
+                            onValueChange={(value) => setGiveawayData({ ...giveawayData, selectedRole: value })}
+                          >
+                            <SelectTrigger className="bg-black/60 border-white/20 h-8">
+                              <SelectValue placeholder="Select a role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {serverConfig.roles_and_names &&
+                                Object.entries(serverConfig.roles_and_names).map(([roleId, roleName]) => (
+                                  <SelectItem key={roleId} value={roleId}>
+                                    {roleName}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-white text-sm">Require Account Age</Label>
+                          <p className="text-xs text-gray-400">Users must have an account older than a certain age</p>
+                        </div>
+                        <Switch
+                          checked={giveawayData.requireAccountAge}
+                          onCheckedChange={(checked) =>
+                            setGiveawayData({ ...giveawayData, requireAccountAge: checked })
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-white text-sm">Require Login</Label>
+                          <p className="text-xs text-gray-400">Users must login to enter</p>
+                        </div>
+                        <Switch
+                          checked={giveawayData.requireLogin}
+                          onCheckedChange={(checked) => setGiveawayData({ ...giveawayData, requireLogin: checked })}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-between">
+                      <Button
+                        variant="outline"
+                        onClick={handlePrevStep}
+                        className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                      >
+                        Previous
+                      </Button>
+                      <Button onClick={handleCreateGiveaway} className="bg-white text-black hover:bg-gray-100">
+                        Create Giveaway
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {giveawayCreated && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white">Giveaway Created!</h3>
+                    {giveawayData.method === "link" && (
+                      <div className="space-y-2">
+                        <p className="text-gray-400">Share this link with your community:</p>
+                        <div className="flex items-center justify-between bg-black/60 border-white/20 rounded-md p-2">
+                          <Input readOnly value={generatedLink} className="bg-transparent border-none text-white" />
+                          <Button onClick={copyLink} className="bg-white text-black hover:bg-gray-100">
+                            {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    <Button onClick={resetGiveaway} className="bg-gray-100 text-gray-900 hover:bg-gray-200">
+                      Create Another Giveaway
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )
+      case "logger":
+        return (
+          <div className="space-y-6">
+            <Button
+              variant="ghost"
+              onClick={() => setActiveEventSection("overview")}
+              className="text-white hover:bg-gray-100 hover:text-gray-900"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Overview
+            </Button>
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center text-xl">
+                  <FileText className="h-6 w-6 mr-3" /> Logger
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  Configure logging for server events and actions.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="logger-enabled" className="text-white">
+                      Enable Logger
+                    </Label>
+                    <p className="text-sm text-gray-400">Log various server events to a designated channel.</p>
+                  </div>
+                  <Switch
+                    id="logger-enabled"
+                    checked={serverConfig.logs?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateServerConfig({
+                        logs: { ...serverConfig.logs, enabled: checked },
+                      })
+                    }
+                  />
+                </div>
+                <Separator className="bg-white/20" />
+                {serverConfig.logs?.enabled && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-white text-sm mb-2 block">Log Channel</Label>
+                      <Select
+                        value={serverConfig.logs?.channel_id || ""}
+                        onValueChange={(value) =>
+                          updateServerConfig({
+                            logs: { ...serverConfig.logs, channel_id: value },
+                          })
+                        }
+                      >
+                        <SelectTrigger className="bg-black/60 border-white/20 h-8">
+                          <SelectValue placeholder="Select a channel" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {serverConfig.channels &&
+                            Object.entries(serverConfig.channels).map(([channelId, channelName]) => (
+                              <SelectItem key={channelId} value={channelId}>
+                                {channelName}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-white font-medium">Events to Log</h4>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="log-message-edits" className="text-white text-sm">
+                          Message Edits
+                        </Label>
+                        <Switch
+                          id="log-message-edits"
+                          checked={serverConfig.logs?.message_edits || false}
+                          onCheckedChange={(checked) =>
+                            updateServerConfig({
+                              logs: { ...serverConfig.logs, message_edits: checked },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="log-mod-actions" className="text-white text-sm">
+                          Moderation Actions
+                        </Label>
+                        <Switch
+                          id="log-mod-actions"
+                          checked={serverConfig.logs?.mod_actions || false}
+                          onCheckedChange={(checked) =>
+                            updateServerConfig({
+                              logs: { ...serverConfig.logs, mod_actions: checked },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="log-member-joins" className="text-white text-sm">
+                          Member Joins
+                        </Label>
+                        <Switch
+                          id="log-member-joins"
+                          checked={serverConfig.logs?.member_joins || false}
+                          onCheckedChange={(checked) =>
+                            updateServerConfig({
+                              logs: { ...serverConfig.logs, member_joins: checked },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="log-member-leaves" className="text-white text-sm">
+                          Member Leaves
+                        </Label>
+                        <Switch
+                          id="log-member-leaves"
+                          checked={serverConfig.logs?.member_leaves || false}
+                          onCheckedChange={(checked) =>
+                            updateServerConfig({
+                              logs: { ...serverConfig.logs, member_leaves: checked },
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )
+      case "invite-track":
+        return (
+          <div className="space-y-6">
+            <Button
+              variant="ghost"
+              onClick={() => setActiveEventSection("overview")}
+              className="text-white hover:bg-gray-100 hover:text-gray-900"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Overview
+            </Button>
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center text-xl">
+                  <LinkIcon className="h-6 w-6 mr-3" /> Invite Tracker
+                </CardTitle>
+                <CardDescription className="text-gray-400">Track invites and monitor server growth.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="invite-track-enabled" className="text-white">
+                      Enable Invite Tracker
+                    </Label>
+                    <p className="text-sm text-gray-400">Track which invites members use to join your server.</p>
+                  </div>
+                  <Switch
+                    id="invite-track-enabled"
+                    checked={serverConfig.invite_tracking?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateServerConfig({
+                        invite_tracking: { ...serverConfig.invite_tracking, enabled: checked },
+                      })
+                    }
+                  />
+                </div>
+                <Separator className="bg-white/20" />
+                {serverConfig.invite_tracking?.enabled && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-white text-sm mb-2 block">Invite Log Channel</Label>
+                      <Select
+                        value={serverConfig.invite_tracking?.channel_id || ""}
+                        onValueChange={(value) =>
+                          updateServerConfig({
+                            invite_tracking: { ...serverConfig.invite_tracking, channel_id: value },
+                          })
+                        }
+                      >
+                        <SelectTrigger className="bg-black/60 border-white/20 h-8">
+                          <SelectValue placeholder="Select a channel" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {serverConfig.channels &&
+                            Object.entries(serverConfig.channels).map(([channelId, channelName]) => (
+                              <SelectItem key={channelId} value={channelId}>
+                                {channelName}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-white font-medium">Events to Track</h4>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="track-joins" className="text-white text-sm">
+                          Track Joins
+                        </Label>
+                        <Switch
+                          id="track-joins"
+                          checked={serverConfig.invite_tracking?.track_joins || false}
+                          onCheckedChange={(checked) =>
+                            updateServerConfig({
+                              invite_tracking: { ...serverConfig.invite_tracking, track_joins: checked },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="track-leaves" className="text-white text-sm">
+                          Track Leaves
+                        </Label>
+                        <Switch
+                          id="track-leaves"
+                          checked={serverConfig.invite_tracking?.track_leaves || false}
+                          onCheckedChange={(checked) =>
+                            updateServerConfig({
+                              invite_tracking: { ...serverConfig.invite_tracking, track_leaves: checked },
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )
+      default:
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Automatic Task Card */}
+              <Card
+                className="glass-card cursor-pointer hover:bg-white/5 transition-colors"
+                onClick={() => setActiveEventSection("automatic-task")}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="w-12 h-12 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+                      <Clock className="h-6 w-6 text-yellow-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Automatic Tasks</h3>
+                      <p className="text-sm text-gray-400">Automate actions and schedule tasks</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Status:</span>
+                      <span className={`${serverConfig.automatic_tasks?.enabled ? "text-green-400" : "text-gray-400"}`}>
+                        {serverConfig.automatic_tasks?.enabled ? "Enabled" : "Disabled"}
                       </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Active Tasks:</span>
+                      <span className="text-white">{serverConfig.automatic_tasks?.tasks?.length || 0}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Giveaway Card */}
+              <Card
+                className="glass-card cursor-pointer hover:bg-white/5 transition-colors"
+                onClick={() => setActiveEventSection("giveaway")}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="w-12 h-12 rounded-lg bg-pink-500/20 flex items-center justify-center">
+                      <Gift className="h-6 w-6 text-pink-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Giveaway System</h3>
+                      <p className="text-sm text-gray-400">Configure and manage giveaways</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Status:</span>
+                      <span className={`${serverConfig.giveaway?.enabled ? "text-green-400" : "text-gray-400"}`}>
+                        {serverConfig.giveaway?.enabled ? "Enabled" : "Disabled"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Ongoing Giveaways:</span>
+                      <span className="text-white">3</span> {/* Placeholder */}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Logger Card */}
+              <Card
+                className="glass-card cursor-pointer hover:bg-white/5 transition-colors"
+                onClick={() => setActiveEventSection("logger")}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center">
+                      <FileText className="h-6 w-6 text-green-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Logger</h3>
+                      <p className="text-sm text-gray-400">Log server events and actions</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Status:</span>
+                      <span className={`${serverConfig.logs?.enabled ? "text-green-400" : "text-gray-400"}`}>
+                        {serverConfig.logs?.enabled ? "Enabled" : "Disabled"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Log Entries Today:</span>
+                      <span className="text-white">124</span> {/* Placeholder */}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Invite Tracker Card */}
+              <Card
+                className="glass-card cursor-pointer hover:bg-white/5 transition-colors"
+                onClick={() => setActiveEventSection("invite-track")}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                      <LinkIcon className="h-6 w-6 text-blue-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Invite Tracker</h3>
+                      <p className="text-sm text-gray-400">Track invites and monitor server growth</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Status:</span>
+                      <span className={`${serverConfig.invite_tracking?.enabled ? "text-green-400" : "text-gray-400"}`}>
+                        {serverConfig.invite_tracking?.enabled ? "Enabled" : "Disabled"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Active Invites:</span>
+                      <span className="text-white">7</span> {/* Placeholder */}
                     </div>
                   </div>
                 </CardContent>
@@ -1033,7 +1729,7 @@ export default function ServerConfigPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <Link href="/dashboard">
-                  <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+                  <Button variant="ghost" size="icon" className="text-white hover:bg-gray-100 hover:text-gray-900">
                     <ArrowLeft className="h-5 w-5" />
                   </Button>
                 </Link>
@@ -1046,7 +1742,10 @@ export default function ServerConfigPage() {
               </div>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
+                  <Button
+                    variant="outline"
+                    className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                  >
                     <div className="flex items-center space-x-2">
                       <div className="w-5 h-5 bg-gray-600 rounded"></div>
                       <span className="truncate max-w-32">{serverConfig.server_name}</span>
@@ -1086,7 +1785,7 @@ export default function ServerConfigPage() {
                 <Link href="/dashboard">
                   <Button
                     variant="outline"
-                    className="border-white/20 text-white hover:bg-white/10 w-full md:w-auto bg-transparent"
+                    className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 w-full md:w-auto bg-transparent"
                   >
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Back to Dashboard
@@ -1117,7 +1816,10 @@ export default function ServerConfigPage() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
+                <Button
+                  variant="outline"
+                  className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                >
                   <div className="flex items-center space-x-2">
                     {serverConfig.server_icon ? (
                       <Image
@@ -2261,7 +2963,7 @@ export default function ServerConfigPage() {
                   >
                     Cancel
                   </Button>
-                  <Button onClick={confirmLockdown} className="bg-white text-black hover:bg-gray-200">
+                  <Button onClick={confirmLockdown} className="bg-white text-black hover:bg-gray-100">
                     Lock Channels
                   </Button>
                 </DialogFooter>
@@ -2275,7 +2977,7 @@ export default function ServerConfigPage() {
           <div className="space-y-6">
             {/* Support Functions Overview */}
             {!activeSupportSection && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6">
                 {/* Staff Insights Card */}
                 <Card
                   className="glass-card cursor-pointer hover:bg-white/5 transition-colors"
@@ -2293,16 +2995,16 @@ export default function ServerConfigPage() {
                     </div>
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Active Staff:</span>
-                        <span className="text-white">{serverConfig.support?.staff?.length || 0}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Reputation System:</span>
+                        <span className="text-gray-400">Status:</span>
                         <span
                           className={`${serverConfig.support?.reputation_enabled ? "text-green-400" : "text-gray-400"}`}
                         >
                           {serverConfig.support?.reputation_enabled ? "Enabled" : "Disabled"}
                         </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Active Staff:</span>
+                        <span className="text-white">{serverConfig.support?.staff?.length || 0}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -2560,7 +3262,7 @@ export default function ServerConfigPage() {
                   >
                     Cancel
                   </Button>
-                  <Button onClick={confirmFlagStaff} className="bg-red-600 text-white hover:bg-red-700">
+                  <Button onClick={confirmFlagStaff} className="bg-white text-black hover:bg-gray-100">
                     Flag Staff
                   </Button>
                 </DialogFooter>
@@ -2592,7 +3294,7 @@ export default function ServerConfigPage() {
                           support: {
                             ...serverConfig.support,
                             ticket_system: {
-                              ...serverConfig.support?.ticket_system,
+                              ...serverConfig.support.ticket_system,
                               enabled: checked,
                               embed: serverConfig.support?.ticket_system?.embed || {
                                 title: "Support Ticket",
@@ -2648,11 +3350,8 @@ export default function ServerConfigPage() {
                                         support: {
                                           ...serverConfig.support,
                                           ticket_system: {
-                                            ...serverConfig.support.ticket_system,
-                                            embed: {
-                                              ...serverConfig.support.ticket_system.embed,
-                                              title: e.target.value,
-                                            },
+                                            ...serverConfig.support.ticket_system.embed,
+                                            title: e.target.value,
                                           },
                                         },
                                       })
@@ -2671,11 +3370,8 @@ export default function ServerConfigPage() {
                                         support: {
                                           ...serverConfig.support,
                                           ticket_system: {
-                                            ...serverConfig.support.ticket_system,
-                                            embed: {
-                                              ...serverConfig.support.ticket_system.embed,
-                                              description: e.target.value,
-                                            },
+                                            ...serverConfig.support.ticket_system.embed,
+                                            description: e.target.value,
                                           },
                                         },
                                       })
@@ -2695,11 +3391,8 @@ export default function ServerConfigPage() {
                                           support: {
                                             ...serverConfig.support,
                                             ticket_system: {
-                                              ...serverConfig.support.ticket_system,
-                                              embed: {
-                                                ...serverConfig.support.ticket_system.embed,
-                                                color: e.target.value,
-                                              },
+                                              ...serverConfig.support.ticket_system.embed,
+                                              color: e.target.value,
                                             },
                                           },
                                         })
@@ -2718,11 +3411,8 @@ export default function ServerConfigPage() {
                                           support: {
                                             ...serverConfig.support,
                                             ticket_system: {
-                                              ...serverConfig.support.ticket_system,
-                                              embed: {
-                                                ...serverConfig.support.ticket_system.embed,
-                                                thumbnail: e.target.value,
-                                              },
+                                              ...serverConfig.support.ticket_system.embed,
+                                              thumbnail: e.target.value,
                                             },
                                           },
                                         })
@@ -2742,11 +3432,8 @@ export default function ServerConfigPage() {
                                         support: {
                                           ...serverConfig.support,
                                           ticket_system: {
-                                            ...serverConfig.support.ticket_system,
-                                            embed: {
-                                              ...serverConfig.support.ticket_system.embed,
-                                              footer: e.target.value,
-                                            },
+                                            ...serverConfig.support.ticket_system.embed,
+                                            footer: e.target.value,
                                           },
                                         },
                                       })
@@ -2827,7 +3514,7 @@ export default function ServerConfigPage() {
                       </div>
 
                       {/* Send Embed Button */}
-                      <Button onClick={sendTicketEmbed} className="bg-blue-600 text-white hover:bg-blue-700">
+                      <Button onClick={sendTicketEmbed} className="bg-white text-black hover:bg-gray-100">
                         Send Ticket Embed
                       </Button>
                     </div>
@@ -2839,255 +3526,7 @@ export default function ServerConfigPage() {
         )}
 
         {/* Events Tab */}
-        {activeTab === "events" && (
-          <div className="space-y-6">
-            {/* Giveaway System */}
-            <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center text-xl">
-                  <Gift className="h-6 w-6 mr-3" />
-                  Giveaway System
-                </CardTitle>
-                <CardDescription className="text-gray-400">
-                  Configure and manage giveaways for your server
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Step 1: Select Method */}
-                {giveawayStep === 1 && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium text-white">Step 1: Select Giveaway Method</h3>
-                    <p className="text-gray-400">Choose how you want to create the giveaway</p>
-                    <div className="flex space-x-4">
-                      <Button
-                        onClick={() => handleMethodSelect("server")}
-                        className="bg-green-600 text-white hover:bg-green-700"
-                      >
-                        Create on Server
-                      </Button>
-                      <Button
-                        onClick={() => handleMethodSelect("link")}
-                        className="bg-purple-600 text-white hover:bg-purple-700"
-                      >
-                        Create with Link
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 2: Configure Giveaway */}
-                {giveawayStep === 2 && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium text-white">Step 2: Configure Giveaway</h3>
-                    <p className="text-gray-400">Enter the details for your giveaway</p>
-                    <div className="space-y-3">
-                      <div>
-                        <Label className="text-white text-sm mb-2 block">Title</Label>
-                        <Input
-                          placeholder="Summer Giveaway"
-                          value={giveawayData.title}
-                          onChange={(e) => setGiveawayData({ ...giveawayData, title: e.target.value })}
-                          className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-white text-sm mb-2 block">Prize</Label>
-                        <Input
-                          placeholder="Gaming PC"
-                          value={giveawayData.prize}
-                          onChange={(e) => setGiveawayData({ ...giveawayData, prize: e.target.value })}
-                          className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-white text-sm mb-2 block">Description</Label>
-                        <Textarea
-                          placeholder="Enter the description for the giveaway"
-                          value={giveawayData.description}
-                          onChange={(e) => setGiveawayData({ ...giveawayData, description: e.target.value })}
-                          className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[80px]"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-white text-sm mb-2 block">End Date</Label>
-                        <Input
-                          type="datetime-local"
-                          value={giveawayData.endDate}
-                          onChange={(e) => setGiveawayData({ ...giveawayData, endDate: e.target.value })}
-                          className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-white text-sm mb-2 block">Number of Winners</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={giveawayData.winners}
-                          onChange={(e) =>
-                            setGiveawayData({ ...giveawayData, winners: Number.parseInt(e.target.value) })
-                          }
-                          className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-                        />
-                      </div>
-                      {giveawayData.method === "server" && (
-                        <div>
-                          <Label className="text-white text-sm mb-2 block">Channel</Label>
-                          <Select
-                            value={giveawayData.channel}
-                            onValueChange={(value) => setGiveawayData({ ...giveawayData, channel: value })}
-                          >
-                            <SelectTrigger className="bg-black/60 border-white/20 h-8">
-                              <SelectValue placeholder="Select a channel" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {serverConfig.channels &&
-                                Object.entries(serverConfig.channels).map(([channelId, channelName]) => (
-                                  <SelectItem key={channelId} value={channelId}>
-                                    {channelName}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                      {giveawayData.method === "link" && (
-                        <div>
-                          <Label className="text-white text-sm mb-2 block">Custom URL (Optional)</Label>
-                          <Input
-                            placeholder="custom-giveaway-url"
-                            value={giveawayData.customUrl}
-                            onChange={(e) => setGiveawayData({ ...giveawayData, customUrl: e.target.value })}
-                            className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-                          />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex justify-between">
-                      <Button
-                        variant="outline"
-                        onClick={handlePrevStep}
-                        className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
-                      >
-                        Previous
-                      </Button>
-                      <Button onClick={handleNextStep} className="bg-blue-600 text-white hover:bg-blue-700">
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 3: Set Requirements */}
-                {giveawayStep === 3 && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium text-white">Step 3: Set Requirements</h3>
-                    <p className="text-gray-400">Set the requirements for users to enter the giveaway</p>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="text-white text-sm">Require Server Membership</Label>
-                          <p className="text-xs text-gray-400">Users must be a member of the server</p>
-                        </div>
-                        <Switch
-                          checked={giveawayData.requireMembership}
-                          onCheckedChange={(checked) =>
-                            setGiveawayData({ ...giveawayData, requireMembership: checked })
-                          }
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="text-white text-sm">Require Specific Role</Label>
-                          <p className="text-xs text-gray-400">Users must have a specific role</p>
-                        </div>
-                        <Switch
-                          checked={giveawayData.requireRole}
-                          onCheckedChange={(checked) => setGiveawayData({ ...giveawayData, requireRole: checked })}
-                        />
-                      </div>
-                      {giveawayData.requireRole && (
-                        <div>
-                          <Label className="text-white text-sm mb-2 block">Select Role</Label>
-                          <Select
-                            value={giveawayData.selectedRole}
-                            onValueChange={(value) => setGiveawayData({ ...giveawayData, selectedRole: value })}
-                          >
-                            <SelectTrigger className="bg-black/60 border-white/20 h-8">
-                              <SelectValue placeholder="Select a role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {serverConfig.roles_and_names &&
-                                Object.entries(serverConfig.roles_and_names).map(([roleId, roleName]) => (
-                                  <SelectItem key={roleId} value={roleId}>
-                                    {roleName}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="text-white text-sm">Require Account Age</Label>
-                          <p className="text-xs text-gray-400">Users must have an account older than a certain age</p>
-                        </div>
-                        <Switch
-                          checked={giveawayData.requireAccountAge}
-                          onCheckedChange={(checked) =>
-                            setGiveawayData({ ...giveawayData, requireAccountAge: checked })
-                          }
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label className="text-white text-sm">Require Login</Label>
-                          <p className="text-xs text-gray-400">Users must login to enter</p>
-                        </div>
-                        <Switch
-                          checked={giveawayData.requireLogin}
-                          onCheckedChange={(checked) => setGiveawayData({ ...giveawayData, requireLogin: checked })}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex justify-between">
-                      <Button
-                        variant="outline"
-                        onClick={handlePrevStep}
-                        className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
-                      >
-                        Previous
-                      </Button>
-                      <Button onClick={handleCreateGiveaway} className="bg-blue-600 text-white hover:bg-blue-700">
-                        Create Giveaway
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 4: Giveaway Created */}
-                {giveawayCreated && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium text-white">Giveaway Created!</h3>
-                    {giveawayData.method === "link" && (
-                      <div className="space-y-2">
-                        <p className="text-gray-400">Share this link with your community:</p>
-                        <div className="flex items-center justify-between bg-black/60 border-white/20 rounded-md p-2">
-                          <Input readOnly value={generatedLink} className="bg-transparent border-none text-white" />
-                          <Button onClick={copyLink} className="bg-blue-600 text-white hover:bg-blue-700">
-                            {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                    <Button onClick={resetGiveaway} className="bg-gray-600 text-white hover:bg-gray-700">
-                      Create Another Giveaway
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        {activeTab === "events" && <div className="space-y-6">{renderEventContent()}</div>}
 
         {/* Integrations Tab */}
         {activeTab === "integrations" && (
@@ -3115,75 +3554,141 @@ export default function ServerConfigPage() {
         {/* Settings Tab */}
         {activeTab === "settings" && (
           <div className="space-y-6">
-            {/* Custom Bot Settings */}
-            <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center text-xl">
-                  <Bot className="h-6 w-6 mr-3" />
-                  Custom Bot Settings
-                </CardTitle>
-                <CardDescription className="text-gray-400">Customize your bot's profile and settings</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <Label className="text-white text-sm mb-2 block">Profile Picture URL</Label>
-                  <Input
-                    placeholder="https://example.com/bot-profile.png"
-                    value={profilePictureUrl}
-                    onChange={(e) => setProfilePictureUrl(e.target.value)}
-                    className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-                  />
-                </div>
-                <div>
-                  <Label className="text-white text-sm mb-2 block">Custom Bot Name</Label>
-                  <Input
-                    placeholder="My Custom Bot"
-                    value={customBotName}
-                    onChange={(e) => setCustomBotName(e.target.value)}
-                    className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-                  />
-                </div>
-                <div>
-                  <Label className="text-white text-sm mb-2 block">Bot Token</Label>
-                  <div className="flex items-center">
-                    <Input
-                      type={showToken ? "text" : "password"}
-                      placeholder="********************"
-                      value={botToken}
-                      onChange={(e) => setBotToken(e.target.value)}
-                      className="bg-black/60 border-white/20 text-white placeholder-gray-400 mr-2"
+            {/* Discord-like Profile Header */}
+            <Card className="overflow-hidden glass-card">
+              <div className="h-32 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 relative">
+                <div className="absolute -bottom-12 left-6">
+                  <Avatar className="w-24 h-24 border-4 border-background">
+                    <AvatarImage
+                      src={
+                        serverConfig.server_icon
+                          ? `https://cdn.discordapp.com/icons/${serverId}/${serverConfig.server_icon}.png?size=128`
+                          : "https://cdn.discordapp.com/attachments/1368122038941909002/1393590762670653641/Untitled_design.png.png?ex=6873ba09&is=68726889&hm=adc82ecb5e10ffac7abed79e841c8190ab6f0326a0e00ab61e8b377161752de9&"
+                      }
                     />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowToken(!showToken)}
-                      className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
-                    >
-                      {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                  </div>
+                    <AvatarFallback className="text-2xl font-bold bg-gray-700 text-white">
+                      {serverConfig.server_name ? serverConfig.server_name.charAt(0) : "S"}
+                    </AvatarFallback>
+                  </Avatar>
                 </div>
-                <Button onClick={handleSaveBotSettings} className="bg-blue-600 text-white hover:bg-blue-700">
-                  Save Bot Settings
-                </Button>
+              </div>
+              <CardContent className="pt-16 pb-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold flex items-center gap-2 text-white">
+                      {serverConfig.server_name}
+                      <div className="w-3 h-3 bg-green-500 rounded-full" title="Online" />
+                    </h2>
+                    <p className="text-gray-400">Discord Bot Configuration</p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Server ID: <code className="bg-muted px-1 rounded text-gray-300">{serverId}</code>
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/50">
+                    <Bot className="w-3 h-3 mr-1" />
+                    Active
+                  </Badge>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Download User Data */}
+            {/* Settings Options */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="glass-card cursor-pointer hover:bg-white/5 transition-colors group">
+                <CardHeader className="text-center">
+                  <div className="mx-auto w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center group-hover:bg-blue-500/30 transition-colors">
+                    <Settings className="w-6 h-6 text-blue-400" />
+                  </div>
+                  <CardTitle className="text-white">Customize Bot</CardTitle>
+                  <CardDescription className="text-gray-400">
+                    Configure bot appearance, name, and token settings
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button
+                    className="w-full bg-transparent border-white/20 text-white hover:bg-gray-100 hover:text-gray-900"
+                    variant="outline"
+                  >
+                    Open Customization
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="glass-card cursor-pointer hover:bg-white/5 transition-colors group">
+                <CardHeader className="text-center">
+                  <div className="mx-auto w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center group-hover:bg-red-500/30 transition-colors">
+                    <Mail className="w-6 h-6 text-red-400" />
+                  </div>
+                  <CardTitle className="text-white">Report Problem</CardTitle>
+                  <CardDescription className="text-gray-400">Contact our support team for assistance</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button
+                    className="w-full bg-transparent border-white/20 text-white hover:bg-gray-100 hover:text-gray-900"
+                    variant="outline"
+                    onClick={() => window.open("mailto:support@sycord.com", "_blank")}
+                  >
+                    <LinkIcon className="w-4 h-4 mr-2" />
+                    Email Support
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="glass-card cursor-pointer hover:bg-white/5 transition-colors group">
+                <CardHeader className="text-center">
+                  <div className="mx-auto w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center group-hover:bg-green-500/30 transition-colors">
+                    <Download className="w-6 h-6 text-green-400" />
+                  </div>
+                  <CardTitle className="text-white">Manage Data</CardTitle>
+                  <CardDescription className="text-gray-400">Download your collected user data as JSON</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button
+                    className="w-full bg-transparent border-white/20 text-white hover:bg-gray-100 hover:text-gray-900"
+                    variant="outline"
+                    onClick={downloadUserData}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Data
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Privacy Notice */}
             <Card className="glass-card">
               <CardHeader>
-                <CardTitle className="text-white flex items-center text-xl">
-                  <Download className="h-6 w-6 mr-3" />
-                  Download User Data
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Shield className="w-5 h-5" />
+                  Privacy & Data Protection
                 </CardTitle>
-                <CardDescription className="text-gray-400">
-                  Download all user data associated with this server
-                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <Button onClick={downloadUserData} className="bg-green-600 text-white hover:bg-green-700">
-                  Download User Data
-                </Button>
+              <CardContent className="space-y-4">
+                <div className="text-sm text-gray-400 space-y-2">
+                  <p>
+                    <strong>Data Collection:</strong> We collect minimal data necessary for bot functionality, including
+                    server settings, user interactions, and command usage.
+                  </p>
+                  <p>
+                    <strong>Data Usage:</strong> Your data is used solely to provide bot services and improve
+                    functionality. We never sell or share your data with third parties.
+                  </p>
+                  <p>
+                    <strong>Your Rights:</strong> You can request data deletion, download your data, or modify privacy
+                    settings at any time.
+                  </p>
+                  <p>
+                    <strong>Data Retention:</strong> Server data is retained while the bot is active in your server.
+                    User data is automatically purged after 90 days of inactivity.
+                  </p>
+                </div>
+                <Separator className="bg-white/20" />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-400">Last Updated: December 2024</span>
+                  <Button variant="link" size="sm" className="text-white hover:text-gray-300">
+                    View Full Privacy Policy
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -3240,7 +3745,7 @@ export default function ServerConfigPage() {
                     className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[80px]"
                   />
                 </div>
-                <Button onClick={handleSendAnnouncement} className="bg-blue-600 text-white hover:bg-blue-700">
+                <Button onClick={handleSendAnnouncement} className="bg-white text-black hover:bg-gray-100">
                   Send Announcement
                 </Button>
               </CardContent>
