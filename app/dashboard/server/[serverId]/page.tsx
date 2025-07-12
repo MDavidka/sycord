@@ -1593,7 +1593,7 @@ export default function ServerConfigPage() {
               >
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-12 h-12 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
                       <Clock className="h-6 w-6 text-white" />
                     </div>
                     <div>
@@ -1623,7 +1623,7 @@ export default function ServerConfigPage() {
               >
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-12 h-12 rounded-lg bg-pink-500/20 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
                       <Gift className="h-6 w-6 text-white" />
                     </div>
                     <div>
@@ -1653,7 +1653,7 @@ export default function ServerConfigPage() {
               >
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
                       <FileText className="h-6 w-6 text-white" />
                     </div>
                     <div>
@@ -1683,7 +1683,7 @@ export default function ServerConfigPage() {
               >
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
                       <LinkIcon className="h-6 w-6 text-white" />
                     </div>
                     <div>
@@ -1919,7 +1919,7 @@ export default function ServerConfigPage() {
               } transition-colors flex-shrink-0 text-sm px-4 h-9`}
             >
               <Gift className="h-4 w-4 mr-2" />
-              Events
+              Functions
             </Button>
             <Button
               variant={activeTab === "integrations" ? "default" : "ghost"}
@@ -3580,9 +3580,9 @@ export default function ServerConfigPage() {
                   {/* Bot Avatar */}
                   <div className="relative">
                     <Avatar className="w-20 h-20 border-4 border-blue-500">
-                      <AvatarImage src={serverConfig.botProfilePictureUrl || ""} alt="Bot Avatar" />
-                      <AvatarFallback className="text-2xl font-bold bg-blue-600 text-white">
-                        {serverConfig.customBotName ? serverConfig.customBotName.charAt(0) : "S"}
+                      <AvatarImage src={profilePictureUrl || "/placeholder.svg"} alt="Bot Avatar" />
+                      <AvatarFallback className="text-2xl font-bold bg-blue-800 text-white">
+                        {customBotName ? customBotName.charAt(0) : "S"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-background"></div>
@@ -3590,7 +3590,7 @@ export default function ServerConfigPage() {
 
                   {/* Bot Info */}
                   <div className="flex-1">
-                    <h2 className="text-2xl font-bold text-white mb-1">{serverConfig.customBotName || "Sycord"}</h2>
+                    <h2 className="text-2xl font-bold text-white mb-1">{customBotName || "Sycord"}</h2>
                     <p className="text-gray-400 mb-2">Discord Bot</p>
                     <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/50">
                       <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>

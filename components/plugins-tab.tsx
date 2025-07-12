@@ -320,7 +320,7 @@ export default function PluginsTab() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {plugins.map((plugin) => (
                   <Card key={plugin._id} className="glass-card flex flex-col">
-                    {plugin.thumbnailUrl && (
+                    {plugin.thumbnailUrl && plugin.thumbnailUrl !== "" ? (
                       <div className="relative w-full h-32 rounded-t-lg overflow-hidden">
                         <Image
                           src={plugin.thumbnailUrl || "/placeholder.svg"}
@@ -330,9 +330,13 @@ export default function PluginsTab() {
                           className="rounded-t-lg"
                         />
                       </div>
+                    ) : (
+                      <div className="relative w-full h-32 rounded-t-lg overflow-hidden bg-gray-800 flex items-center justify-center">
+                        <ImageIcon className="h-12 w-12 text-gray-400" />
+                      </div>
                     )}
                     <CardHeader className="flex-row items-center space-x-4 pb-2">
-                      {plugin.iconUrl ? (
+                      {plugin.iconUrl && plugin.iconUrl !== "" ? (
                         <Image
                           src={plugin.iconUrl || "/placeholder.svg"}
                           alt={`${plugin.name} icon`}
@@ -408,7 +412,7 @@ export default function PluginsTab() {
                 ) : (
                   userPlugins.map((plugin) => (
                     <Card key={plugin.pluginId} className="glass-card flex flex-col">
-                      {plugin.thumbnailUrl && (
+                      {plugin.thumbnailUrl && plugin.thumbnailUrl !== "" ? (
                         <div className="relative w-full h-32 rounded-t-lg overflow-hidden">
                           <Image
                             src={plugin.thumbnailUrl || "/placeholder.svg"}
@@ -418,9 +422,13 @@ export default function PluginsTab() {
                             className="rounded-t-lg"
                           />
                         </div>
+                      ) : (
+                        <div className="relative w-full h-32 rounded-t-lg overflow-hidden bg-gray-800 flex items-center justify-center">
+                          <ImageIcon className="h-12 w-12 text-gray-400" />
+                        </div>
                       )}
                       <CardHeader className="flex-row items-center space-x-4 pb-2">
-                        {plugin.iconUrl ? (
+                        {plugin.iconUrl && plugin.iconUrl !== "" ? (
                           <Image
                             src={plugin.iconUrl || "/placeholder.svg"}
                             alt={`${plugin.name} icon`}
