@@ -1,66 +1,68 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
-import { useParams, useRouter } from "next/navigation"
-import {
-  Home,
-  Shield,
-  LifeBuoy,
-  Bell,
-  Plug,
-  Settings,
-  Crown,
-  Plus,
-  Gift,
-  Bot,
-  Users,
-  MessageSquare,
-  ChevronRight,
-  ChevronLeft,
-  Calendar,
-  Search,
-  UserPlus,
-  Clock,
-  CheckCircle,
-  Copy,
-  ExternalLink,
-  ArrowLeft,
-  BarChart3,
-  Ticket,
-  AlertCircle,
-  FileText,
-  LinkIcon,
-  Check,
-} from "lucide-react"
 import { useSession } from "next-auth/react"
-import { toast } from "sonner"
-
+import { useRouter, useParams } from "next/navigation"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Separator } from "@/components/ui/separator"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Checkbox } from "@/components/ui/checkbox"
-import { v4 as uuidv4 } from "uuid"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import {
+  Shield,
+  MessageSquare,
+  Gift,
+  LinkIcon,
+  Home,
+  Plus,
+  Copy,
+  Check,
+  LogIn,
+  ArrowLeft,
+  Clock,
+  AlertTriangle,
+  Info,
+  Bot,
+  FileText,
+  Zap,
+  UserCheck,
+  Users,
+  Crown,
+  Settings,
+  Lock,
+  Megaphone,
+  LifeBuoy,
+  Download,
+  Ticket,
+  BarChart3,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react"
+import Image from "next/image"
+import Link from "next/link"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import PluginsTab from "@/components/plugins-tab"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { toast } from "sonner"
+import { Textarea } from "@/components/ui/textarea"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 // Define UserData interface
 interface UserData {
@@ -112,112 +114,122 @@ interface TicketSettings {
 interface ServerConfig {
   server_id: string
   server_name: string
-  server_icon: string
-  owner_id: string
-  member_count: number
-  bot_added: boolean
-  premium_features: boolean
-  settings: {
-    welcome_message_enabled: boolean
-    welcome_message_channel: string
-    goodbye_message_enabled: boolean
-    goodbye_message_channel: string
-    default_role: string
-    bot_prefix: string
-    timezone: string
-    language: string
-    bot_icon_url: string
+  server_icon?: string
+  is_bot_added: boolean
+  moderation_level: "off" | "on" | "lockdown"
+  roles_and_names: { [key: string]: string }
+  welcome: {
+    enabled: boolean
+    channel_id?: string
+    message?: string
+    dm_enabled?: boolean
   }
-  plugins: {
-    logger: {
+  moderation: {
+    // Basic filters
+    link_filter: {
       enabled: boolean
-      log_channel: string
-      events: {
-        message_delete: boolean
-        message_edit: boolean
-        member_join: boolean
-        member_leave: boolean
-      }
+      config: "all_links" | "whitelist_only" | "phishing_only"
     }
-    giveaway: {
+    bad_word_filter: {
       enabled: boolean
-      giveaway_channel: string
-      min_entries: number
-      auto_reroll: boolean
+      custom_words?: string[]
     }
-    invitetrack: {
+    raid_protection: {
       enabled: boolean
-      invite_log_channel: string
+      threshold?: number
     }
-  }
-  events: {
-    automatic_tasks: {
+    suspicious_accounts: {
       enabled: boolean
-      tasks: {
-        name: string
-        type: string
-        schedule: string
-        channel: string
-        message: string
-      }[]
+      min_age_days?: number
     }
-    giveaway: {
+    auto_role: {
       enabled: boolean
-      giveaways: {
-        id: string
-        name: string
-        description: string
-        channel: string
-        winners: number
-        duration: number // in seconds
-        required_roles: string[]
-        status: "active" | "ended" | "scheduled"
-        entries: string[] // user IDs
-        end_time: string
-      }[]
+      role_id?: string
     }
-    logger: {
+
+    // Advanced security features
+    permission_abuse: {
       enabled: boolean
-      log_channel: string
-      events: {
-        message_delete: boolean
-        message_edit: boolean
-        member_join: boolean
-        member_leave: boolean
-      }
+      notify_owner_on_role_change: boolean
+      monitor_admin_actions: boolean
     }
-    invitetrack: {
+    malicious_bot_detection: {
       enabled: boolean
-      invite_log_channel: string
+      new_bot_notifications: boolean
+      bot_activity_monitoring: boolean
+      bot_timeout_threshold: number
+    }
+    token_webhook_abuse: {
+      enabled: boolean
+      webhook_creation_monitor: boolean
+      webhook_auto_revoke: boolean
+      webhook_verification_timeout: number
+      leaked_webhook_scanner: boolean
+    }
+    invite_hijacking: {
+      enabled: boolean
+      invite_link_monitor: boolean
+      vanity_url_watcher: boolean
+    }
+    mass_ping_protection: {
+      enabled: boolean
+      anti_mention_flood: boolean
+      mention_rate_limit: number
+      message_cooldown_on_raid: boolean
+      cooldown_duration: number
+    }
+    malicious_file_scanner: {
+      enabled: boolean
+      suspicious_attachment_blocker: boolean
+      auto_file_filter: boolean
+      allowed_file_types?: string[]
     }
   }
-}
-
-interface DiscordChannel {
-  id: string
-  name: string
-  type: number // 0 = text, 2 = voice, 4 = category
-}
-
-interface DiscordRole {
-  id: string
-  name: string
-}
-
-interface Plugin {
-  id: string
-  name: string
-  description: string
-  enabled: boolean
-  premium: boolean
-}
-
-interface User {
-  id: string
-  name: string
-  email: string
-  image: string
-  role: "user" | "admin"
+  support: {
+    staff: StaffMember[]
+    reputation_enabled: boolean
+    max_reputation_score: number
+    ticket_system: {
+      enabled: boolean
+      channel_id?: string
+      priority_role_id?: string
+      embed: TicketEmbed
+      settings: TicketSettings
+    }
+  }
+  giveaway: {
+    enabled: boolean
+    default_channel_id?: string
+  }
+  logs: {
+    enabled: boolean
+    channel_id?: string
+    message_edits: boolean
+    mod_actions: boolean
+    member_joins: boolean
+    member_leaves: boolean
+  }
+  invite_tracking: {
+    enabled: boolean
+    channel_id?: string
+    track_joins: boolean
+    track_leaves: boolean
+  }
+  automatic_tasks: {
+    enabled: boolean
+    tasks: { id: string; name: string; type: string; status: string }[]
+  }
+  last_updated?: string
+  channels?: { [key: string]: string }
+  server_stats?: {
+    total_members?: number
+    total_bots?: number
+    total_admins?: number
+  }
+  // New fields for custom bot
+  botProfilePictureUrl?: string
+  customBotName?: string
+  botToken?: string
 }
 
 interface AppSettings {
@@ -237,9 +249,9 @@ type SupportView = "overview" | "staff-insights" | "tickets"
 type EventView = "overview" | "automatic-task" | "giveaway" | "logger" | "invite-track"
 
 export default function ServerConfigPage() {
-  const params = useParams()
+  const { data: session, status } = useSession()
   const router = useRouter()
-  const { data: session } = useSession()
+  const params = useParams()
   const serverId = params.serverId as string
 
   // Add state for modals
@@ -294,29 +306,6 @@ export default function ServerConfigPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [dismissedAnnouncements, setDismissedAnnouncements] = useState<string[]>([])
 
-  const [discordChannels, setDiscordChannels] = useState<DiscordChannel[]>([])
-  const [discordRoles, setDiscordRoles] = useState<DiscordRole[]>([])
-  const [plugins, setPlugins] = useState<Plugin[]>([])
-  const [userPlugins, setUserPlugins] = useState<string[]>([])
-  const [isSaving, setIsSaving] = useState(false)
-  const [isBotVerified, setIsBotVerified] = useState(false)
-  const [showGiveawayForm, setShowGiveawayForm] = useState(false)
-  const [newGiveaway, setNewGiveaway] = useState({
-    name: "",
-    description: "",
-    channel: "",
-    winners: 1,
-    duration: 3600, // 1 hour in seconds
-    required_roles: [] as string[],
-    method: "manual", // "manual" or "link"
-  })
-  const [selectedEvent, setSelectedEvent] = useState<string | null>(null)
-
-  const isAdmin = useMemo(() => {
-    const user = session?.user as User
-    return user?.role === "admin"
-  }, [session])
-
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login")
@@ -333,9 +322,9 @@ export default function ServerConfigPage() {
 
   useEffect(() => {
     if (serverConfig) {
-      setProfilePictureUrl(serverConfig.settings?.bot_icon_url || "")
-      setCustomBotName(serverConfig.server_name || "")
-      setBotToken("")
+      setProfilePictureUrl(serverConfig.botProfilePictureUrl || "")
+      setCustomBotName(serverConfig.customBotName || "")
+      setBotToken(serverConfig.botToken || "")
     }
   }, [serverConfig])
 
@@ -355,63 +344,6 @@ export default function ServerConfigPage() {
         // Initialize default values for new fields if they don't exist
         const initialConfig: ServerConfig = {
           ...configData.server,
-          settings: {
-            welcome_message_enabled: configData.server.settings?.welcome_message_enabled ?? false,
-            welcome_message_channel: configData.server.settings?.welcome_message_channel ?? "",
-            goodbye_message_enabled: configData.server.settings?.goodbye_message_enabled ?? false,
-            goodbye_message_channel: configData.server.settings?.goodbye_message_channel ?? "",
-            default_role: configData.server.settings?.default_role ?? "",
-            bot_prefix: configData.server.settings?.bot_prefix ?? "!",
-            timezone: configData.server.settings?.timezone ?? "UTC",
-            language: configData.server.settings?.language ?? "en",
-            bot_icon_url: configData.server.settings?.bot_icon_url ?? "/new-bot-logo.png",
-          },
-          plugins: {
-            logger: {
-              enabled: configData.server.plugins?.logger?.enabled ?? false,
-              log_channel: configData.server.plugins?.logger?.log_channel ?? "",
-              events: {
-                message_delete: configData.server.plugins?.logger?.events?.message_delete ?? false,
-                message_edit: configData.server.plugins?.logger?.events?.message_edit ?? false,
-                member_join: configData.server.plugins?.logger?.events?.member_join ?? false,
-                member_leave: configData.server.plugins?.logger?.events?.member_leave ?? false,
-              },
-            },
-            giveaway: {
-              enabled: configData.server.plugins?.giveaway?.enabled ?? false,
-              giveaway_channel: configData.server.plugins?.giveaway?.giveaway_channel ?? "",
-              min_entries: configData.server.plugins?.giveaway?.min_entries ?? 5,
-              auto_reroll: configData.server.plugins?.giveaway?.auto_reroll ?? false,
-            },
-            invitetrack: {
-              enabled: configData.server.plugins?.invitetrack?.enabled ?? false,
-              invite_log_channel: configData.server.plugins?.invitetrack?.invite_log_channel ?? "",
-            },
-          },
-          events: {
-            automatic_tasks: {
-              enabled: configData.server.events?.automatic_tasks?.enabled ?? false,
-              tasks: configData.server.events?.automatic_tasks?.tasks ?? [],
-            },
-            giveaway: {
-              enabled: configData.server.events?.giveaway?.enabled ?? false,
-              giveaways: configData.server.events?.giveaway?.giveaways ?? [],
-            },
-            logger: {
-              enabled: configData.server.events?.logger?.enabled ?? false,
-              log_channel: configData.server.events?.logger?.log_channel ?? "",
-              events: {
-                message_delete: configData.server.events?.logger?.events?.message_delete ?? false,
-                message_edit: configData.server.events?.logger?.events?.message_edit ?? false,
-                member_join: configData.server.events?.logger?.events?.member_join ?? false,
-                member_leave: configData.server.events?.logger?.events?.member_leave ?? false,
-              },
-            },
-            invitetrack: {
-              enabled: configData.server.events?.invitetrack?.enabled ?? false,
-              invite_log_channel: configData.server.events?.invitetrack?.invite_log_channel ?? "",
-            },
-          },
           support: {
             ...configData.server.support,
             reputation_enabled: configData.server.support?.reputation_enabled ?? false,
@@ -450,7 +382,7 @@ export default function ServerConfigPage() {
             enabled: configData.server.automatic_tasks?.enabled ?? false,
             tasks: configData.server.automatic_tasks?.tasks ?? [],
           },
-        } as any
+        }
         setServerConfig(initialConfig)
         setUserData(configData.user)
       }
@@ -460,42 +392,6 @@ export default function ServerConfigPage() {
       setLoading(false)
     }
   }
-
-  useEffect(() => {
-    if (!serverId) return
-
-    const fetchServerData = async () => {
-      try {
-        const [serverRes, channelsRes, rolesRes, pluginsRes, userPluginsRes, verifyBotRes] = await Promise.all([
-          fetch(`/api/servers?serverId=${serverId}`),
-          fetch(`/api/discord/channels/${serverId}`),
-          fetch(`/api/discord/roles/${serverId}`),
-          fetch("/api/plugins"),
-          fetch("/api/user-plugins"),
-          fetch(`/api/verify-bot/${serverId}`),
-        ])
-
-        const serverData = await serverRes.json()
-        const channelsData = await channelsRes.json()
-        const rolesData = await rolesRes.json()
-        const pluginsData = await pluginsRes.json()
-        const userPluginsData = await userPluginsRes.json()
-        const verifyBotData = await verifyBotRes.json()
-
-        setServerConfig(serverData)
-        setDiscordChannels(channelsData)
-        setDiscordRoles(rolesData)
-        setPlugins(pluginsData)
-        setUserPlugins(userPluginsData.plugins || [])
-        setIsBotVerified(verifyBotData.verified)
-      } catch (error) {
-        console.error("Failed to fetch server data:", error)
-        toast.error("Failed to load server configuration.")
-      }
-    }
-
-    fetchServerData()
-  }, [serverId])
 
   const updateServerConfig = async (updates: Partial<ServerConfig>) => {
     if (!serverConfig) return
@@ -583,176 +479,22 @@ export default function ServerConfigPage() {
     }
   }
 
-  const handleCreateGiveaway = async () => {
-    if (!serverConfig) return
-
-    setIsSaving(true)
-    try {
-      if (newGiveaway.method === "web") {
-        const res = await fetch("/api/giveaways", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            serverId: serverId,
-            ...newGiveaway,
-            end_time: new Date(Date.now() + newGiveaway.duration * 1000).toISOString(),
-            status: "active",
-            entries: [],
-          }),
-        })
-
-        if (res.ok) {
-          const { giveawayId } = await res.json()
-          setGeneratedLink(`/g/${giveawayId}`) // Simulate sycord.com domain
-          toast.success("Giveaway created on web successfully!")
-          setShowGiveawayForm(false)
-          setNewGiveaway({
-            name: "",
-            description: "",
-            channel: "",
-            winners: 1,
-            duration: 3600,
-            required_roles: [],
-            method: "manual",
-          })
-        } else {
-          toast.error("Failed to create giveaway on web.")
-        }
-      } else {
-        // Manual giveaway creation logic (existing)
-        const updatedGiveaways = [
-          ...(serverConfig.events.giveaway.giveaways || []),
-          {
-            id: uuidv4(),
-            name: newGiveaway.name,
-            description: newGiveaway.description,
-            channel: newGiveaway.channel,
-            winners: newGiveaway.winners,
-            duration: newGiveaway.duration,
-            required_roles: newGiveaway.required_roles,
-            status: "active",
-            entries: [],
-            end_time: new Date(Date.now() + newGiveaway.duration * 1000).toISOString(),
-          },
-        ]
-
-        const res = await fetch(`/api/settings/${serverId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...serverConfig.settings, // Keep existing settings
-            events: {
-              ...serverConfig.events,
-              giveaway: {
-                ...serverConfig.events.giveaway,
-                giveaways: updatedGiveaways,
-              },
-            },
-          }),
-        })
-
-        if (res.ok) {
-          setServerConfig((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  events: {
-                    ...prev.events,
-                    giveaway: {
-                      ...prev.events.giveaway,
-                      giveaways: updatedGiveaways,
-                    },
-                  },
-                }
-              : null,
-          )
-          toast.success("Giveaway created successfully!")
-          setShowGiveawayForm(false)
-          setNewGiveaway({
-            name: "",
-            description: "",
-            channel: "",
-            winners: 1,
-            duration: 3600,
-            required_roles: [],
-            method: "manual",
-          })
-        } else {
-          toast.error("Failed to create giveaway.")
-        }
-      }
-    } catch (error) {
-      console.error("Error creating giveaway:", error)
-      toast.error("An error occurred while creating giveaway.")
-    } finally {
-      setIsSaving(false)
+  const handleCreateGiveaway = () => {
+    if (giveawayData.method === "link") {
+      const baseUrl = "ltpd.xyz"
+      const randomId = Math.floor(Math.random() * 1000000)
+        .toString()
+        .padStart(6, "0")
+      const urlPath = giveawayData.customUrl || randomId
+      setGeneratedLink(`https://${baseUrl}/g/${urlPath}`)
     }
+    setGiveawayCreated(true)
   }
 
-  const handleCopyLink = () => {
-    if (generatedLink) {
-      navigator.clipboard.writeText(`https://sycord.com${generatedLink}`)
-      toast.success("Link copied to clipboard!")
-    }
-  }
-
-  const handleSaveSettings = async () => {
-    if (!serverConfig) return
-
-    setIsSaving(true)
-    try {
-      const res = await fetch(`/api/settings/${serverId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(serverConfig.settings),
-      })
-
-      if (res.ok) {
-        toast.success("Settings saved successfully!")
-      } else {
-        toast.error("Failed to save settings.")
-      }
-    } catch (error) {
-      console.error("Error saving settings:", error)
-      toast.error("An error occurred while saving settings.")
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const handlePluginToggle = async (pluginId: string, enabled: boolean) => {
-    if (!serverConfig) return
-
-    setIsSaving(true)
-    try {
-      const updatedPlugins = enabled ? [...userPlugins, pluginId] : userPlugins.filter((id) => id !== pluginId)
-
-      const res = await fetch("/api/user-plugins", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ serverId, plugins: updatedPlugins }),
-      })
-
-      if (res.ok) {
-        setUserPlugins(updatedPlugins)
-        toast.success(`Plugin ${enabled ? "enabled" : "disabled"} successfully!`)
-      } else {
-        toast.error(`Failed to ${enabled ? "enable" : "disable"} plugin.`)
-      }
-    } catch (error) {
-      console.error("Error toggling plugin:", error)
-      toast.error("An error occurred while toggling plugin.")
-    } finally {
-      setIsSaving(false)
-    }
+  const copyLink = () => {
+    navigator.clipboard.writeText(generatedLink)
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 2000)
   }
 
   const resetGiveaway = () => {
@@ -1378,10 +1120,10 @@ export default function ServerConfigPage() {
                         Create on Server
                       </Button>
                       <Button
-                        onClick={() => handleMethodSelect("link")} // This is now "Create on Web"
+                        onClick={() => handleMethodSelect("link")}
                         className="bg-white text-black hover:bg-gray-100"
                       >
-                        Create on Web
+                        Create with Link
                       </Button>
                     </div>
                   </div>
@@ -1461,7 +1203,7 @@ export default function ServerConfigPage() {
                           </Select>
                         </div>
                       )}
-                      {giveawayData.method === "link" && ( // This is now "Create on Web"
+                      {giveawayData.method === "link" && (
                         <div>
                           <Label className="text-white text-sm mb-2 block">Custom URL (Optional)</Label>
                           <Input
@@ -1577,13 +1319,17 @@ export default function ServerConfigPage() {
                 {giveawayCreated && (
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium text-white">Giveaway Created!</h3>
-                    {giveawayData.method === "link" && ( // This is now "Create on Web"
+                    {giveawayData.method === "link" && (
                       <div className="space-y-2">
                         <p className="text-gray-400">Share this link with your community:</p>
                         <div className="flex items-center justify-between bg-black/60 border-white/20 rounded-md p-2">
                           <Input readOnly value={generatedLink} className="bg-transparent border-none text-white" />
-                          <Button onClick={handleCopyLink} className="bg-white text-black hover:bg-gray-100">
-                            {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                          <Button onClick={copyLink} className="bg-white text-black hover:bg-gray-100">
+                            {linkCopied ? (
+                              <Check className="h-4 w-4 text-white" />
+                            ) : (
+                              <Copy className="h-4 w-4 text-white" />
+                            )}
                           </Button>
                         </div>
                       </div>
@@ -1953,1369 +1699,646 @@ export default function ServerConfigPage() {
   }
 
   if (status === "loading" || loading) {
-    return <div className="flex h-full items-center justify-center">Loading server configuration...</div>
-  }
-
-  if (!session || !serverConfig) {
-    return null
-  }
-
-  const botIconUrl = serverConfig.settings?.bot_icon_url || "/new-bot-logo.png"
-
-  return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center space-x-4 p-4">
-        <Avatar className="h-16 w-16">
-          <AvatarImage
-            src={serverConfig.server_icon || "/placeholder-logo.png"}
-            alt={`${serverConfig.server_name} icon`}
-          />
-          <AvatarFallback>{serverConfig.server_name ? serverConfig.server_name.charAt(0) : "S"}</AvatarFallback>
-        </Avatar>
-        <div>
-          <h1 className="text-2xl font-bold">{serverConfig.server_name}</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{serverConfig.member_count} Members</p>
-          {serverConfig.premium_features && (
-            <Badge variant="secondary" className="mt-1">
-              Premium
-            </Badge>
-          )}
-        </div>
-        <div className="ml-auto flex items-center space-x-2">
-          {isBotVerified ? (
-            <Badge className="bg-green-500 hover:bg-green-500/80">Bot Verified</Badge>
-          ) : (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="secondary">Verify Bot</Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Verify Bot</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    To enable all features, please ensure the bot is added to your server and has the necessary
-                    permissions.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction asChild>
-                    <a
-                      href={`https://discord.com/oauth2/authorize?client_id=${process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID}&scope=bot&permissions=8&guild_id=${serverId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Add Bot to Server
-                    </a>
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-          <Button variant="secondary">Invite Bot</Button>
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400 mx-auto mb-4"></div>
+          <p className="text-white">Loading server configuration...</p>
         </div>
       </div>
+    )
+  }
 
-      <Separator />
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col">
-        <div className="w-full overflow-x-auto border-b">
-          <TabsList className="flex h-auto justify-start rounded-none bg-transparent p-0">
-            <TabsTrigger
-              value="home"
-              className="flex-col gap-1 rounded-none border-b-2 border-b-transparent bg-transparent px-4 py-2 data-[state=active]:border-b-primary data-[state=active]:bg-transparent"
-            >
-              <Home className="h-5 w-5" />
-              Home
-            </TabsTrigger>
-            <TabsTrigger
-              value="sentinel"
-              className="flex-col gap-1 rounded-none border-b-2 border-b-transparent bg-transparent px-4 py-2 data-[state=active]:border-b-primary data-[state=active]:bg-transparent"
-            >
-              <Shield className="h-5 w-5" />
-              Sentinel
-            </TabsTrigger>
-            <TabsTrigger
-              value="support"
-              className="flex-col gap-1 rounded-none border-b-2 border-b-transparent bg-transparent px-4 py-2 data-[state=active]:border-b-primary data-[state=active]:bg-transparent"
-            >
-              <LifeBuoy className="h-5 w-5" />
-              Support
-            </TabsTrigger>
-            <TabsTrigger
-              value="events"
-              className="flex-col gap-1 rounded-none border-b-2 border-b-transparent bg-transparent px-4 py-2 data-[state=active]:border-b-primary data-[state=active]:bg-transparent"
-            >
-              <Bell className="h-5 w-5" />
-              Events
-            </TabsTrigger>
-            <TabsTrigger
-              value="integrations"
-              className="flex-col gap-1 rounded-none border-b-2 border-b-transparent bg-transparent px-4 py-2 data-[state=active]:border-b-primary data-[state=active]:bg-transparent"
-            >
-              <Plug className="h-5 w-5" />
-              Integrations
-            </TabsTrigger>
-            <TabsTrigger
-              value="plugins"
-              className="flex-col gap-1 rounded-none border-b-2 border-b-transparent bg-transparent px-4 py-2 data-[state=active]:border-b-primary data-[state=active]:bg-transparent"
-            >
-              <Plug className="h-5 w-5" />
-              Plugins
-            </TabsTrigger>
-            <TabsTrigger
-              value="settings"
-              className="flex-col gap-1 rounded-none border-b-2 border-b-transparent bg-transparent px-4 py-2 data-[state=active]:border-b-primary data-[state=active]:bg-transparent"
-            >
-              <Settings className="h-5 w-5" />
-              Settings
-            </TabsTrigger>
-            {isAdmin && (
-              <TabsTrigger
-                value="access-plus"
-                className="flex-col gap-1 rounded-none border-b-2 border-b-transparent bg-transparent px-4 py-2 data-[state=active]:border-b-primary data-[state=active]:bg-transparent"
-              >
-                <Crown className="h-5 w-5" />
-                Access+
-              </TabsTrigger>
-            )}
-          </TabsList>
+  return (
+    <div className="min-h-screen bg-cover bg-center" style={{ backgroundImage: "url('/bg.png')" }}>
+      <div className="container mx-auto py-8">
+        {/* Navbar */}
+        <div className="flex items-center justify-between mb-8">
+          <Link href="/dashboard" className="flex items-center">
+            <Image src="/logo.png" alt="Logo" width={32} height={32} className="mr-2" />
+            <span className="text-white font-bold text-xl">LT PROTECT</span>
+          </Link>
+          <div className="flex items-center space-x-4">
+            {userServers.map((server) => (
+              <Link key={server.id} href={`/dashboard/server/${server.id}`}>
+                <Avatar className="h-8 w-8">
+                  <AvatarImage
+                    src={
+                      server.icon
+                        ? `https://cdn.discordapp.com/icons/${server.id}/${server.icon}.png`
+                        : `https://cdn.discordapp.com/embed/avatars/${Number(server.id) % 5}.png`
+                    }
+                    alt={server.name}
+                  />
+                  <AvatarFallback>{server.name.substring(0, 2)}</AvatarFallback>
+                </Avatar>
+              </Link>
+            ))}
+            <DropdownMenu>
+              <DropdownMenuTrigger>
+                <Avatar className="h-8 w-8 cursor-pointer">
+                  {session?.user?.image ? (
+                    <AvatarImage src={session.user.image || "/placeholder.svg"} alt={session.user.name || "User"} />
+                  ) : (
+                    <AvatarFallback>{session?.user?.name?.substring(0, 2)}</AvatarFallback>
+                  )}
+                </Avatar>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem disabled>
+                  <div className="flex flex-col">
+                    <span className="font-semibold">{session?.user?.name}</span>
+                    <span className="text-muted-foreground">{session?.user?.email}</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => router.push("/profile")}>
+                  <UserCheck className="mr-2 h-4 w-4" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push("/logout")}>
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
-        <TabsContent value="home" className="flex-1 p-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Members</CardTitle>
-                <Users className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{serverConfig.member_count}</div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">+20.1% from last month</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Messages Sent</CardTitle>
-                <MessageSquare className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">12,345</div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">+15% from last month</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Plugins</CardTitle>
-                <Plug className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{userPlugins.length}</div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Out of {plugins.length} available</p>
-              </CardContent>
-            </Card>
-          </div>
-          <div className="mt-6">
-            <h2 className="text-xl font-semibold">Recent Activity</h2>
-            <Table className="mt-4">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Event</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Time</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow>
-                  <TableCell>Member Join</TableCell>
-                  <TableCell>John Doe joined the server.</TableCell>
-                  <TableCell>2 hours ago</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Message Delete</TableCell>
-                  <TableCell>A message was deleted in #general.</TableCell>
-                  <TableCell>5 hours ago</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>Giveaway Ended</TableCell>
-                  <TableCell>Daily Nitro giveaway ended.</TableCell>
-                  <TableCell>1 day ago</TableCell>
-                </TableRow>
-              </TableBody>
-            </Table>
-          </div>
-        </TabsContent>
+        {/* App Settings Announcement */}
+        {appSettings?.maintenanceMode?.enabled && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              The app is currently in maintenance mode. Estimated time:{" "}
+              {appSettings.maintenanceMode.estimatedTime || "Unknown"}.
+            </AlertDescription>
+          </Alert>
+        )}
 
-        <TabsContent value="sentinel" className="flex-1 p-4">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Anti-Spam</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="anti-spam-enabled">Enable Anti-Spam</Label>
-                  <Switch id="anti-spam-enabled" />
-                </div>
-                <div>
-                  <Label htmlFor="spam-threshold">Spam Threshold</Label>
-                  <Input id="spam-threshold" type="number" defaultValue={5} />
-                </div>
-                <div>
-                  <Label htmlFor="spam-action">Action on Spam</Label>
-                  <Select defaultValue="mute">
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select action" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mute">Mute User</SelectItem>
-                      <SelectItem value="kick">Kick User</SelectItem>
-                      <SelectItem value="ban">Ban User</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Moderation Logs</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="mod-logs-enabled">Enable Moderation Logs</Label>
-                  <Switch id="mod-logs-enabled" />
-                </div>
-                <div>
-                  <Label htmlFor="mod-log-channel">Log Channel</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select channel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {discordChannels
-                        .filter((c) => c.type === 0)
-                        .map((channel) => (
-                          <SelectItem key={channel.id} value={channel.id}>
-                            #{channel.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Logged Events</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox id="log-kick" />
-                      <Label htmlFor="log-kick">Kicks</Label>
+        {/* Announcements */}
+        <div className="space-y-4">
+          {announcements.map(
+            (announcement) =>
+              !dismissedAnnouncements.includes(announcement._id) && (
+                <Alert key={announcement._id} variant="secondary">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    {announcement.message} -{" "}
+                    <span className="italic text-xs">
+                      Posted on {new Date(announcement.createdAt).toLocaleDateString()}
+                    </span>
+                    <Button variant="link" onClick={() => handleDismissAnnouncement(announcement._id)} className="ml-2">
+                      Dismiss
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ),
+          )}
+        </div>
+
+        {/* Tabs */}
+        <div className="flex space-x-4 mb-8">
+          <Button variant={activeTab === "home" ? "default" : "outline"} onClick={() => setActiveTab("home")}>
+            <Home className="mr-2 h-4 w-4" />
+            Home
+          </Button>
+          <Button
+            variant={activeTab === "moderation" ? "default" : "outline"}
+            onClick={() => setActiveTab("moderation")}
+          >
+            <Shield className="mr-2 h-4 w-4" />
+            Moderation
+          </Button>
+          <Button variant={activeTab === "support" ? "default" : "outline"} onClick={() => setActiveTab("support")}>
+            <LifeBuoy className="mr-2 h-4 w-4" />
+            Support
+          </Button>
+          <Button variant={activeTab === "events" ? "default" : "outline"} onClick={() => setActiveTab("events")}>
+            <Megaphone className="mr-2 h-4 w-4" />
+            Events
+          </Button>
+          <Button variant={activeTab === "plugins" ? "default" : "outline"} onClick={() => setActiveTab("plugins")}>
+            <Zap className="mr-2 h-4 w-4" />
+            Plugins
+          </Button>
+          <Button variant={activeTab === "settings" ? "default" : "outline"} onClick={() => setActiveTab("settings")}>
+            <Settings className="mr-2 h-4 w-4" />
+            Settings
+          </Button>
+        </div>
+
+        {/* Home Tab */}
+        {activeTab === "home" && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Card className="glass-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-white">
+                    <Users className="h-5 w-5" />
+                    Server Statistics
+                  </CardTitle>
+                  <CardDescription className="text-gray-400">Overview of server members</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-400">Total Members</p>
+                      <p className="text-2xl font-bold text-white">{serverConfig?.server_stats?.total_members || 0}</p>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox id="log-ban" />
-                      <Label htmlFor="log-ban">Bans</Label>
+                    <Users className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <Separator className="bg-white/20" />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-400">Total Bots</p>
+                      <p className="text-2xl font-bold text-white">{serverConfig?.server_stats?.total_bots || 0}</p>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox id="log-mute" />
-                      <Label htmlFor="log-mute">Mutes</Label>
+                    <Bot className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <Separator className="bg-white/20" />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-400">Total Admins</p>
+                      <p className="text-2xl font-bold text-white">{serverConfig?.server_stats?.total_admins || 0}</p>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox id="log-warn" />
-                      <Label htmlFor="log-warn">Warnings</Label>
+                    <Crown className="h-8 w-8 text-gray-400" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="glass-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-white">
+                    <Info className="h-5 w-5" />
+                    Server Information
+                  </CardTitle>
+                  <CardDescription className="text-gray-400">Details about this server</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-400">Server Name</p>
+                      <p className="text-xl font-bold text-white">{serverConfig?.server_name}</p>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          <div className="mt-6 flex justify-end">
-            <Button onClick={handleSaveSettings} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="support" className="flex-1 p-4">
-          <div className="flex flex-col gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Overview</CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-4">
-                <Card className="bg-gray-50 dark:bg-gray-800">
-                  <CardContent className="p-4">
-                    <h3 className="text-lg font-semibold">Ticket System</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Manage support tickets directly within Discord.
-                    </p>
-                    <Button variant="link" className="mt-2 p-0">
-                      Configure <ChevronRight className="ml-1 h-4 w-4" />
-                    </Button>
-                  </CardContent>
-                </Card>
-                <Card className="bg-gray-50 dark:bg-gray-800">
-                  <CardContent className="p-4">
-                    <h3 className="text-lg font-semibold">FAQ & Knowledge Base</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Set up automated responses for common questions.
-                    </p>
-                    <Button variant="link" className="mt-2 p-0">
-                      Configure <ChevronRight className="ml-1 h-4 w-4" />
-                    </Button>
-                  </CardContent>
-                </Card>
-                <Card className="bg-gray-50 dark:bg-gray-800">
-                  <CardContent className="p-4">
-                    <h3 className="text-lg font-semibold">Live Chat Integration</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Connect with external live chat platforms.
-                    </p>
-                    <Button variant="link" className="mt-2 p-0">
-                      Configure <ChevronRight className="ml-1 h-4 w-4" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Support Channels</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="support-channel">Primary Support Channel</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select channel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {discordChannels
-                        .filter((c) => c.type === 0)
-                        .map((channel) => (
-                          <SelectItem key={channel.id} value={channel.id}>
-                            #{channel.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="ticket-category">Ticket Category</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {discordChannels
-                        .filter((c) => c.type === 4)
-                        .map((channel) => (
-                          <SelectItem key={channel.id} value={channel.id}>
-                            {channel.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          <div className="mt-6 flex justify-end">
-            <Button onClick={handleSaveSettings} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="events" className="flex-1 p-4">
-          {!selectedEvent ? (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => setSelectedEvent("automatic_tasks")}
-              >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-lg font-semibold">Automatic Tasks</CardTitle>
-                  <Calendar className="h-6 w-6 text-gray-500 dark:text-gray-400" />
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Schedule messages, role assignments, and more.
-                  </p>
+                  <Separator className="bg-white/20" />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-400">Server ID</p>
+                      <p className="text-xl font-bold text-white">{serverConfig?.server_id}</p>
+                    </div>
+                  </div>
+                  <Separator className="bg-white/20" />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-400">Bot Added</p>
+                      <p className="text-xl font-bold text-white">{serverConfig?.is_bot_added ? "Yes" : "No"}</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => setSelectedEvent("giveaway")}
-              >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-lg font-semibold">Giveaway</CardTitle>
-                  <Gift className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+              <Card className="glass-card">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-white">
+                    <UserCheck className="h-5 w-5" />
+                    User Information
+                  </CardTitle>
+                  <CardDescription className="text-gray-400">Your account details</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Create and manage engaging giveaways for your members.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => setSelectedEvent("logger")}
-              >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-lg font-semibold">Logger</CardTitle>
-                  <Search className="h-6 w-6 text-gray-500 dark:text-gray-400" />
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Track server events like message edits, deletes, and member changes.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => setSelectedEvent("invitetrack")}
-              >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-lg font-semibold">Invite Track</CardTitle>
-                  <UserPlus className="h-6 w-6 text-gray-500 dark:text-gray-400" />
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Monitor and track invites to see who's bringing in new members.
-                  </p>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-400">Username</p>
+                      <p className="text-xl font-bold text-white">{userData?.name}</p>
+                    </div>
+                  </div>
+                  <Separator className="bg-white/20" />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-400">Email</p>
+                      <p className="text-xl font-bold text-white">{userData?.email}</p>
+                    </div>
+                  </div>
+                  <Separator className="bg-white/20" />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-400">Joined Since</p>
+                      <p className="text-xl font-bold text-white">{userData?.joined_since}</p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
-          ) : (
-            <div className="space-y-6">
-              <Button variant="outline" onClick={() => setSelectedEvent(null)}>
-                <ChevronLeft className="mr-2 h-4 w-4" /> Back to Events Overview
-              </Button>
 
-              {selectedEvent === "automatic_tasks" && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Automatic Tasks Configuration</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="auto-tasks-enabled">Enable Automatic Tasks</Label>
-                      <Switch
-                        id="auto-tasks-enabled"
-                        checked={serverConfig.events.automatic_tasks.enabled}
-                        onCheckedChange={(checked) =>
-                          setServerConfig((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  events: {
-                                    ...prev.events,
-                                    automatic_tasks: {
-                                      ...prev.events.automatic_tasks,
-                                      enabled: checked,
-                                    },
-                                  },
-                                }
-                              : null,
-                          )
-                        }
-                      />
-                    </div>
-                    <Separator />
-                    <h3 className="text-lg font-semibold">Scheduled Tasks</h3>
-                    {serverConfig.events.automatic_tasks.tasks.length === 0 ? (
-                      <p className="text-gray-500 dark:text-gray-400">No tasks configured yet.</p>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Schedule</TableHead>
-                            <TableHead>Channel</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {serverConfig.events.automatic_tasks.tasks.map((task, i) => (
-                            <TableRow key={i}>
-                              <TableCell>{task.name}</TableCell>
-                              <TableCell>{task.type}</TableCell>
-                              <TableCell>{task.schedule}</TableCell>
-                              <TableCell>{discordChannels.find((c) => c.id === task.channel)?.name}</TableCell>
-                              <TableCell>
-                                <Button variant="ghost" size="sm">
-                                  Edit
-                                </Button>
-                                <Button variant="ghost" size="sm">
-                                  Delete
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-                    <Button variant="outline" className="mt-4 bg-transparent">
-                      <Plus className="mr-2 h-4 w-4" /> Add New Task
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Download className="h-5 w-5" />
+                  Download User Data
+                </CardTitle>
+                <CardDescription className="text-gray-400">Download your user data as a JSON file</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={downloadUserData} className="bg-white text-black hover:bg-gray-100">
+                  Download User Data
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-              {selectedEvent === "giveaway" && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Giveaway Configuration</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="giveaway-enabled">Enable Giveaway Module</Label>
-                      <Switch
-                        id="giveaway-enabled"
-                        checked={serverConfig.events.giveaway.enabled}
-                        onCheckedChange={(checked) =>
-                          setServerConfig((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  events: {
-                                    ...prev.events,
-                                    giveaway: {
-                                      ...prev.events.giveaway,
-                                      enabled: checked,
-                                    },
-                                  },
-                                }
-                              : null,
-                          )
-                        }
-                      />
-                    </div>
-                    <Separator />
-                    <h3 className="text-lg font-semibold">Current Giveaways</h3>
-                    {serverConfig.events.giveaway.giveaways.length === 0 ? (
-                      <p className="text-gray-500 dark:text-gray-400">No active giveaways.</p>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Channel</TableHead>
-                            <TableHead>Winners</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {serverConfig.events.giveaway.giveaways.map((gw) => (
-                            <TableRow key={gw.id}>
-                              <TableCell>{gw.name}</TableCell>
-                              <TableCell>{discordChannels.find((c) => c.id === gw.channel)?.name}</TableCell>
-                              <TableCell>{gw.winners}</TableCell>
-                              <TableCell>
-                                <Badge variant={gw.status === "active" ? "default" : "secondary"}>{gw.status}</Badge>
-                              </TableCell>
-                              <TableCell>
-                                <Button variant="ghost" size="sm">
-                                  View
-                                </Button>
-                                <Button variant="ghost" size="sm">
-                                  End
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-                    <Button variant="outline" className="mt-4 bg-transparent" onClick={() => setShowGiveawayForm(true)}>
-                      <Plus className="mr-2 h-4 w-4" /> Create New Giveaway
-                    </Button>
+        {/* Moderation Tab */}
+        {activeTab === "moderation" && (
+          <div className="space-y-6">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Shield className="h-5 w-5" />
+                  Moderation Settings
+                </CardTitle>
+                <CardDescription className="text-gray-400">Configure server moderation settings</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="moderation-level" className="text-white">
+                    Moderation Level
+                  </Label>
+                  <Select
+                    value={serverConfig?.moderation_level || "off"}
+                    onValueChange={(value) => handleModerationLevelChange(value as "off" | "on" | "lockdown")}
+                  >
+                    <SelectTrigger className="bg-black/60 border-white/20 h-8">
+                      <SelectValue placeholder="Select a moderation level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="off">Off</SelectItem>
+                      <SelectItem value="on">On</SelectItem>
+                      <SelectItem value="lockdown">Lockdown</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-gray-400">Set the moderation level for the server</p>
+                </div>
 
-                    {showGiveawayForm && (
-                      <Card className="mt-4 p-4">
-                        <CardTitle className="mb-4">New Giveaway</CardTitle>
-                        <div className="grid gap-4">
-                          <div>
-                            <Label htmlFor="giveaway-name">Giveaway Name</Label>
-                            <Input
-                              id="giveaway-name"
-                              value={newGiveaway.name}
-                              onChange={(e) => setNewGiveaway({ ...newGiveaway, name: e.target.value })}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="giveaway-description">Description</Label>
-                            <Textarea
-                              id="giveaway-description"
-                              value={newGiveaway.description}
-                              onChange={(e) =>
-                                setNewGiveaway({
-                                  ...newGiveaway,
-                                  description: e.target.value,
-                                })
-                              }
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="giveaway-channel">Channel</Label>
-                            <Select
-                              value={newGiveaway.channel}
-                              onValueChange={(value) => setNewGiveaway({ ...newGiveaway, channel: value })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select channel" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {discordChannels
-                                  .filter((c) => c.type === 0)
-                                  .map((channel) => (
-                                    <SelectItem key={channel.id} value={channel.id}>
-                                      #{channel.name}
-                                    </SelectItem>
-                                  ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label htmlFor="giveaway-winners">Number of Winners</Label>
-                            <Input
-                              id="giveaway-winners"
-                              type="number"
-                              value={newGiveaway.winners}
-                              onChange={(e) =>
-                                setNewGiveaway({
-                                  ...newGiveaway,
-                                  winners: Number.parseInt(e.target.value),
-                                })
-                              }
-                              min={1}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="giveaway-duration">Duration (seconds)</Label>
-                            <Input
-                              id="giveaway-duration"
-                              type="number"
-                              value={newGiveaway.duration}
-                              onChange={(e) =>
-                                setNewGiveaway({
-                                  ...newGiveaway,
-                                  duration: Number.parseInt(e.target.value),
-                                })
-                              }
-                              min={60}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="giveaway-method">Creation Method</Label>
-                            <Select
-                              value={newGiveaway.method}
-                              onValueChange={(value) => setNewGiveaway({ ...newGiveaway, method: value })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select method" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="manual">Manual (Discord)</SelectItem>
-                                <SelectItem value="web">Create on Web</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          {generatedLink && newGiveaway.method === "web" && (
-                            <div className="flex items-center space-x-2">
-                              <Input value={`https://sycord.com${generatedLink}`} readOnly className="flex-1" />
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button variant="outline" size="icon" onClick={handleCopyLink}>
-                                      <Copy className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Copy Link</TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button variant="outline" size="icon" asChild>
-                                      <a
-                                        href={`https://sycord.com${generatedLink}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                      >
-                                        <ExternalLink className="h-4 w-4" />
-                                      </a>
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Open Link</TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </div>
-                          )}
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" onClick={() => setShowGiveawayForm(false)}>
-                              Cancel
-                            </Button>
-                            <Button onClick={handleCreateGiveaway} disabled={isSaving}>
-                              {isSaving ? "Creating..." : "Create Giveaway"}
-                            </Button>
-                          </div>
-                        </div>
-                      </Card>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+                <Separator className="bg-white/20" />
 
-              {selectedEvent === "logger" && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Logger Configuration</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="logger-enabled">Enable Logger Module</Label>
-                      <Switch
-                        id="logger-enabled"
-                        checked={serverConfig.events.logger.enabled}
-                        onCheckedChange={(checked) =>
-                          setServerConfig((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  events: {
-                                    ...prev.events,
-                                    logger: {
-                                      ...prev.events.logger,
-                                      enabled: checked,
-                                    },
-                                  },
-                                }
-                              : null,
-                          )
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="log-channel">Log Channel</Label>
-                      <Select
-                        value={serverConfig.events.logger.log_channel}
-                        onValueChange={(value) =>
-                          setServerConfig((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  events: {
-                                    ...prev.events,
-                                    logger: {
-                                      ...prev.events.logger,
-                                      log_channel: value,
-                                    },
-                                  },
-                                }
-                              : null,
-                          )
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select log channel" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {discordChannels
-                            .filter((c) => c.type === 0)
-                            .map((channel) => (
-                              <SelectItem key={channel.id} value={channel.id}>
-                                #{channel.name}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Separator />
-                    <h3 className="text-lg font-semibold">Logged Events</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="log-message-delete">Message Delete</Label>
-                        <Switch
-                          id="log-message-delete"
-                          checked={serverConfig.events.logger.events.message_delete}
-                          onCheckedChange={(checked) =>
-                            setServerConfig((prev) =>
-                              prev
-                                ? {
-                                    ...prev,
-                                    events: {
-                                      ...prev.events,
-                                      logger: {
-                                        ...prev.events.logger,
-                                        events: {
-                                          ...prev.events.logger.events,
-                                          message_delete: checked,
-                                        },
-                                      },
-                                    },
-                                  }
-                                : null,
-                            )
-                          }
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="log-message-edit">Message Edit</Label>
-                        <Switch
-                          id="log-message-edit"
-                          checked={serverConfig.events.logger.events.message_edit}
-                          onCheckedChange={(checked) =>
-                            setServerConfig((prev) =>
-                              prev
-                                ? {
-                                    ...prev,
-                                    events: {
-                                      ...prev.events,
-                                      logger: {
-                                        ...prev.events.logger,
-                                        events: {
-                                          ...prev.events.logger.events,
-                                          message_edit: checked,
-                                        },
-                                      },
-                                    },
-                                  }
-                                : null,
-                            )
-                          }
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="log-member-join">Member Join</Label>
-                        <Switch
-                          id="log-member-join"
-                          checked={serverConfig.events.logger.events.member_join}
-                          onCheckedChange={(checked) =>
-                            setServerConfig((prev) =>
-                              prev
-                                ? {
-                                    ...prev,
-                                    events: {
-                                      ...prev.events,
-                                      logger: {
-                                        ...prev.events.logger,
-                                        events: {
-                                          ...prev.events.logger.events,
-                                          member_join: checked,
-                                        },
-                                      },
-                                    },
-                                  }
-                                : null,
-                            )
-                          }
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="log-member-leave">Member Leave</Label>
-                        <Switch
-                          id="log-member-leave"
-                          checked={serverConfig.events.logger.events.member_leave}
-                          onCheckedChange={(checked) =>
-                            setServerConfig((prev) =>
-                              prev
-                                ? {
-                                    ...prev,
-                                    events: {
-                                      ...prev.events,
-                                      logger: {
-                                        ...prev.events.logger,
-                                        events: {
-                                          ...prev.events.logger.events,
-                                          member_leave: checked,
-                                        },
-                                      },
-                                    },
-                                  }
-                                : null,
-                            )
-                          }
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="link-filter" className="text-white">
+                      Link Filter
+                    </Label>
+                    <p className="text-sm text-gray-400">Enable or disable the link filter</p>
+                  </div>
+                  <Switch
+                    id="link-filter"
+                    checked={serverConfig.moderation?.link_filter?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateServerConfig({
+                        moderation: {
+                          ...serverConfig.moderation,
+                          link_filter: { ...serverConfig.moderation.link_filter, enabled: checked },
+                        },
+                      })
+                    }
+                  />
+                </div>
 
-              {selectedEvent === "invitetrack" && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Invite Track Configuration</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="invite-track-enabled">Enable Invite Tracker</Label>
-                      <Switch
-                        id="invite-track-enabled"
-                        checked={serverConfig.events.invitetrack.enabled}
-                        onCheckedChange={(checked) =>
-                          setServerConfig((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  events: {
-                                    ...prev.events,
-                                    invitetrack: {
-                                      ...prev.events.invitetrack,
-                                      enabled: checked,
-                                    },
-                                  },
-                                }
-                              : null,
-                          )
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="invite-log-channel">Invite Log Channel</Label>
-                      <Select
-                        value={serverConfig.events.invitetrack.invite_log_channel}
-                        onValueChange={(value) =>
-                          setServerConfig((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  events: {
-                                    ...prev.events,
-                                    invitetrack: {
-                                      ...prev.events.invitetrack,
-                                      invite_log_channel: value,
-                                    },
-                                  },
-                                }
-                              : null,
-                          )
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select log channel" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {discordChannels
-                            .filter((c) => c.type === 0)
-                            .map((channel) => (
-                              <SelectItem key={channel.id} value={channel.id}>
-                                #{channel.name}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-              <div className="mt-6 flex justify-end">
-                <Button onClick={handleSaveSettings} disabled={isSaving}>
-                  {isSaving ? "Saving..." : "Save Changes"}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="bad-word-filter" className="text-white">
+                      Bad Word Filter
+                    </Label>
+                    <p className="text-sm text-gray-400">Enable or disable the bad word filter</p>
+                  </div>
+                  <Switch
+                    id="bad-word-filter"
+                    checked={serverConfig.moderation?.bad_word_filter?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateServerConfig({
+                        moderation: {
+                          ...serverConfig.moderation,
+                          bad_word_filter: { ...serverConfig.moderation.bad_word_filter, enabled: checked },
+                        },
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="raid-protection" className="text-white">
+                      Raid Protection
+                    </Label>
+                    <p className="text-sm text-gray-400">Enable or disable raid protection</p>
+                  </div>
+                  <Switch
+                    id="raid-protection"
+                    checked={serverConfig.moderation?.raid_protection?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateServerConfig({
+                        moderation: {
+                          ...serverConfig.moderation,
+                          raid_protection: { ...serverConfig.moderation.raid_protection, enabled: checked },
+                        },
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="suspicious-accounts" className="text-white">
+                      Suspicious Accounts
+                    </Label>
+                    <p className="text-sm text-gray-400">Enable or disable suspicious account detection</p>
+                  </div>
+                  <Switch
+                    id="suspicious-accounts"
+                    checked={serverConfig.moderation?.suspicious_accounts?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateServerConfig({
+                        moderation: {
+                          ...serverConfig.moderation,
+                          suspicious_accounts: { ...serverConfig.moderation.suspicious_accounts, enabled: checked },
+                        },
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="auto-role" className="text-white">
+                      Auto Role
+                    </Label>
+                    <p className="text-sm text-gray-400">Enable or disable auto role assignment</p>
+                  </div>
+                  <Switch
+                    id="auto-role"
+                    checked={serverConfig.moderation?.auto_role?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateServerConfig({
+                        moderation: {
+                          ...serverConfig.moderation,
+                          auto_role: { ...serverConfig.moderation.auto_role, enabled: checked },
+                        },
+                      })
+                    }
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Support Tab */}
+        {activeTab === "support" && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-semibold text-white">Support Configuration</h2>
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setSupportView("overview")}
+                  className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                >
+                  Overview
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setSupportView("staff-insights")}
+                  className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                >
+                  Staff Insights
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setSupportView("tickets")}
+                  className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                >
+                  Tickets
                 </Button>
               </div>
             </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="integrations" className="flex-1 p-4">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>YouTube Integration</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="youtube-enabled">Enable YouTube Notifications</Label>
-                  <Switch id="youtube-enabled" />
-                </div>
-                <div>
-                  <Label htmlFor="youtube-channel-id">YouTube Channel ID</Label>
-                  <Input id="youtube-channel-id" placeholder="UC..." />
-                </div>
-                <div>
-                  <Label htmlFor="youtube-notification-channel">Notification Channel</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select channel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {discordChannels
-                        .filter((c) => c.type === 0)
-                        .map((channel) => (
-                          <SelectItem key={channel.id} value={channel.id}>
-                            #{channel.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Twitch Integration</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="twitch-enabled">Enable Twitch Notifications</Label>
-                  <Switch id="twitch-enabled" />
-                </div>
-                <div>
-                  <Label htmlFor="twitch-channel-name">Twitch Channel Name</Label>
-                  <Input id="twitch-channel-name" placeholder="yourchannel" />
-                </div>
-                <div>
-                  <Label htmlFor="twitch-notification-channel">Notification Channel</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select channel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {discordChannels
-                        .filter((c) => c.type === 0)
-                        .map((channel) => (
-                          <SelectItem key={channel.id} value={channel.id}>
-                            #{channel.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
+            {renderSupportContent()}
           </div>
-          <div className="mt-6 flex justify-end">
-            <Button onClick={handleSaveSettings} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="plugins" className="flex-1 p-4">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {plugins.map((plugin) => (
-              <Card key={plugin.id}>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    {plugin.name}
-                    {plugin.premium && (
-                      <Badge variant="secondary" className="ml-2">
-                        Premium
-                      </Badge>
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{plugin.description}</p>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor={`plugin-${plugin.id}`}>Enable Plugin</Label>
-                    <Switch
-                      id={`plugin-${plugin.id}`}
-                      checked={userPlugins.includes(plugin.id)}
-                      onCheckedChange={(checked) => handlePluginToggle(plugin.id, checked)}
-                      disabled={plugin.premium && !serverConfig.premium_features}
-                    />
-                  </div>
-                  {plugin.premium && !serverConfig.premium_features && (
-                    <p className="text-xs text-red-500">Requires premium features to enable.</p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="settings" className="flex-1 p-4">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>General Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="bot-prefix">Bot Prefix</Label>
-                  <Input
-                    id="bot-prefix"
-                    value={serverConfig.settings?.bot_prefix || "!"}
-                    onChange={(e) =>
-                      setServerConfig((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              settings: {
-                                ...prev.settings,
-                                bot_prefix: e.target.value,
-                              },
-                            }
-                          : null,
-                      )
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="default-role">Default Role for New Members</Label>
-                  <Select
-                    value={serverConfig.settings?.default_role || ""}
-                    onValueChange={(value) =>
-                      setServerConfig((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              settings: { ...prev.settings, default_role: value },
-                            }
-                          : null,
-                      )
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {discordRoles.map((role) => (
-                        <SelectItem key={role.id} value={role.id}>
-                          {role.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="timezone">Timezone</Label>
-                  <Select
-                    value={serverConfig.settings?.timezone || "UTC"}
-                    onValueChange={(value) =>
-                      setServerConfig((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              settings: { ...prev.settings, timezone: value },
-                            }
-                          : null,
-                      )
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select timezone" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="UTC">UTC</SelectItem>
-                      <SelectItem value="America/New_York">America/New_York</SelectItem>
-                      <SelectItem value="America/Los_Angeles">America/Los_Angeles</SelectItem>
-                      {/* Add more timezones as needed */}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="language">Language</Label>
-                  <Select
-                    value={serverConfig.settings?.language || "en"}
-                    onValueChange={(value) =>
-                      setServerConfig((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              settings: { ...prev.settings, language: value },
-                            }
-                          : null,
-                      )
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select language" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="es">Spanish</SelectItem>
-                      <SelectItem value="fr">French</SelectItem>
-                      {/* Add more languages as needed */}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="bot-icon-url">Bot Icon URL</Label>
-                  <Input
-                    id="bot-icon-url"
-                    value={botIconUrl}
-                    onChange={(e) =>
-                      setServerConfig((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              settings: {
-                                ...prev.settings,
-                                bot_icon_url: e.target.value,
-                              },
-                            }
-                          : null,
-                      )
-                    }
-                    placeholder="https://example.com/bot-icon.png"
-                  />
-                  <div className="mt-2 flex items-center space-x-2">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={botIconUrl || "/placeholder.svg"} alt="Bot Icon Preview" />
-                      <AvatarFallback>
-                        <Bot className="h-6 w-6" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">Preview</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Welcome & Goodbye Messages</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="welcome-message-enabled">Enable Welcome Message</Label>
-                  <Switch
-                    id="welcome-message-enabled"
-                    checked={serverConfig.settings?.welcome_message_enabled || false}
-                    onCheckedChange={(checked) =>
-                      setServerConfig((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              settings: {
-                                ...prev.settings,
-                                welcome_message_enabled: checked,
-                              },
-                            }
-                          : null,
-                      )
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="welcome-message-channel">Welcome Message Channel</Label>
-                  <Select
-                    value={serverConfig.settings?.welcome_message_channel || ""}
-                    onValueChange={(value) =>
-                      setServerConfig((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              settings: {
-                                ...prev.settings,
-                                welcome_message_channel: value,
-                              },
-                            }
-                          : null,
-                      )
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select channel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {discordChannels
-                        .filter((c) => c.type === 0)
-                        .map((channel) => (
-                          <SelectItem key={channel.id} value={channel.id}>
-                            #{channel.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="goodbye-message-enabled">Enable Goodbye Message</Label>
-                  <Switch
-                    id="goodbye-message-enabled"
-                    checked={serverConfig.settings?.goodbye_message_enabled || false}
-                    onCheckedChange={(checked) =>
-                      setServerConfig((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              settings: {
-                                ...prev.settings,
-                                goodbye_message_enabled: checked,
-                              },
-                            }
-                          : null,
-                      )
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="goodbye-message-channel">Goodbye Message Channel</Label>
-                  <Select
-                    value={serverConfig.settings?.goodbye_message_channel || ""}
-                    onValueChange={(value) =>
-                      setServerConfig((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              settings: {
-                                ...prev.settings,
-                                goodbye_message_channel: value,
-                              },
-                            }
-                          : null,
-                      )
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select channel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {discordChannels
-                        .filter((c) => c.type === 0)
-                        .map((channel) => (
-                          <SelectItem key={channel.id} value={channel.id}>
-                            #{channel.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          <div className="mt-6 flex justify-end">
-            <Button onClick={handleSaveSettings} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
-        </TabsContent>
-
-        {isAdmin && (
-          <TabsContent value="access-plus" className="flex-1 p-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Admin Access+ Features</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  These features are only available to administrators for advanced server management and debugging.
-                </p>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="raw-config-editor">Raw Configuration Editor</Label>
-                  <Button variant="outline">Open Editor</Button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="bot-command-logs">Bot Command Logs</Label>
-                  <Button variant="outline">View Logs</Button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="force-sync">Force Server Sync</Label>
-                  <Button variant="destructive">Sync Now</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
         )}
-      </Tabs>
+
+        {/* Events Tab */}
+        {activeTab === "events" && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-semibold text-white">Event Configuration</h2>
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setActiveEventSection("overview")}
+                  className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                >
+                  Overview
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setActiveEventSection("automatic-task")}
+                  className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                >
+                  Automatic Tasks
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setActiveEventSection("giveaway")}
+                  className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                >
+                  Giveaway
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setActiveEventSection("logger")}
+                  className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                >
+                  Logger
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setActiveEventSection("invite-track")}
+                  className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                >
+                  Invite Tracker
+                </Button>
+              </div>
+            </div>
+            {renderEventContent()}
+          </div>
+        )}
+
+        {/* Plugins Tab */}
+        {activeTab === "plugins" && (
+          <div className="space-y-6">
+            <PluginsTab serverId={serverId} />
+          </div>
+        )}
+
+        {/* Settings Tab */}
+        {activeTab === "settings" && (
+          <div className="space-y-6">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Settings className="h-5 w-5" />
+                  Bot Settings
+                </CardTitle>
+                <CardDescription className="text-gray-400">Configure your custom bot settings</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="profile-picture-url" className="text-white">
+                    Profile Picture URL
+                  </Label>
+                  <Input
+                    id="profile-picture-url"
+                    placeholder="Enter profile picture URL"
+                    value={profilePictureUrl}
+                    onChange={(e) => setProfilePictureUrl(e.target.value)}
+                    className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                  />
+                  <p className="text-sm text-gray-400">URL for the bot's profile picture</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="custom-bot-name" className="text-white">
+                    Custom Bot Name
+                  </Label>
+                  <Input
+                    id="custom-bot-name"
+                    placeholder="Enter custom bot name"
+                    value={customBotName}
+                    onChange={(e) => setCustomBotName(e.target.value)}
+                    className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                  />
+                  <p className="text-sm text-gray-400">Custom name for the bot</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bot-token" className="text-white">
+                    Bot Token
+                  </Label>
+                  <div className="flex items-center">
+                    <Input
+                      id="bot-token"
+                      type={showToken ? "text" : "password"}
+                      placeholder="Enter bot token"
+                      value={botToken}
+                      onChange={(e) => setBotToken(e.target.value)}
+                      className="bg-black/60 border-white/20 text-white placeholder-gray-400 mr-2"
+                    />
+                    <Button variant="outline" onClick={() => setShowToken(!showToken)}>
+                      {showToken ? "Hide" : "Show"}
+                    </Button>
+                  </div>
+                  <p className="text-sm text-gray-400">Bot token for your custom bot</p>
+                </div>
+
+                <Button onClick={handleSaveBotSettings} className="bg-white text-black hover:bg-gray-100">
+                  Save Bot Settings
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Lock className="h-5 w-5" />
+                  App Settings
+                </CardTitle>
+                <CardDescription className="text-gray-400">Manage application-wide settings</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="maintenance-mode" className="text-white">
+                      Maintenance Mode
+                    </Label>
+                    <p className="text-sm text-gray-400">Enable or disable maintenance mode</p>
+                  </div>
+                  <Switch
+                    id="maintenance-mode"
+                    checked={appSettings?.maintenanceMode?.enabled || false}
+                    onCheckedChange={handleMaintenanceToggle}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Megaphone className="h-5 w-5" />
+                  Announcements
+                </CardTitle>
+                <CardDescription className="text-gray-400">Send announcements to all users</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-announcement" className="text-white">
+                    New Announcement
+                  </Label>
+                  <Textarea
+                    id="new-announcement"
+                    placeholder="Enter your announcement message"
+                    value={newAnnouncement}
+                    onChange={(e) => setNewAnnouncement(e.target.value)}
+                    className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                  />
+                </div>
+                <Button onClick={handleSendAnnouncement} className="bg-white text-black hover:bg-gray-100">
+                  Send Announcement
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Modals */}
+        <Dialog open={showLockdownWarning} onOpenChange={setShowLockdownWarning}>
+          <DialogContent className="sm:max-w-[425px] bg-black/80 border border-white/20 text-white">
+            <DialogHeader>
+              <DialogTitle>Confirm Lockdown</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to enable lockdown mode? This will enable all security features and may disrupt
+                normal server activity.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setShowLockdownWarning(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" onClick={confirmLockdown}>
+                Confirm
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showFlagStaffWarning} onOpenChange={setShowFlagStaffWarning}>
+          <DialogContent className="sm:max-w-[425px] bg-black/80 border border-white/20 text-white">
+            <DialogHeader>
+              <DialogTitle>Confirm Flag Staff</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to flag this staff member? This will set their reputation to 5.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button type="button" variant="secondary" onClick={() => setShowFlagStaffWarning(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" onClick={confirmFlagStaff}>
+                Confirm
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   )
 }

@@ -1,18 +1,8 @@
-import { MongoClient, type Db, ServerApiVersion } from "mongodb"
+import { MongoClient, type Db } from "mongodb"
 
-const uri = process.env.MONGODB_URI
-
-if (!uri) {
-  throw new Error("Please define the MONGODB_URI environment variable inside .env.local")
-}
-
-const options = {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  },
-}
+// Make MongoDB URI optional during build time
+const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/fallback"
+const options = {}
 
 let client: MongoClient
 let clientPromise: Promise<MongoClient>
@@ -32,9 +22,10 @@ if (process.env.NODE_ENV === "development") {
   clientPromise = client.connect()
 }
 
+// Add the missing connectToDatabase export
 export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db }> {
   const client = await clientPromise
-  const db = client.db("sycord") // Replace with your actual database name
+  const db = client.db("dash-discord-bot") // Replace with your actual database name
   return { client, db }
 }
 
