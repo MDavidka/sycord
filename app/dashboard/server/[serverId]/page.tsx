@@ -964,7 +964,7 @@ export default function ServerConfigPage() {
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4 mb-4">
                     <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                      <Users className="h-6 w-6 text-blue-400" />
+                      <Users className="h-6 w-6 text-white" />
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-white">Staff Insights</h3>
@@ -994,7 +994,7 @@ export default function ServerConfigPage() {
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4 mb-4">
                     <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                      <MessageSquare className="h-6 w-6 text-purple-400" />
+                      <MessageSquare className="h-6 w-6 text-white" />
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-white">Ticket System</h3>
@@ -1042,7 +1042,7 @@ export default function ServerConfigPage() {
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="text-white flex items-center text-xl">
-                  <Clock className="h-6 w-6 mr-3" /> Automatic Tasks
+                  <Clock className="h-6 w-6 text-white mr-3" /> Automatic Tasks
                 </CardTitle>
                 <CardDescription className="text-gray-400">
                   Automate actions and schedule tasks for your server.
@@ -1112,7 +1112,7 @@ export default function ServerConfigPage() {
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="text-white flex items-center text-xl">
-                  <Gift className="h-6 w-6 mr-3" /> Giveaway System
+                  <Gift className="h-6 w-6 text-white mr-3" /> Giveaway System
                 </CardTitle>
                 <CardDescription className="text-gray-400">
                   Configure and manage giveaways for your server
@@ -1369,7 +1369,7 @@ export default function ServerConfigPage() {
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="text-white flex items-center text-xl">
-                  <FileText className="h-6 w-6 mr-3" /> Logger
+                  <FileText className="h-6 w-6 text-white mr-3" /> Logger
                 </CardTitle>
                 <CardDescription className="text-gray-400">
                   Configure logging for server events and actions.
@@ -1497,7 +1497,7 @@ export default function ServerConfigPage() {
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="text-white flex items-center text-xl">
-                  <LinkIcon className="h-6 w-6 mr-3" /> Invite Tracker
+                  <LinkIcon className="h-6 w-6 text-white mr-3" /> Invite Tracker
                 </CardTitle>
                 <CardDescription className="text-gray-400">Track invites and monitor server growth.</CardDescription>
               </CardHeader>
@@ -1594,7 +1594,7 @@ export default function ServerConfigPage() {
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4 mb-4">
                     <div className="w-12 h-12 rounded-lg bg-yellow-500/20 flex items-center justify-center">
-                      <Clock className="h-6 w-6 text-yellow-400" />
+                      <Clock className="h-6 w-6 text-white" />
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-white">Automatic Tasks</h3>
@@ -1624,7 +1624,7 @@ export default function ServerConfigPage() {
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4 mb-4">
                     <div className="w-12 h-12 rounded-lg bg-pink-500/20 flex items-center justify-center">
-                      <Gift className="h-6 w-6 text-pink-400" />
+                      <Gift className="h-6 w-6 text-white" />
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-white">Giveaway System</h3>
@@ -1654,7 +1654,7 @@ export default function ServerConfigPage() {
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4 mb-4">
                     <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center">
-                      <FileText className="h-6 w-6 text-green-400" />
+                      <FileText className="h-6 w-6 text-white" />
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-white">Logger</h3>
@@ -1684,7 +1684,7 @@ export default function ServerConfigPage() {
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4 mb-4">
                     <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                      <LinkIcon className="h-6 w-6 text-blue-400" />
+                      <LinkIcon className="h-6 w-6 text-white" />
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-white">Invite Tracker</h3>
@@ -2996,7 +2996,7 @@ export default function ServerConfigPage() {
                   <CardContent className="p-6">
                     <div className="flex items-center space-x-4 mb-4">
                       <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                        <Users className="h-6 w-6 text-blue-400" />
+                        <Users className="h-6 w-6 text-white" />
                       </div>
                       <div>
                         <h3 className="text-lg font-semibold text-white">Staff Insights</h3>
@@ -3028,7 +3028,7 @@ export default function ServerConfigPage() {
                   <CardContent className="p-6">
                     <div className="flex items-center space-x-4 mb-4">
                       <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                        <MessageSquare className="h-6 w-6 text-purple-400" />
+                        <MessageSquare className="h-6 w-6 text-white" />
                       </div>
                       <div>
                         <h3 className="text-lg font-semibold text-white">Ticket System</h3>
@@ -3564,66 +3564,94 @@ export default function ServerConfigPage() {
         {/* Settings Tab */}
         {activeTab === "settings" && (
           <div className="space-y-6">
-            {/* Discord-like Profile Header */}
-            <Card className="overflow-hidden glass-card">
-              <div className="h-32 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 relative">
-                <div className="absolute -bottom-12 left-6">
-                  <Avatar className="w-24 h-24 border-4 border-background">
-                    <AvatarImage
-                      src={
-                        serverConfig.server_icon
-                          ? `https://cdn.discordapp.com/icons/${serverId}/${serverConfig.server_icon}.png?size=128`
-                          : "https://cdn.discordapp.com/attachments/1368122038941909002/1393590762670653641/Untitled_design.png.png?ex=6873ba09&is=68726889&hm=adc82ecb5e10ffac7abed79e841c8190ab6f0326a0e00ab61e8b377161752de9&"
-                      }
-                    />
-                    <AvatarFallback className="text-2xl font-bold bg-gray-700 text-white">
-                      {serverConfig.server_name ? serverConfig.server_name.charAt(0) : "S"}
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
-              </div>
-              <CardContent className="pt-16 pb-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold flex items-center gap-2 text-white">
-                      {serverConfig.server_name}
-                      <div className="w-3 h-3 bg-green-500 rounded-full" title="Online" />
-                    </h2>
-                    <p className="text-gray-400">Discord Bot Configuration</p>
-                    <p className="text-sm text-gray-400 mt-1">
-                      Server ID: <code className="bg-muted px-1 rounded text-gray-300">{serverId}</code>
-                    </p>
+            {/* Bot Profile Header */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center text-xl">
+                  <Bot className="h-6 w-6 mr-3" />
+                  Bot Configuration
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  Customize your bot's appearance and settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center space-x-6">
+                  {/* Bot Avatar */}
+                  <div className="relative">
+                    <Avatar className="w-20 h-20 border-4 border-blue-500">
+                      <AvatarImage src={serverConfig.botProfilePictureUrl || ""} alt="Bot Avatar" />
+                      <AvatarFallback className="text-2xl font-bold bg-blue-600 text-white">
+                        {serverConfig.customBotName ? serverConfig.customBotName.charAt(0) : "S"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-background"></div>
                   </div>
-                  <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/50">
-                    <Bot className="w-3 h-3 mr-1" />
-                    Active
-                  </Badge>
+
+                  {/* Bot Info */}
+                  <div className="flex-1">
+                    <h2 className="text-2xl font-bold text-white mb-1">{serverConfig.customBotName || "Sycord"}</h2>
+                    <p className="text-gray-400 mb-2">Discord Bot</p>
+                    <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/50">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+                      Online
+                    </Badge>
+                  </div>
                 </div>
+
+                {/* Customization Form */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <Label className="text-white text-sm mb-2 block">Bot Name</Label>
+                    <Input
+                      placeholder="Enter bot name"
+                      value={customBotName}
+                      onChange={(e) => setCustomBotName(e.target.value)}
+                      className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-white text-sm mb-2 block">Profile Picture URL</Label>
+                    <Input
+                      placeholder="https://example.com/avatar.png"
+                      value={profilePictureUrl}
+                      onChange={(e) => setProfilePictureUrl(e.target.value)}
+                      className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-white text-sm mb-2 block">Bot Token (Optional)</Label>
+                  <div className="relative">
+                    <Input
+                      type={showToken ? "text" : "password"}
+                      placeholder="Enter bot token for custom bot"
+                      value={botToken}
+                      onChange={(e) => setBotToken(e.target.value)}
+                      className="bg-black/60 border-white/20 text-white placeholder-gray-400 pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                      onClick={() => setShowToken(!showToken)}
+                    >
+                      {showToken ? <Eye className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">Leave empty to use the default Sycord bot</p>
+                </div>
+
+                <Button onClick={handleSaveBotSettings} className="bg-white text-black hover:bg-gray-100">
+                  Save Bot Settings
+                </Button>
               </CardContent>
             </Card>
 
             {/* Settings Options */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="glass-card cursor-pointer hover:bg-white/5 transition-colors group">
-                <CardHeader className="text-center">
-                  <div className="mx-auto w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center group-hover:bg-blue-500/30 transition-colors">
-                    <Settings className="w-6 h-6 text-blue-400" />
-                  </div>
-                  <CardTitle className="text-white">Customize Bot</CardTitle>
-                  <CardDescription className="text-gray-400">
-                    Configure bot appearance, name, and token settings
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button
-                    className="w-full bg-transparent border-white/20 text-white hover:bg-gray-100 hover:text-gray-900"
-                    variant="outline"
-                  >
-                    Open Customization
-                  </Button>
-                </CardContent>
-              </Card>
-
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card className="glass-card cursor-pointer hover:bg-white/5 transition-colors group">
                 <CardHeader className="text-center">
                   <div className="mx-auto w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center group-hover:bg-red-500/30 transition-colors">
@@ -3665,39 +3693,29 @@ export default function ServerConfigPage() {
               </Card>
             </div>
 
-            {/* Privacy Notice */}
+            {/* Footer with Terms and Privacy */}
             <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Shield className="w-5 h-5" />
-                  Privacy & Data Protection
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-sm text-gray-400 space-y-2">
-                  <p>
-                    <strong>Data Collection:</strong> We collect minimal data necessary for bot functionality, including
-                    server settings, user interactions, and command usage.
-                  </p>
-                  <p>
-                    <strong>Data Usage:</strong> Your data is used solely to provide bot services and improve
-                    functionality. We never sell or share your data with third parties.
-                  </p>
-                  <p>
-                    <strong>Your Rights:</strong> You can request data deletion, download your data, or modify privacy
-                    settings at any time.
-                  </p>
-                  <p>
-                    <strong>Data Retention:</strong> Server data is retained while the bot is active in your server.
-                    User data is automatically purged after 90 days of inactivity.
-                  </p>
-                </div>
-                <Separator className="bg-white/20" />
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-400">Last Updated: December 2024</span>
-                  <Button variant="link" size="sm" className="text-white hover:text-gray-300">
-                    View Full Privacy Policy
-                  </Button>
+              <CardContent className="p-6">
+                <div className="text-center space-y-4">
+                  <div className="flex items-center justify-center space-x-6 text-sm">
+                    <Button variant="link" size="sm" className="text-gray-400 hover:text-white p-0">
+                      Terms of Service
+                    </Button>
+                    <Button variant="link" size="sm" className="text-gray-400 hover:text-white p-0">
+                      Privacy Policy
+                    </Button>
+                    <Button variant="link" size="sm" className="text-gray-400 hover:text-white p-0">
+                      Support
+                    </Button>
+                  </div>
+                  <Separator className="bg-white/20" />
+                  <div className="text-xs text-gray-500">
+                    <p>© 2024 Sycord. All rights reserved.</p>
+                    <p className="mt-1">
+                      We collect minimal data necessary for bot functionality. Your data is never sold or shared with
+                      third parties.
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
