@@ -9,19 +9,14 @@ import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog"
 import {
@@ -992,7 +987,7 @@ export default function ServerConfigPage() {
               >
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
                       <MessageSquare className="h-6 w-6 text-white" />
                     </div>
                     <div>
@@ -1775,438 +1770,340 @@ export default function ServerConfigPage() {
           </div>
         </header>
 
-        <div className="container mx-auto px-4 py-8">
-          <Card className="glass-card max-w-2xl mx-auto">
-            <CardContent className="p-8 md:p-12 text-center">
-              <div className="w-16 h-16 rounded-full bg-gray-500/20 flex items-center justify-center mx-auto mb-6">
-                <Clock className="h-8 w-8 text-gray-400" />
-              </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">Waiting for Bot</h2>
-              <p className="text-gray-400 mb-8 text-base md:text-lg">
-                The server configuration has been created, but the Sycord bot hasn't joined this server yet. Once the
-                bot is added, you'll be able to configure all settings.
-              </p>
-              <div className="space-y-4">
-                <Link href="/dashboard">
-                  <Button
-                    variant="outline"
-                    className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 w-full md:w-auto bg-transparent"
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Dashboard
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Header */}
-      <header className="glass-card border-b border-white/10 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Image src="/new-blue-logo.png" alt="Sycord Bot" width={28} height={28} className="rounded-lg" />
-              <div>
-                <h1 className="text-lg font-bold text-white">
-                  <span className="text-white">Sycord</span>
-                </h1>
-              </div>
-            </div>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
-                >
-                  <div className="flex items-center space-x-2">
-                    {serverConfig.server_icon ? (
-                      <Image
-                        src={`https://cdn.discordapp.com/icons/${serverId}/${serverConfig.server_icon}.png?size=32`}
-                        alt={serverConfig.server_name || "Server Icon"}
-                        width={20}
-                        height={20}
-                        className="rounded"
-                      />
-                    ) : (
-                      <Avatar className="w-5 h-5">
-                        <AvatarFallback className="text-xs bg-gray-600 text-white">
-                          {serverConfig.server_name ? serverConfig.server_name.charAt(0) : "S"}
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-                    <span className="truncate max-w-32">{serverConfig.server_name}</span>
-                    <ChevronDown className="h-4 w-4" />
-                  </div>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                {userServers.map((server) => (
-                  <DropdownMenuItem key={server.serverId} asChild>
-                    <Link href={`/dashboard/server/${server.serverId}`}>
-                      <div className="flex items-center space-x-2 w-full">
-                        <div className="w-5 h-5 bg-gray-600 rounded"></div>
-                        <span className="truncate">{server.serverName}</span>
-                      </div>
-                    </Link>
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard">
-                    <div className="flex items-center space-x-2 w-full">
-                      <Plus className="h-4 w-4" />
-                      <span>Add Server</span>
-                    </div>
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </header>
-
-      {/* Navigation Tabs */}
-      <div className="glass-card border-b border-white/10">
-        <div className="container mx-auto px-4 py-2">
-          <nav className="flex space-x-1 overflow-x-auto">
-            <Button
-              variant={activeTab === "home" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setActiveTab("home")}
-              className={`${
-                activeTab === "home" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-              } transition-colors flex-shrink-0 text-sm px-4 h-9`}
-            >
-              <Home className="h-4 w-4 mr-2" />
-              Home
-            </Button>
-            <Button
-              variant={activeTab === "sentinel" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setActiveTab("sentinel")}
-              className={`${
-                activeTab === "sentinel" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-              } transition-colors flex-shrink-0 text-sm px-4 h-9`}
-            >
-              <Shield className="h-4 w-4 mr-2" />
-              Sentinel
-            </Button>
-            <Button
-              variant={activeTab === "support" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setActiveTab("support")}
-              className={`${
-                activeTab === "support" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-              } transition-colors flex-shrink-0 text-sm px-4 h-9`}
-            >
-              <LifeBuoy className="h-4 w-4 mr-2" />
-              Support
-            </Button>
-            <Button
-              variant={activeTab === "events" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setActiveTab("events")}
-              className={`${
-                activeTab === "events" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-              } transition-colors flex-shrink-0 text-sm px-4 h-9`}
-            >
-              <Gift className="h-4 w-4 mr-2" />
-              Functions
-            </Button>
-            <Button
-              variant={activeTab === "integrations" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setActiveTab("integrations")}
-              className={`${
-                activeTab === "integrations"
-                  ? "bg-white text-black"
-                  : "text-white hover:bg-gray-100 hover:text-gray-900"
-              } transition-colors flex-shrink-0 text-sm px-4 h-9`}
-            >
-              <LinkIcon className="h-4 w-4 mr-2" /> {/* Using LinkIcon for Integrations */}
-              Integrations
-            </Button>
-            <Button
-              variant={activeTab === "plugins" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setActiveTab("plugins")}
-              className={`${
-                activeTab === "plugins" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-              } transition-colors flex-shrink-0 text-sm px-4 h-9`}
-            >
-              <Package className="h-4 w-4 mr-2" />
-              Plugins
-            </Button>
-            <Button
-              variant={activeTab === "settings" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setActiveTab("settings")}
-              className={`${
-                activeTab === "settings" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-              } transition-colors flex-shrink-0 text-sm px-4 h-9`}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
-            </Button>
-            {session?.user?.email === "dmarton336@gmail.com" && (
+        {/* Navigation Tabs */}
+        <div className="glass-card border-b border-white/10">
+          <div className="container mx-auto px-4 py-2">
+            <nav className="flex space-x-1 overflow-x-auto">
               <Button
-                variant={activeTab === "access-plus" ? "default" : "ghost"}
+                variant={activeTab === "home" ? "default" : "ghost"}
                 size="sm"
-                onClick={() => setActiveTab("access-plus")}
+                onClick={() => setActiveTab("home")}
                 className={`${
-                  activeTab === "access-plus"
+                  activeTab === "home" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
+                } transition-colors flex-shrink-0 text-sm px-4 h-9`}
+              >
+                <Home className="h-4 w-4 mr-2" />
+                Home
+              </Button>
+              <Button
+                variant={activeTab === "sentinel" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setActiveTab("sentinel")}
+                className={`${
+                  activeTab === "sentinel" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
+                } transition-colors flex-shrink-0 text-sm px-4 h-9`}
+              >
+                <Shield className="h-4 w-4 mr-2" />
+                Sentinel
+              </Button>
+              <Button
+                variant={activeTab === "support" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setActiveTab("support")}
+                className={`${
+                  activeTab === "support" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
+                } transition-colors flex-shrink-0 text-sm px-4 h-9`}
+              >
+                <LifeBuoy className="h-4 w-4 mr-2" />
+                Support
+              </Button>
+              <Button
+                variant={activeTab === "events" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setActiveTab("events")}
+                className={`${
+                  activeTab === "events" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
+                } transition-colors flex-shrink-0 text-sm px-4 h-9`}
+              >
+                <Gift className="h-4 w-4 mr-2" />
+                Functions
+              </Button>
+              <Button
+                variant={activeTab === "integrations" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setActiveTab("integrations")}
+                className={`${
+                  activeTab === "integrations"
                     ? "bg-white text-black"
                     : "text-white hover:bg-gray-100 hover:text-gray-900"
                 } transition-colors flex-shrink-0 text-sm px-4 h-9`}
               >
-                <Lock className="h-4 w-4 mr-2" />
-                Access+
+                <LinkIcon className="h-4 w-4 mr-2" /> {/* Using LinkIcon for Integrations */}
+                Integrations
               </Button>
-            )}
-          </nav>
+              <Button
+                variant={activeTab === "plugins" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setActiveTab("plugins")}
+                className={`${
+                  activeTab === "plugins" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
+                } transition-colors flex-shrink-0 text-sm px-4 h-9`}
+              >
+                <Package className="h-4 w-4 mr-2" />
+                Plugins
+              </Button>
+              <Button
+                variant={activeTab === "settings" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setActiveTab("settings")}
+                className={`${
+                  activeTab === "settings" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
+                } transition-colors flex-shrink-0 text-sm px-4 h-9`}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+              {session?.user?.email === "dmarton336@gmail.com" && (
+                <Button
+                  variant={activeTab === "access-plus" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setActiveTab("access-plus")}
+                  className={`${
+                    activeTab === "access-plus"
+                      ? "bg-white text-black"
+                      : "text-white hover:bg-gray-100 hover:text-gray-900"
+                  } transition-colors flex-shrink-0 text-sm px-4 h-9`}
+                >
+                  <Lock className="h-4 w-4 mr-2" />
+                  Access+
+                </Button>
+              )}
+            </nav>
+          </div>
         </div>
-      </div>
 
-      <div className="container mx-auto px-4 py-6">
-        {/* Home Tab */}
-        {activeTab === "home" && (
-          <div className="space-y-6">
-            {/* Simplified Server Info */}
-            <Card className="glass-card">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  {/* Server Icon and Name */}
-                  <div className="flex items-center space-x-3">
-                    {serverConfig.server_icon ? (
-                      <Image
-                        src={`https://cdn.discordapp.com/icons/${serverId}/${serverConfig.server_icon}.png?size=64`}
-                        alt={serverConfig.server_name || "Server Icon"}
-                        width={40}
-                        height={40}
-                        className="rounded-lg"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 bg-gray-600 rounded-lg flex items-center justify-center">
-                        <Hash className="h-5 w-5 text-gray-400" />
-                      </div>
-                    )}
-                    <div>
-                      <h3 className="text-base font-semibold text-white">{serverConfig.server_name}</h3>
-                    </div>
-                  </div>
-
-                  {/* Server Statistics */}
-                  <div className="flex items-center space-x-4 text-xs">
-                    <div className="text-center">
-                      <div className="font-bold text-white">{serverConfig.server_stats?.total_members || 0}</div>
-                      <div className="text-gray-400">Members</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="font-bold text-white">{serverConfig.server_stats?.total_bots || 0}</div>
-                      <div className="text-gray-400">Bots</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="font-bold text-white">{serverConfig.server_stats?.total_admins || 0}</div>
-                      <div className="text-gray-400">Admins</div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Announcements */}
-            {announcements.filter((ann) => !dismissedAnnouncements.includes(ann._id)).length > 0 && (
-              <div className="space-y-4">
-                {announcements
-                  .filter((ann) => !dismissedAnnouncements.includes(ann._id))
-                  .map((ann) => (
-                    <Alert key={ann._id} className="border-gray-500/30 bg-gray-500/10">
-                      <Megaphone className="h-4 w-4" />
-                      <AlertDescription className="text-gray-400 flex justify-between items-center">
-                        <span>{ann.message}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDismissAnnouncement(ann._id)}
-                          className="text-gray-400 hover:bg-gray-100 hover:text-gray-900"
-                        >
-                          Dismiss
-                        </Button>
-                      </AlertDescription>
-                    </Alert>
-                  ))}
-              </div>
-            )}
-
-            {/* Welcome Flow System */}
-            <Card className="glass-card">
-              <CardHeader>
-                <CardTitle className="text-white text-xl">Welcome System</CardTitle>
-                <CardDescription className="text-gray-400">Configure your server's welcome process</CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-6">
-                  {/* Step 1: User Join Settings */}
-                  <div className="relative">
-                    <div
-                      className={`p-3 rounded-lg border transition-all ${
-                        serverConfig.welcome.enabled
-                          ? "border-gray-500/50 bg-gray-500/5"
-                          : "border-gray-500/50 bg-gray-500/5"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <div
-                            className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                              serverConfig.welcome.enabled ? "bg-gray-500/20" : "bg-gray-500/20"
-                            }`}
-                          >
-                            <LogIn
-                              className={`h-4 w-4 ${serverConfig.welcome.enabled ? "text-gray-400" : "text-gray-400"}`}
-                            />
-                          </div>
-                          <div>
-                            <h3 className="font-medium text-white text-sm">User Join Settings</h3>
-                            <p className="text-xs text-gray-400">Enable welcome system</p>
-                          </div>
-                        </div>
-                        <Switch
-                          checked={serverConfig.welcome.enabled}
-                          onCheckedChange={(checked) =>
-                            updateServerConfig({
-                              welcome: { ...serverConfig.welcome, enabled: checked },
-                            })
-                          }
+        <div className="container mx-auto px-4 py-6">
+          {/* Home Tab */}
+          {activeTab === "home" && (
+            <div className="space-y-6">
+              {/* Simplified Server Info */}
+              <Card className="glass-card">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    {/* Server Icon and Name */}
+                    <div className="flex items-center space-x-3">
+                      {serverConfig.server_icon ? (
+                        <Image
+                          src={`https://cdn.discordapp.com/icons/${serverId}/${serverConfig.server_icon}.png?size=64`}
+                          alt={serverConfig.server_name || "Server Icon"}
+                          width={40}
+                          height={40}
+                          className="rounded-lg"
                         />
+                      ) : (
+                        <div className="w-10 h-10 bg-gray-600 rounded-lg flex items-center justify-center">
+                          <Hash className="h-5 w-5 text-gray-400" />
+                        </div>
+                      )}
+                      <div>
+                        <h3 className="text-base font-semibold text-white">{serverConfig.server_name}</h3>
                       </div>
                     </div>
 
-                    {/* Connection Line */}
-                    {serverConfig.welcome.enabled && (
-                      <div className="flex justify-center">
-                        <div className="w-0.5 h-6 bg-gray-500"></div>
+                    {/* Server Statistics */}
+                    <div className="flex items-center space-x-4 text-xs">
+                      <div className="text-center">
+                        <div className="font-bold text-white">{serverConfig.server_stats?.total_members || 0}</div>
+                        <div className="text-gray-400">Members</div>
                       </div>
-                    )}
+                      <div className="text-center">
+                        <div className="font-bold text-white">{serverConfig.server_stats?.total_bots || 0}</div>
+                        <div className="text-gray-400">Bots</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="font-bold text-white">{serverConfig.server_stats?.total_admins || 0}</div>
+                        <div className="text-gray-400">Admins</div>
+                      </div>
+                    </div>
                   </div>
+                </CardContent>
+              </Card>
 
-                  {/* Member Verification */}
-                  {serverConfig.welcome.enabled && (
-                    <div className="relative">
-                      <div className="flex justify-center">
-                        <button
-                          onClick={() =>
-                            updateServerConfig({
-                              moderation: {
-                                ...serverConfig.moderation,
-                                suspicious_accounts: {
-                                  ...serverConfig.moderation.suspicious_accounts,
-                                  enabled: !serverConfig.moderation.suspicious_accounts.enabled,
-                                },
-                              },
-                            })
-                          }
-                          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                            serverConfig.moderation.suspicious_accounts.enabled
-                              ? "bg-gray-500/20 border border-gray-500/50"
-                              : "bg-gray-500/20 border border-gray-500/50"
-                          }`}
-                        >
-                          <Shield
-                            className={`h-4 w-4 ${
-                              serverConfig.moderation.suspicious_accounts.enabled ? "text-gray-400" : "text-gray-400"
-                            }`}
-                          />
-                        </button>
-                      </div>
-
-                      {/* 3-Way Route */}
-                      {serverConfig.moderation.suspicious_accounts.enabled && (
-                        <>
-                          <div className="flex justify-center mt-2">
-                            <div className="w-0.5 h-4 bg-gray-500"></div>
-                          </div>
-                          <div className="flex justify-center">
-                            <div className="w-48 h-0.5 bg-gray-500"></div>
-                          </div>
-                          <div
-                            className="flex justify-between items-start relative"
-                            style={{ marginLeft: "calc(50% - 96px)", marginRight: "calc(50% - 96px)" }}
+              {/* Announcements */}
+              {announcements.filter((ann) => !dismissedAnnouncements.includes(ann._id)).length > 0 && (
+                <div className="space-y-4">
+                  {announcements
+                    .filter((ann) => !dismissedAnnouncements.includes(ann._id))
+                    .map((ann) => (
+                      <Alert key={ann._id} className="border-gray-500/30 bg-gray-500/10">
+                        <Megaphone className="h-4 w-4" />
+                        <AlertDescription className="text-gray-400 flex justify-between items-center">
+                          <span>{ann.message}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDismissAnnouncement(ann._id)}
+                            className="text-gray-400 hover:bg-gray-100 hover:text-gray-900"
                           >
-                            <div className="w-0.5 h-4 bg-gray-500"></div>
-                            <div className="w-0.5 h-4 bg-gray-500"></div>
-                            <div className="w-0.5 h-4 bg-gray-500"></div>
-                          </div>
-                        </>
-                      )}
+                            Dismiss
+                          </Button>
+                        </AlertDescription>
+                      </Alert>
+                    ))}
+                </div>
+              )}
 
-                      {/* 3-Way Options */}
-                      {serverConfig.moderation.suspicious_accounts.enabled && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
-                          {/* Suspicious Account Scanner */}
-                          <div className="p-3 rounded-lg border border-gray-700/30 bg-gray-700/5">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <UserCheck className="h-4 w-4 text-gray-400" />
-                              <h4 className="font-medium text-white text-sm">Suspicious Scanner</h4>
+              {/* Welcome Flow System */}
+              <Card className="glass-card">
+                <CardHeader>
+                  <CardTitle className="text-white text-xl">Welcome System</CardTitle>
+                  <CardDescription className="text-gray-400">Configure your server's welcome process</CardDescription>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="space-y-6">
+                    {/* Step 1: User Join Settings */}
+                    <div className="relative">
+                      <div
+                        className={`p-3 rounded-lg border transition-all ${
+                          serverConfig.welcome.enabled
+                            ? "border-gray-500/50 bg-gray-500/5"
+                            : "border-gray-500/50 bg-gray-500/5"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <div
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                                serverConfig.welcome.enabled ? "bg-gray-500/20" : "bg-gray-500/20"
+                              }`}
+                            >
+                              <LogIn
+                                className={`h-4 w-4 ${serverConfig.welcome.enabled ? "text-gray-400" : "text-gray-400"}`}
+                              />
                             </div>
                             <div>
-                              <Label className="text-white text-xs mb-1 block">Min age (days)</Label>
-                              <Input
-                                type="number"
-                                min="1"
-                                max="365"
-                                value={serverConfig.moderation.suspicious_accounts.min_age_days || 30}
-                                onChange={(e) =>
-                                  updateServerConfig({
-                                    moderation: {
-                                      ...serverConfig.moderation,
-                                      suspicious_accounts: {
-                                        ...serverConfig.moderation.suspicious_accounts,
-                                        min_age_days: Number.parseInt(e.target.value) || 30,
-                                      },
-                                    },
-                                  })
-                                }
-                                className="bg-black/60 border-white/20 text-white h-7 text-xs"
-                              />
+                              <h3 className="font-medium text-white text-sm">User Join Settings</h3>
+                              <p className="text-xs text-gray-400">Enable welcome system</p>
                             </div>
                           </div>
+                          <Switch
+                            checked={serverConfig.welcome.enabled}
+                            onCheckedChange={(checked) =>
+                              updateServerConfig({
+                                welcome: { ...serverConfig.welcome, enabled: checked },
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
 
-                          {/* Bot Scanner */}
-                          <div className="p-3 rounded-lg border border-gray-500/30 bg-gray-500/5">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center space-x-2">
-                                <Bot className="h-4 w-4 text-gray-400" />
-                                <h4 className="font-medium text-white text-sm">Bot Scanner</h4>
+                      {/* Connection Line */}
+                      {serverConfig.welcome.enabled && (
+                        <div className="flex justify-center">
+                          <div className="w-0.5 h-6 bg-gray-500"></div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Member Verification */}
+                    {serverConfig.welcome.enabled && (
+                      <div className="relative">
+                        <div className="flex justify-center">
+                          <button
+                            onClick={() =>
+                              updateServerConfig({
+                                moderation: {
+                                  ...serverConfig.moderation,
+                                  suspicious_accounts: {
+                                    ...serverConfig.moderation.suspicious_accounts,
+                                    enabled: !serverConfig.moderation.suspicious_accounts.enabled,
+                                  },
+                                },
+                              })
+                            }
+                            className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                              serverConfig.moderation.suspicious_accounts.enabled
+                                ? "bg-gray-500/20 border border-gray-500/50"
+                                : "bg-gray-500/20 border border-gray-500/50"
+                            }`}
+                          >
+                            <Shield
+                              className={`h-4 w-4 ${
+                                serverConfig.moderation.suspicious_accounts.enabled ? "text-gray-400" : "text-gray-400"
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {/* 3-Way Route */}
+                        {serverConfig.moderation.suspicious_accounts.enabled && (
+                          <>
+                            <div className="flex justify-center mt-2">
+                              <div className="w-0.5 h-4 bg-gray-500"></div>
+                            </div>
+                            <div className="flex justify-center">
+                              <div className="w-48 h-0.5 bg-gray-500"></div>
+                            </div>
+                            <div
+                              className="flex justify-between items-start relative"
+                              style={{ marginLeft: "calc(50% - 96px)", marginRight: "calc(50% - 96px)" }}
+                            >
+                              <div className="w-0.5 h-4 bg-gray-500"></div>
+                              <div className="w-0.5 h-4 bg-gray-500"></div>
+                              <div className="w-0.5 h-4 bg-gray-500"></div>
+                            </div>
+                          </>
+                        )}
+
+                        {/* 3-Way Options */}
+                        {serverConfig.moderation.suspicious_accounts.enabled && (
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+                            {/* Suspicious Account Scanner */}
+                            <div className="p-3 rounded-lg border border-gray-700/30 bg-gray-700/5">
+                              <div className="flex items-center space-x-2 mb-2">
+                                <UserCheck className="h-4 w-4 text-gray-400" />
+                                <h4 className="font-medium text-white text-sm">Suspicious Scanner</h4>
                               </div>
-                              <Switch
-                                checked={serverConfig.moderation.malicious_bot_detection.enabled}
-                                onCheckedChange={(checked) =>
-                                  updateServerConfig({
-                                    moderation: {
-                                      ...serverConfig.moderation,
-                                      malicious_bot_detection: {
-                                        ...serverConfig.moderation.malicious_bot_detection,
-                                        enabled: checked,
+                              <div>
+                                <Label className="text-white text-xs mb-1 block">Min age (days)</Label>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  max="365"
+                                  value={serverConfig.moderation.suspicious_accounts.min_age_days || 30}
+                                  onChange={(e) =>
+                                    updateServerConfig({
+                                      moderation: {
+                                        ...serverConfig.moderation,
+                                        suspicious_accounts: {
+                                          ...serverConfig.moderation.suspicious_accounts,
+                                          min_age_days: Number.parseInt(e.target.value) || 30,
+                                        },
                                       },
-                                    },
-                                  })
-                                }
-                              />
+                                    })
+                                  }
+                                  className="bg-black/60 border-white/20 text-white h-7 text-xs"
+                                />
+                              </div>
                             </div>
-                          </div>
 
-                          {/* Alt Detector */}
-                          <div className="p-3 rounded-lg border border-gray-600/30 bg-gray-600/5">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center space-x-2">
+                            {/* Bot Scanner */}
+                            <div className="p-3 rounded-lg border border-gray-500/30 bg-gray-500/5">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center space-x-2">
+                                  <Bot className="h-4 w-4 text-gray-400" />
+                                  <h4 className="font-medium text-white text-sm">Bot Scanner</h4>
+                                </div>
+                                <Switch
+                                  checked={serverConfig.moderation.malicious_bot_detection.enabled}
+                                  onCheckedChange={(checked) =>
+                                    updateServerConfig({
+                                      moderation: {
+                                        ...serverConfig.moderation,
+                                        malicious_bot_detection: {
+                                          ...serverConfig.moderation.malicious_bot_detection,
+                                          enabled: checked,
+                                        },
+                                      },
+                                    })
+                                  }
+                                />
+                              </div>
+                            </div>
+
+                            {/* Alt Detector */}
+                            <div className="p-3 rounded-lg border border-gray-600/30 bg-gray-600/5">
+                              <div className="flex items-center justify-between mb-2">
                                 <Eye className="h-4 w-4 text-gray-400" />
                                 <h4 className="font-medium text-white text-sm">Alt Detector</h4>
                               </div>
@@ -2249,24 +2146,23 @@ export default function ServerConfigPage() {
                               </div>
                             )}
                           </div>
+                        )}
+
+                        {/* Connection Line to Welcome Message */}
+                        <div className="flex justify-center mt-4">
+                          <div className="w-0.5 h-6 bg-gray-500"></div>
                         </div>
-                      )}
-
-                      {/* Connection Line to Welcome Message */}
-                      <div className="flex justify-center mt-4">
-                        <div className="w-0.5 h-6 bg-gray-500"></div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Welcome Message */}
-                  {serverConfig.welcome.enabled && (
-                    <div className="relative">
-                      <div
-                        className={`p-3 rounded-lg border transition-all ${
-                          serverConfig.welcome.message
-                            ? "border-gray-500/50 bg-gray-500/5"
-                            : "border-gray-500/50 bg-gray-500/5"
+                    {/* Welcome Message */}
+                    {serverConfig.welcome.enabled && (
+                      <div className="relative">
+                        <div
+                          className={`p-3 rounded-lg border transition-all ${
+                            serverConfig.welcome.message
+                              ? "border-gray-500/50 bg-gray-500/5"
+                              : "border-gray-500/50 bg-gray-500/5"
                         }`}
                       >
                         <div className="flex items-center justify-between mb-3">
@@ -2939,41 +2835,41 @@ export default function ServerConfigPage() {
 
             {/* Lockdown Warning Dialog */}
             <Dialog open={showLockdownWarning} onOpenChange={setShowLockdownWarning}>
-              <DialogContent className="glass-card max-w-lg">
+              <DialogContent className="glass-card max-w-md">
                 <DialogHeader>
-                  <DialogTitle className="text-white flex items-center text-xl">
-                    <Lock className="h-6 w-6 mr-3" />
+                  <DialogTitle className="text-white flex items-center">
+                    <Lock className="h-5 w-5 mr-2" />
                     Lockdown Confirmation
                   </DialogTitle>
-                  <DialogDescription className="text-gray-400 text-base">
+                  <DialogDescription className="text-gray-400">
                     Are you sure you want to activate Lockdown Mode?
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-6">
-                  <p className="text-gray-300 leading-relaxed">
-                    Activating lockdown mode will enable all security features and restrict server activity. This is
-                    intended for severe security situations and will provide maximum protection.
+                <div className="space-y-4">
+                  <p className="text-gray-300">
+                    Activating lockdown mode will lock all channels in your server, preventing members from sending
+                    messages. This is intended for severe raid situations.
                   </p>
                   <div className="flex justify-center">
                     <Image
-                      src="/lockdown-active.png"
+                      src="/placeholder.svg?height=150&width=250"
                       alt="Lockdown Active"
-                      width={400}
-                      height={200}
-                      className="rounded-lg border border-white/10"
+                      width={250}
+                      height={150}
+                      className="rounded-lg"
                     />
                   </div>
                 </div>
-                <DialogFooter className="flex gap-3">
+                <DialogFooter>
                   <Button
                     variant="outline"
                     onClick={() => setShowLockdownWarning(false)}
-                    className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent flex-1"
+                    className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
                   >
                     Cancel
                   </Button>
-                  <Button onClick={confirmLockdown} className="bg-white text-black hover:bg-gray-100 flex-1">
-                    Activate Lockdown
+                  <Button onClick={confirmLockdown} className="bg-white text-black hover:bg-gray-100">
+                    Lock Channels
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -2994,7 +2890,7 @@ export default function ServerConfigPage() {
                 >
                   <CardContent className="p-6">
                     <div className="flex items-center space-x-4 mb-4">
-                      <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
                         <Users className="h-6 w-6 text-white" />
                       </div>
                       <div>
@@ -3026,7 +2922,7 @@ export default function ServerConfigPage() {
                 >
                   <CardContent className="p-6">
                     <div className="flex items-center space-x-4 mb-4">
-                      <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
                         <MessageSquare className="h-6 w-6 text-white" />
                       </div>
                       <div>
@@ -3068,13 +2964,13 @@ export default function ServerConfigPage() {
                     className="flex items-center gap-2 text-white hover:bg-gray-100 hover:text-gray-900"
                   >
                     <ArrowLeft className="h-4 w-4 text-white" />
-                    Back to Overview
+                    Back to Support
                   </Button>
                 </div>
 
                 <Card className="glass-card">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-white">
+                    <CardTitle className="text-white flex items-center gap-2 text-white">
                       <BarChart3 className="h-5 w-5" />
                       Staff Insights Configuration
                     </CardTitle>
@@ -3157,7 +3053,6 @@ export default function ServerConfigPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleFlagStaffClick(staff.userId)}
                                 className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
                               >
                                 <Flag className="h-4 w-4 mr-2 text-white" />
@@ -3220,31 +3115,28 @@ export default function ServerConfigPage() {
 
                 <Card className="glass-card">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-white">
-                      <Ticket className="h-5 w-5" />
-                      Ticket System Configuration
+                    <CardTitle className="text-white flex items-center text-xl">
+                      <MessageSquare className="h-6 w-6 mr-3" />
+                      Ticket System
                     </CardTitle>
                     <CardDescription className="text-gray-400">
-                      Manage support tickets and user inquiries
+                      Configure ticket system and customize embed appearance
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <Label htmlFor="ticket-system" className="text-white">
-                          Enable Ticket System
-                        </Label>
+                        <h3 className="font-medium text-white text-base">Enable Ticket System</h3>
                         <p className="text-sm text-gray-400">Allow users to create support tickets</p>
                       </div>
                       <Switch
-                        id="ticket-system"
                         checked={serverConfig.support?.ticket_system?.enabled || false}
                         onCheckedChange={(checked) =>
                           updateServerConfig({
                             support: {
                               ...serverConfig.support,
                               ticket_system: {
-                                ...serverConfig.support?.ticket_system,
+                                ...serverConfig.support.ticket_system,
                                 enabled: checked,
                                 embed: serverConfig.support?.ticket_system?.embed || {
                                   title: "Support Ticket",
@@ -3265,75 +3157,212 @@ export default function ServerConfigPage() {
                       />
                     </div>
 
-                    <Separator className="bg-white/20" />
+                    {serverConfig.support?.ticket_system?.enabled && (
+                      <div className="space-y-6">
+                        {/* Embed Preview - Top */}
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-white font-medium">Embed Preview</h4>
+                            <Dialog open={showEmbedSettings} onOpenChange={setShowEmbedSettings}>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                                >
+                                  <Settings className="h-4 w-4 mr-2 text-white" />
+                                  Customize
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="glass-card max-w-2xl">
+                                <DialogHeader>
+                                  <DialogTitle className="text-white">Customize Embed</DialogTitle>
+                                  <DialogDescription className="text-gray-400">
+                                    Customize the appearance of your ticket embed
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <Label className="text-white text-sm mb-2 block">Title</Label>
+                                    <Input
+                                      placeholder="Support Ticket"
+                                      value={serverConfig.support.ticket_system.embed?.title || ""}
+                                      onChange={(e) =>
+                                        updateServerConfig({
+                                          support: {
+                                            ...serverConfig.support,
+                                            ticket_system: {
+                                              ...serverConfig.support.ticket_system.embed,
+                                              title: e.target.value,
+                                            },
+                                          },
+                                        })
+                                      }
+                                      className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                                    />
+                                  </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="ticket-category" className="text-white">
-                        Ticket Category ID
-                      </Label>
-                      <Input
-                        id="ticket-category"
-                        placeholder="Enter Discord category ID"
-                        value={serverConfig.support?.ticket_system?.channel_id || ""}
-                        onChange={(e) =>
-                          updateServerConfig({
-                            support: {
-                              ...serverConfig.support,
-                              ticket_system: { ...serverConfig.support.ticket_system, channel_id: e.target.value },
-                            },
-                          })
-                        }
-                        className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-                      />
-                      <p className="text-sm text-gray-400">Discord category where ticket channels will be created</p>
+                                  <div>
+                                    <Label className="text-white text-sm mb-2 block">Description</Label>
+                                    <Textarea
+                                      placeholder="Click the button below to create a support ticket."
+                                      value={serverConfig.support.ticket_system.embed?.description || ""}
+                                      onChange={(e) =>
+                                        updateServerConfig({
+                                          support: {
+                                            ...serverConfig.support,
+                                            ticket_system: {
+                                              ...serverConfig.support.ticket_system.embed,
+                                              description: e.target.value,
+                                            },
+                                          },
+                                        })
+                                      }
+                                      className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[100px]"
+                                    />
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <Label className="text-white text-sm mb-2 block">Color</Label>
+                                      <Input
+                                        type="color"
+                                        value={serverConfig.support.ticket_system.embed?.color || "#5865F2"}
+                                        onChange={(e) =>
+                                          updateServerConfig({
+                                            support: {
+                                              ...serverConfig.support,
+                                              ticket_system: {
+                                                ...serverConfig.support.ticket_system.embed,
+                                                color: e.target.value,
+                                              },
+                                            },
+                                          })
+                                        }
+                                        className="bg-black/60 border-white/20 h-10"
+                                      />
+                                    </div>
+
+                                    <div>
+                                      <Label className="text-white text-sm mb-2 block">Thumbnail URL</Label>
+                                      <Input
+                                        placeholder="https://example.com/image.png"
+                                        value={serverConfig.support.ticket_system.embed?.thumbnail || ""}
+                                        onChange={(e) =>
+                                          updateServerConfig({
+                                            support: {
+                                              ...serverConfig.support,
+                                              ticket_system: {
+                                                ...serverConfig.support.ticket_system.embed,
+                                                thumbnail: e.target.value,
+                                              },
+                                            },
+                                          })
+                                        }
+                                        className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <Label className="text-white text-sm mb-2 block">Footer Text</Label>
+                                    <Input
+                                      placeholder="Support Team"
+                                      value={serverConfig.support.ticket_system.embed?.footer || ""}
+                                      onChange={(e) =>
+                                        updateServerConfig({
+                                          support: {
+                                            ...serverConfig.support,
+                                            ticket_system: {
+                                              ...serverConfig.support.ticket_system.embed,
+                                              footer: e.target.value,
+                                            },
+                                          },
+                                        })
+                                      }
+                                      className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                                    />
+                                  </div>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+
+                          {/* Preview */}
+                          <div
+                            className="border-l-4 bg-gray-800/50 p-4 rounded-r-lg"
+                            style={{ borderLeftColor: serverConfig.support.ticket_system.embed?.color || "#5865F2" }}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                {serverConfig.support.ticket_system.embed?.title && (
+                                  <h3 className="text-white font-semibold mb-2">
+                                    {serverConfig.support.ticket_system.embed?.title}
+                                  </h3>
+                                )}
+                                {serverConfig.support.ticket_system.embed?.description && (
+                                  <p className="text-gray-300">{serverConfig.support.ticket_system.embed?.description}</p>
+                                )}
+                            </div>
+                            {serverConfig.support.ticket_system.embed?.thumbnail && (
+                              <div className="ml-4">
+                                <Image
+                                  src={serverConfig.support.ticket_system.embed?.thumbnail || "/placeholder.svg"}
+                                  alt="Thumbnail"
+                                  width={50}
+                                  height={50}
+                                  className="rounded-md"
+                                />
+                              </div>
+                            )}
+                          </div>
+                          {serverConfig.support.ticket_system.embed?.footer && (
+                            <p className="text-gray-400 text-sm mt-2">
+                              {serverConfig.support.ticket_system.embed?.footer}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Category Select */}
+                      <div>
+                        <Label className="text-white text-sm mb-2 block">Ticket Category</Label>
+                        <Select
+                          value={serverConfig.support?.ticket_system?.channel_id || ""}
+                          onValueChange={(value) =>
+                            updateServerConfig({
+                              support: {
+                                ...serverConfig.support,
+                                ticket_system: {
+                                  ...serverConfig.support.ticket_system,
+                                  channel_id: value,
+                                },
+                              },
+                            })
+                          }
+                        >
+                          <SelectTrigger className="bg-black/60 border-white/20 h-8">
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {serverConfig.channels &&
+                              Object.entries(serverConfig.channels).map(([channelId, channelName]) => (
+                                <SelectItem key={channelId} value={channelId}>
+                                  {channelName}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Send Embed Button */}
+                      <Button onClick={sendTicketEmbed} className="bg-white text-black hover:bg-gray-100">
+                        Send Ticket Embed
+                      </Button>
                     </div>
-
-                    <div className="grid grid-cols-3 gap-4 mt-6">
-                      <Card className="glass-card">
-                        <CardContent className="pt-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium text-gray-400">Open Tickets</p>
-                              <p className="text-2xl font-bold text-white">8</p>
-                            </div>
-                            <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
-                              <AlertCircle className="h-8 w-8 text-yellow-500" />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="glass-card">
-                        <CardContent className="pt-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium text-gray-400">Resolved Today</p>
-                              <p className="text-2xl font-bold text-white">15</p>
-                            </div>
-                            <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
-                              <CheckCircle className="h-8 w-8 text-green-500" />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card className="glass-card">
-                        <CardContent className="pt-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium text-gray-400">Total This Week</p>
-                              <p className="text-2xl font-bold text-white">47</p>
-                            </div>
-                            <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
-                              <Ticket className="h-8 w-8 text-gray-400" />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  )}
+                </CardContent>
+              </Card>
             )}
 
             {/* Flag Staff Warning Dialog */}
@@ -3504,7 +3533,7 @@ export default function ServerConfigPage() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-white"
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
                         onClick={() => setShowToken(!showToken)}
                       >
                         <Eye className="h-4 w-4" />
@@ -3628,5 +3657,5 @@ export default function ServerConfigPage() {
         )}
       </div>
     </div>
-  )
+  )\
 }

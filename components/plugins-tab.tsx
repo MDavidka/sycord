@@ -71,8 +71,6 @@ export default function PluginsTab({ serverId }: PluginsTabProps) {
       }
     } catch (error) {
       console.error("Error loading plugins:", error)
-    } finally {
-      setLoading(false)
     }
   }
 
