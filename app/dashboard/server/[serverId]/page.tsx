@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useSession } from "next-auth/react"
 import { useRouter, useParams } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -17,6 +19,14 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import {
   Shield,
   MessageSquare,
@@ -52,11 +62,10 @@ import {
   EyeOff,
   Megaphone,
   Flag,
-  Star,
-  Palette,
-  ImageIcon,
-  Type,
   LifeBuoy,
+  UserX,
+  Timer,
+  FileX,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -74,11 +83,8 @@ interface UserData {
 interface StaffMember {
   userId: string
   username: string
-  avatar?: string
   reputation: number
   maxReputation: number
-  joinedAt: string
-  lastActive?: string
 }
 
 interface TicketEmbed {
@@ -92,6 +98,25 @@ interface TicketEmbed {
     value: string
     inline?: boolean
   }[]
+}
+
+interface TicketSettings {
+  autoAnswer: {
+    enabled: boolean
+    qa_pairs: string
+  }
+  blockedUsers: {
+    enabled: boolean
+    userIds: string[]
+  }
+  inactivityClose: {
+    enabled: boolean
+    timeoutMinutes: number
+  }
+  logging: {
+    enabled: boolean
+    channelId?: string
+  }
 }
 
 // Update the ServerConfig interface to match the new structure
@@ -177,6 +202,7 @@ interface ServerConfig {
       channel_id?: string
       priority_role_id?: string
       embed: TicketEmbed
+      settings: TicketSettings
     }
     auto_answer: {
       enabled: boolean
@@ -229,6 +255,9 @@ export default function ServerConfigPage() {
 
   // Add state for info modal
   const [showInfoModal, setShowInfoModal] = useState(false)
+  const [showReputationInfo, setShowReputationInfo] = useState(false)
+  const [showEmbedSettings, setShowEmbedSettings] = useState(false)
+  const [showTicketSettings, setShowTicketSettings] = useState(false)
   const [userData, setUserData] = useState<UserData | null>(null)
   const [serverConfig, setServerConfig] = useState<ServerConfig | null>(null)
   const [userServers, setUserServers] = useState<any[]>([])
@@ -360,23 +389,17 @@ export default function ServerConfigPage() {
     })
   }
 
-  const addStaffMember = () => {
-    if (!serverConfig) return
+  // Send ticket embed function
+  const sendTicketEmbed = async () => {
+    if (!serverConfig?.support?.ticket_system?.channel_id) return
 
-    const newStaff: StaffMember = {
-      userId: `temp_${Date.now()}`,
-      username: "New Staff Member",
-      reputation: 20,
-      maxReputation: 20,
-      joinedAt: new Date().toISOString(),
+    try {
+      // In a real implementation, this would send the embed to Discord
+      console.log("Sending ticket embed to channel:", serverConfig.support.ticket_system.channel_id)
+      // You would implement the actual Discord API call here
+    } catch (error) {
+      console.error("Error sending ticket embed:", error)
     }
-
-    updateServerConfig({
-      support: {
-        ...serverConfig.support,
-        staff: [...(serverConfig.support.staff || []), newStaff],
-      },
-    })
   }
 
   // Giveaway functions
@@ -491,18 +514,6 @@ export default function ServerConfigPage() {
     }
   }
 
-  const fetchAnnouncements = async () => {
-    try {
-      const response = await fetch("/api/announcements")
-      if (response.ok) {
-        const data = await response.json()
-        setAnnouncements(data.announcements)
-      }
-    } catch (error) {
-      console.error("Error fetching announcements:", error)
-    }
-  }
-
   const handleMaintenanceToggle = async (checked: boolean) => {
     try {
       const response = await fetch("/api/app-settings", {
@@ -523,6 +534,18 @@ export default function ServerConfigPage() {
       }
     } catch (error) {
       console.error("Error updating app settings:", error)
+    }
+  }
+
+  const fetchAnnouncements = async () => {
+    try {
+      const response = await fetch("/api/announcements")
+      if (response.ok) {
+        const data = await response.json()
+        setAnnouncements(data.announcements)
+      }
+    } catch (error) {
+      console.error("Error fetching announcements:", error)
     }
   }
 
@@ -1767,23 +1790,28 @@ export default function ServerConfigPage() {
             {/* Staff Insights */}
             <Card className="glass-card">
               <CardHeader>
-                <CardTitle className="text-white flex items-center text-xl">
-                  <Users className="h-6 w-6 mr-3" />
-                  Staff Insights
-                </CardTitle>
-                <CardDescription className="text-gray-400">
-                  Manage your support staff and monitor their performance
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-medium text-white">Staff Members</h3>
-                  <Button onClick={addStaffMember} size="sm" className="bg-white text-black hover:bg-gray-200">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Staff
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-white flex items-center text-xl">
+                      <Users className="h-6 w-6 mr-3" />
+                      Staff Insights
+                    </CardTitle>
+                    <CardDescription className="text-gray-400">
+                      Monitor your support staff performance and reputation
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowReputationInfo(true)}
+                    className="border-gray-500/50 text-gray-400 hover:bg-gray-500/10"
+                  >
+                    <Info className="h-4 w-4 mr-2" />
+                    What is reputation?
                   </Button>
                 </div>
-
+              </CardHeader>
+              <CardContent className="space-y-4">
                 {/* Staff List */}
                 <div className="space-y-3">
                   {serverConfig.support?.staff?.length > 0 ? (
@@ -1794,30 +1822,17 @@ export default function ServerConfigPage() {
                       >
                         <div className="flex items-center space-x-3">
                           <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
-                            {staff.avatar ? (
-                              <Image
-                                src={staff.avatar || "/placeholder.svg"}
-                                alt={staff.username}
-                                width={40}
-                                height={40}
-                                className="rounded-full"
-                              />
-                            ) : (
-                              <Users className="h-5 w-5 text-gray-400" />
-                            )}
+                            <Users className="h-5 w-5 text-gray-400" />
                           </div>
                           <div>
                             <h4 className="font-medium text-white">{staff.username}</h4>
-                            <p className="text-sm text-gray-400">
-                              Joined {new Date(staff.joinedAt).toLocaleDateString()}
-                            </p>
                           </div>
                         </div>
 
                         <div className="flex items-center space-x-4">
-                          {/* Reputation Bar */}
+                          {/* Reputation Bar with Sycord Logo */}
                           <div className="flex items-center space-x-2">
-                            <Star className="h-4 w-4 text-yellow-500" />
+                            <Image src="/new-blue-logo.png" alt="Sycord" width={16} height={16} className="rounded" />
                             <div className="w-24">
                               <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
                                 <span>Rep.</span>
@@ -1825,7 +1840,16 @@ export default function ServerConfigPage() {
                                   {staff.reputation}/{staff.maxReputation}
                                 </span>
                               </div>
-                              <Progress value={(staff.reputation / staff.maxReputation) * 100} className="h-2" />
+                              <Progress
+                                value={(staff.reputation / staff.maxReputation) * 100}
+                                className="h-2 bg-gray-800"
+                                style={
+                                  {
+                                    "--progress-background": "#1e3a8a", // Dark blue
+                                    "--progress-foreground": "#3b82f6", // Blue
+                                  } as React.CSSProperties
+                                }
+                              />
                             </div>
                           </div>
 
@@ -1845,8 +1869,10 @@ export default function ServerConfigPage() {
                   ) : (
                     <div className="text-center py-8">
                       <Users className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-                      <p className="text-gray-400">No staff members added yet</p>
-                      <p className="text-sm text-gray-500">Add staff members to start tracking their performance</p>
+                      <p className="text-gray-400">No staff members found</p>
+                      <p className="text-sm text-gray-500">
+                        Staff members will appear here automatically when they join your server
+                      </p>
                     </div>
                   )}
                 </div>
@@ -1885,6 +1911,12 @@ export default function ServerConfigPage() {
                               color: "#5865F2",
                               footer: "Support Team",
                             },
+                            settings: serverConfig.support?.ticket_system?.settings || {
+                              autoAnswer: { enabled: false, qa_pairs: "" },
+                              blockedUsers: { enabled: false, userIds: [] },
+                              inactivityClose: { enabled: false, timeoutMinutes: 30 },
+                              logging: { enabled: false },
+                            },
                           },
                         },
                       })
@@ -1894,10 +1926,467 @@ export default function ServerConfigPage() {
 
                 {serverConfig.support?.ticket_system?.enabled && (
                   <div className="space-y-6">
-                    {/* Basic Settings */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-white text-sm mb-2 block">Ticket Channel</Label>
+                    {/* Embed Preview - Top */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-white font-medium">Embed Preview</h4>
+                        <Dialog open={showEmbedSettings} onOpenChange={setShowEmbedSettings}>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+                            >
+                              <Settings className="h-4 w-4 mr-2" />
+                              Customize
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="glass-card max-w-2xl">
+                            <DialogHeader>
+                              <DialogTitle className="text-white">Customize Embed</DialogTitle>
+                              <DialogDescription className="text-gray-400">
+                                Customize the appearance of your ticket embed
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <Label className="text-white text-sm mb-2 block">Title</Label>
+                                <Input
+                                  placeholder="Support Ticket"
+                                  value={serverConfig.support.ticket_system.embed?.title || ""}
+                                  onChange={(e) =>
+                                    updateServerConfig({
+                                      support: {
+                                        ...serverConfig.support,
+                                        ticket_system: {
+                                          ...serverConfig.support.ticket_system,
+                                          embed: {
+                                            ...serverConfig.support.ticket_system.embed,
+                                            title: e.target.value,
+                                          },
+                                        },
+                                      },
+                                    })
+                                  }
+                                  className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                                />
+                              </div>
+
+                              <div>
+                                <Label className="text-white text-sm mb-2 block">Description</Label>
+                                <Textarea
+                                  placeholder="Click the button below to create a support ticket."
+                                  value={serverConfig.support.ticket_system.embed?.description || ""}
+                                  onChange={(e) =>
+                                    updateServerConfig({
+                                      support: {
+                                        ...serverConfig.support,
+                                        ticket_system: {
+                                          ...serverConfig.support.ticket_system,
+                                          embed: {
+                                            ...serverConfig.support.ticket_system.embed,
+                                            description: e.target.value,
+                                          },
+                                        },
+                                      },
+                                    })
+                                  }
+                                  className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[100px]"
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <Label className="text-white text-sm mb-2 block">Color</Label>
+                                  <Input
+                                    type="color"
+                                    value={serverConfig.support.ticket_system.embed?.color || "#5865F2"}
+                                    onChange={(e) =>
+                                      updateServerConfig({
+                                        support: {
+                                          ...serverConfig.support,
+                                          ticket_system: {
+                                            ...serverConfig.support.ticket_system,
+                                            embed: {
+                                              ...serverConfig.support.ticket_system.embed,
+                                              color: e.target.value,
+                                            },
+                                          },
+                                        },
+                                      })
+                                    }
+                                    className="bg-black/60 border-white/20 h-10"
+                                  />
+                                </div>
+
+                                <div>
+                                  <Label className="text-white text-sm mb-2 block">Thumbnail URL</Label>
+                                  <Input
+                                    placeholder="https://example.com/image.png"
+                                    value={serverConfig.support.ticket_system.embed?.thumbnail || ""}
+                                    onChange={(e) =>
+                                      updateServerConfig({
+                                        support: {
+                                          ...serverConfig.support,
+                                          ticket_system: {
+                                            ...serverConfig.support.ticket_system,
+                                            embed: {
+                                              ...serverConfig.support.ticket_system.embed,
+                                              thumbnail: e.target.value,
+                                            },
+                                          },
+                                        },
+                                      })
+                                    }
+                                    className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                                  />
+                                </div>
+                              </div>
+
+                              <div>
+                                <Label className="text-white text-sm mb-2 block">Footer Text</Label>
+                                <Input
+                                  placeholder="Support Team"
+                                  value={serverConfig.support.ticket_system.embed?.footer || ""}
+                                  onChange={(e) =>
+                                    updateServerConfig({
+                                      support: {
+                                        ...serverConfig.support,
+                                        ticket_system: {
+                                          ...serverConfig.support.ticket_system,
+                                          embed: {
+                                            ...serverConfig.support.ticket_system.embed,
+                                            footer: e.target.value,
+                                          },
+                                        },
+                                      },
+                                    })
+                                  }
+                                  className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                                />
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+
+                      {/* Preview */}
+                      <div
+                        className="border-l-4 bg-gray-800/50 p-4 rounded-r-lg"
+                        style={{ borderLeftColor: serverConfig.support.ticket_system.embed?.color || "#5865F2" }}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            {serverConfig.support.ticket_system.embed?.title && (
+                              <h3 className="text-white font-semibold mb-2">
+                                {serverConfig.support.ticket_system.embed.title}
+                              </h3>
+                            )}
+                            {serverConfig.support.ticket_system.embed?.description && (
+                              <p className="text-gray-300 text-sm mb-3">
+                                {serverConfig.support.ticket_system.embed.description}
+                              </p>
+                            )}
+                            {serverConfig.support.ticket_system.embed?.footer && (
+                              <p className="text-gray-400 text-xs">{serverConfig.support.ticket_system.embed.footer}</p>
+                            )}
+                          </div>
+                          {serverConfig.support.ticket_system.embed?.thumbnail && (
+                            <div className="ml-4">
+                              <Image
+                                src={serverConfig.support.ticket_system.embed.thumbnail || "/placeholder.svg"}
+                                alt="Thumbnail"
+                                width={80}
+                                height={80}
+                                className="rounded object-cover"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Channel Selection and Send Button */}
+                    <div className="flex items-center justify-between gap-4">
+                      {/* Plus Button for Additional Settings */}
+                      <Dialog open={showTicketSettings} onOpenChange={setShowTicketSettings}>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="glass-card max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle className="text-white">Additional Settings</DialogTitle>
+                            <DialogDescription className="text-gray-400">
+                              Configure additional ticket system features
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-6">
+                            {/* Auto Answer */}
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <MessageSquare className="h-4 w-4 text-gray-400" />
+                                  <h4 className="font-medium text-white">Auto Answer</h4>
+                                </div>
+                                <Switch
+                                  checked={serverConfig.support.ticket_system.settings?.autoAnswer?.enabled || false}
+                                  onCheckedChange={(checked) =>
+                                    updateServerConfig({
+                                      support: {
+                                        ...serverConfig.support,
+                                        ticket_system: {
+                                          ...serverConfig.support.ticket_system,
+                                          settings: {
+                                            ...serverConfig.support.ticket_system.settings,
+                                            autoAnswer: {
+                                              ...serverConfig.support.ticket_system.settings?.autoAnswer,
+                                              enabled: checked,
+                                            },
+                                          },
+                                        },
+                                      },
+                                    })
+                                  }
+                                />
+                              </div>
+                              {serverConfig.support.ticket_system.settings?.autoAnswer?.enabled && (
+                                <Textarea
+                                  placeholder="Q: How do I reset my password?&#10;A: Click on 'Forgot Password' on the login page."
+                                  value={serverConfig.support.ticket_system.settings.autoAnswer.qa_pairs || ""}
+                                  onChange={(e) =>
+                                    updateServerConfig({
+                                      support: {
+                                        ...serverConfig.support,
+                                        ticket_system: {
+                                          ...serverConfig.support.ticket_system,
+                                          settings: {
+                                            ...serverConfig.support.ticket_system.settings,
+                                            autoAnswer: {
+                                              ...serverConfig.support.ticket_system.settings.autoAnswer,
+                                              qa_pairs: e.target.value,
+                                            },
+                                          },
+                                        },
+                                      },
+                                    })
+                                  }
+                                  className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[100px]"
+                                />
+                              )}
+                            </div>
+
+                            {/* Blocked Users */}
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <UserX className="h-4 w-4 text-gray-400" />
+                                  <h4 className="font-medium text-white">Blocked Users</h4>
+                                </div>
+                                <Switch
+                                  checked={serverConfig.support.ticket_system.settings?.blockedUsers?.enabled || false}
+                                  onCheckedChange={(checked) =>
+                                    updateServerConfig({
+                                      support: {
+                                        ...serverConfig.support,
+                                        ticket_system: {
+                                          ...serverConfig.support.ticket_system,
+                                          settings: {
+                                            ...serverConfig.support.ticket_system.settings,
+                                            blockedUsers: {
+                                              ...serverConfig.support.ticket_system.settings?.blockedUsers,
+                                              enabled: checked,
+                                            },
+                                          },
+                                        },
+                                      },
+                                    })
+                                  }
+                                />
+                              </div>
+                              {serverConfig.support.ticket_system.settings?.blockedUsers?.enabled && (
+                                <Input
+                                  placeholder="User IDs separated by commas"
+                                  value={
+                                    serverConfig.support.ticket_system.settings.blockedUsers.userIds?.join(", ") || ""
+                                  }
+                                  onChange={(e) =>
+                                    updateServerConfig({
+                                      support: {
+                                        ...serverConfig.support,
+                                        ticket_system: {
+                                          ...serverConfig.support.ticket_system,
+                                          settings: {
+                                            ...serverConfig.support.ticket_system.settings,
+                                            blockedUsers: {
+                                              ...serverConfig.support.ticket_system.settings.blockedUsers,
+                                              userIds: e.target.value
+                                                .split(",")
+                                                .map((id) => id.trim())
+                                                .filter((id) => id),
+                                            },
+                                          },
+                                        },
+                                      },
+                                    })
+                                  }
+                                  className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                                />
+                              )}
+                            </div>
+
+                            {/* Inactivity Close */}
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <Timer className="h-4 w-4 text-gray-400" />
+                                  <h4 className="font-medium text-white">Inactivity Close</h4>
+                                </div>
+                                <Switch
+                                  checked={
+                                    serverConfig.support.ticket_system.settings?.inactivityClose?.enabled || false
+                                  }
+                                  onCheckedChange={(checked) =>
+                                    updateServerConfig({
+                                      support: {
+                                        ...serverConfig.support,
+                                        ticket_system: {
+                                          ...serverConfig.support.ticket_system,
+                                          settings: {
+                                            ...serverConfig.support.ticket_system.settings,
+                                            inactivityClose: {
+                                              ...serverConfig.support.ticket_system.settings?.inactivityClose,
+                                              enabled: checked,
+                                            },
+                                          },
+                                        },
+                                      },
+                                    })
+                                  }
+                                />
+                              </div>
+                              {serverConfig.support.ticket_system.settings?.inactivityClose?.enabled && (
+                                <div>
+                                  <Label className="text-white text-sm mb-2 block">Timeout (minutes)</Label>
+                                  <Input
+                                    type="number"
+                                    min="5"
+                                    max="1440"
+                                    value={
+                                      serverConfig.support.ticket_system.settings.inactivityClose.timeoutMinutes || 30
+                                    }
+                                    onChange={(e) =>
+                                      updateServerConfig({
+                                        support: {
+                                          ...serverConfig.support,
+                                          ticket_system: {
+                                            ...serverConfig.support.ticket_system,
+                                            settings: {
+                                              ...serverConfig.support.ticket_system.settings,
+                                              inactivityClose: {
+                                                ...serverConfig.support.ticket_system.settings.inactivityClose,
+                                                timeoutMinutes: Number.parseInt(e.target.value) || 30,
+                                              },
+                                            },
+                                          },
+                                        },
+                                      })
+                                    }
+                                    className="bg-black/60 border-white/20 text-white"
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Logging */}
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <FileX className="h-4 w-4 text-gray-400" />
+                                  <h4 className="font-medium text-white">Logging</h4>
+                                </div>
+                                <Switch
+                                  checked={serverConfig.support.ticket_system.settings?.logging?.enabled || false}
+                                  onCheckedChange={(checked) =>
+                                    updateServerConfig({
+                                      support: {
+                                        ...serverConfig.support,
+                                        ticket_system: {
+                                          ...serverConfig.support.ticket_system,
+                                          settings: {
+                                            ...serverConfig.support.ticket_system.settings,
+                                            logging: {
+                                              ...serverConfig.support.ticket_system.settings?.logging,
+                                              enabled: checked,
+                                            },
+                                          },
+                                        },
+                                      },
+                                    })
+                                  }
+                                />
+                              </div>
+                              {serverConfig.support.ticket_system.settings?.logging?.enabled && (
+                                <div>
+                                  <Label className="text-white text-sm mb-2 block">Log Channel</Label>
+                                  <Select
+                                    value={serverConfig.support.ticket_system.settings.logging.channelId || ""}
+                                    onValueChange={(value) =>
+                                      updateServerConfig({
+                                        support: {
+                                          ...serverConfig.support,
+                                          ticket_system: {
+                                            ...serverConfig.support.ticket_system,
+                                            settings: {
+                                              ...serverConfig.support.ticket_system.settings,
+                                              logging: {
+                                                ...serverConfig.support.ticket_system.settings.logging,
+                                                channelId: value,
+                                              },
+                                            },
+                                          },
+                                        },
+                                      })
+                                    }
+                                  >
+                                    <SelectTrigger className="bg-black/60 border-white/20">
+                                      <SelectValue placeholder="Select channel">
+                                        {serverConfig.support.ticket_system.settings.logging.channelId && (
+                                          <div className="flex items-center">
+                                            <Hash className="h-4 w-4 mr-2" />
+                                            {getChannelName(
+                                              serverConfig.support.ticket_system.settings.logging.channelId,
+                                            )}
+                                          </div>
+                                        )}
+                                      </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {serverConfig.channels &&
+                                        Object.entries(serverConfig.channels).map(([id, name]) => (
+                                          <SelectItem key={id} value={id}>
+                                            <div className="flex items-center">
+                                              <Hash className="h-4 w-4 mr-2" />
+                                              {name}
+                                            </div>
+                                          </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+
+                      {/* Channel Selection */}
+                      <div className="flex-1">
                         <Select
                           value={serverConfig.support.ticket_system.channel_id || ""}
                           onValueChange={(value) =>
@@ -1933,241 +2422,15 @@ export default function ServerConfigPage() {
                         </Select>
                       </div>
 
-                      <div>
-                        <Label className="text-white text-sm mb-2 block">Priority Role</Label>
-                        <Select
-                          value={serverConfig.support.ticket_system.priority_role_id || ""}
-                          onValueChange={(value) =>
-                            updateServerConfig({
-                              support: {
-                                ...serverConfig.support,
-                                ticket_system: { ...serverConfig.support.ticket_system, priority_role_id: value },
-                              },
-                            })
-                          }
-                        >
-                          <SelectTrigger className="bg-black/60 border-white/20">
-                            <SelectValue placeholder="Select priority role">
-                              {serverConfig.support.ticket_system.priority_role_id && (
-                                <div className="flex items-center">
-                                  <div className="w-3 h-3 rounded-full mr-2 bg-gray-500" />
-                                  {getRoleName(serverConfig.support.ticket_system.priority_role_id)}
-                                </div>
-                              )}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Object.entries(serverConfig.roles_and_names).map(([id, name]) => (
-                              <SelectItem key={id} value={id}>
-                                <div className="flex items-center">
-                                  <div className="w-3 h-3 rounded-full mr-2 bg-gray-500" />
-                                  {name}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    {/* Embed Customization */}
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium text-white flex items-center">
-                        <Palette className="h-5 w-5 mr-2" />
-                        Customize Embed
-                      </h3>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Embed Settings */}
-                        <div className="space-y-4">
-                          <div>
-                            <Label className="text-white text-sm mb-2 block flex items-center">
-                              <Type className="h-4 w-4 mr-2" />
-                              Title
-                            </Label>
-                            <Input
-                              placeholder="Support Ticket"
-                              value={serverConfig.support.ticket_system.embed?.title || ""}
-                              onChange={(e) =>
-                                updateServerConfig({
-                                  support: {
-                                    ...serverConfig.support,
-                                    ticket_system: {
-                                      ...serverConfig.support.ticket_system,
-                                      embed: {
-                                        ...serverConfig.support.ticket_system.embed,
-                                        title: e.target.value,
-                                      },
-                                    },
-                                  },
-                                })
-                              }
-                              className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-                            />
-                          </div>
-
-                          <div>
-                            <Label className="text-white text-sm mb-2 block">Description</Label>
-                            <Textarea
-                              placeholder="Click the button below to create a support ticket."
-                              value={serverConfig.support.ticket_system.embed?.description || ""}
-                              onChange={(e) =>
-                                updateServerConfig({
-                                  support: {
-                                    ...serverConfig.support,
-                                    ticket_system: {
-                                      ...serverConfig.support.ticket_system,
-                                      embed: {
-                                        ...serverConfig.support.ticket_system.embed,
-                                        description: e.target.value,
-                                      },
-                                    },
-                                  },
-                                })
-                              }
-                              className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[100px]"
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label className="text-white text-sm mb-2 block flex items-center">
-                                <Palette className="h-4 w-4 mr-2" />
-                                Color
-                              </Label>
-                              <Input
-                                type="color"
-                                value={serverConfig.support.ticket_system.embed?.color || "#5865F2"}
-                                onChange={(e) =>
-                                  updateServerConfig({
-                                    support: {
-                                      ...serverConfig.support,
-                                      ticket_system: {
-                                        ...serverConfig.support.ticket_system,
-                                        embed: {
-                                          ...serverConfig.support.ticket_system.embed,
-                                          color: e.target.value,
-                                        },
-                                      },
-                                    },
-                                  })
-                                }
-                                className="bg-black/60 border-white/20 h-10"
-                              />
-                            </div>
-
-                            <div>
-                              <Label className="text-white text-sm mb-2 block flex items-center">
-                                <ImageIcon className="h-4 w-4 mr-2" />
-                                Thumbnail URL
-                              </Label>
-                              <Input
-                                placeholder="https://example.com/image.png"
-                                value={serverConfig.support.ticket_system.embed?.thumbnail || ""}
-                                onChange={(e) =>
-                                  updateServerConfig({
-                                    support: {
-                                      ...serverConfig.support,
-                                      ticket_system: {
-                                        ...serverConfig.support.ticket_system,
-                                        embed: {
-                                          ...serverConfig.support.ticket_system.embed,
-                                          thumbnail: e.target.value,
-                                        },
-                                      },
-                                    },
-                                  })
-                                }
-                                className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <Label className="text-white text-sm mb-2 block">Footer Text</Label>
-                            <Input
-                              placeholder="Support Team"
-                              value={serverConfig.support.ticket_system.embed?.footer || ""}
-                              onChange={(e) =>
-                                updateServerConfig({
-                                  support: {
-                                    ...serverConfig.support,
-                                    ticket_system: {
-                                      ...serverConfig.support.ticket_system,
-                                      embed: {
-                                        ...serverConfig.support.ticket_system.embed,
-                                        footer: e.target.value,
-                                      },
-                                    },
-                                  },
-                                })
-                              }
-                              className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Embed Preview */}
-                        <div className="space-y-4">
-                          <h4 className="text-white font-medium">Preview</h4>
-                          <div
-                            className="border-l-4 bg-gray-800/50 p-4 rounded-r-lg"
-                            style={{ borderLeftColor: serverConfig.support.ticket_system.embed?.color || "#5865F2" }}
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                {serverConfig.support.ticket_system.embed?.title && (
-                                  <h3 className="text-white font-semibold mb-2">
-                                    {serverConfig.support.ticket_system.embed.title}
-                                  </h3>
-                                )}
-                                {serverConfig.support.ticket_system.embed?.description && (
-                                  <p className="text-gray-300 text-sm mb-3">
-                                    {serverConfig.support.ticket_system.embed.description}
-                                  </p>
-                                )}
-                                {serverConfig.support.ticket_system.embed?.footer && (
-                                  <p className="text-gray-400 text-xs">
-                                    {serverConfig.support.ticket_system.embed.footer}
-                                  </p>
-                                )}
-                              </div>
-                              {serverConfig.support.ticket_system.embed?.thumbnail && (
-                                <div className="ml-4">
-                                  <Image
-                                    src={serverConfig.support.ticket_system.embed.thumbnail || "/placeholder.svg"}
-                                    alt="Thumbnail"
-                                    width={80}
-                                    height={80}
-                                    className="rounded object-cover"
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Auto-Answer Q&A */}
-                    <div>
-                      <Label className="text-white text-sm mb-2 block">Auto-Answer Q&A Pairs</Label>
-                      <Textarea
-                        placeholder="Q: How do I reset my password?&#10;A: Click on 'Forgot Password' on the login page.&#10;&#10;Q: How do I contact support?&#10;A: Create a ticket using the !ticket command."
-                        value={serverConfig.support?.auto_answer?.qa_pairs || ""}
-                        onChange={(e) =>
-                          updateServerConfig({
-                            support: {
-                              ...serverConfig.support,
-                              auto_answer: { ...serverConfig.support?.auto_answer, qa_pairs: e.target.value },
-                            },
-                          })
-                        }
-                        className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[120px]"
-                      />
-                      <p className="text-xs text-gray-400 mt-2">
-                        Format: Q: Question? A: Answer. Separate multiple Q&A pairs with blank lines.
-                      </p>
+                      {/* Send Button */}
+                      <Button
+                        onClick={sendTicketEmbed}
+                        disabled={!serverConfig.support.ticket_system.channel_id}
+                        className="bg-white text-black hover:bg-gray-200"
+                      >
+                        <Send className="h-4 w-4 mr-2" />
+                        Send
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -2175,6 +2438,34 @@ export default function ServerConfigPage() {
             </Card>
           </div>
         )}
+
+        {/* Reputation Info Modal */}
+        <Dialog open={showReputationInfo} onOpenChange={setShowReputationInfo}>
+          <DialogContent className="glass-card max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-white flex items-center">
+                <Image src="/new-blue-logo.png" alt="Sycord" width={20} height={20} className="rounded mr-2" />
+                Reputation System
+              </DialogTitle>
+              <DialogDescription className="text-gray-400">How our staff reputation system works</DialogDescription>
+            </DialogHeader>
+            <div className="text-gray-300 space-y-3 text-sm">
+              <p>The reputation system tracks staff performance and prevents abuse of moderation powers.</p>
+              <p>
+                Staff members start with 20/20 reputation. Each moderation action (kicks, bans, timeouts) reduces
+                reputation by 1 point.
+              </p>
+              <p>
+                When reputation reaches 0/20, the staff member is temporarily blocked from performing moderation actions
+                until their reputation resets.
+              </p>
+              <p>
+                Reputation automatically resets to 20/20 every 24 hours to allow continued moderation while preventing
+                spam actions.
+              </p>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Events Tab */}
         {activeTab === "events" && (
@@ -2269,7 +2560,9 @@ export default function ServerConfigPage() {
                             </div>
                             <div className="text-center">
                               <h4 className="font-medium text-white">Share Link</h4>
-                              <p className="text-xs text-gray-400 mt-1">Generate a link you can share anywhere</p>
+                              <p classNameclassName="text-xs text-gray-400 mt-1">
+                                Generate a link you can share anywhere
+                              </p>
                             </div>
                           </Button>
                         </div>
@@ -2780,25 +3073,12 @@ export default function ServerConfigPage() {
                 {/* Current Announcements */}
                 {announcements.length > 0 && (
                   <div>
-                    <h3 className="font-medium text-white text-base mb-2">Active Announcements</h3>
-                    <div className="space-y-3">
-                      {announcements.map((ann) => (
-                        <div
-                          key={ann._id}
-                          className="flex items-center justify-between p-3 rounded-lg border border-gray-700/30 bg-gray-700/5"
-                        >
-                          <p className="text-sm text-gray-300">{ann.message}</p>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              // In a real app, you'd likely have a DELETE API for announcements
-                              setAnnouncements((prev) => prev.filter((a) => a._id !== ann._id))
-                            }}
-                            className="text-gray-400 hover:bg-gray-500/20"
-                          >
-                            Remove
-                          </Button>
+                    <h3 className="font-medium text-white text-base mb-3">Recent Announcements</h3>
+                    <div className="space-y-2">
+                      {announcements.slice(0, 5).map((ann) => (
+                        <div key={ann._id} className="p-3 rounded-lg border border-white/10 bg-black/20">
+                          <p className="text-white text-sm">{ann.message}</p>
+                          <p className="text-xs text-gray-400 mt-1">{new Date(ann.createdAt).toLocaleDateString()}</p>
                         </div>
                       ))}
                     </div>
