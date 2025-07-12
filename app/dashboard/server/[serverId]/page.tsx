@@ -490,16 +490,36 @@ export default function ServerConfigPage() {
     }
   }
 
-  const handleCreateGiveaway = () => {
+  const handleCreateGiveaway = async () => {
     if (giveawayData.method === "link") {
-      const baseUrl = "ltpd.xyz"
-      const randomId = Math.floor(Math.random() * 1000000)
-        .toString()
-        .padStart(6, "0")
-      const urlPath = giveawayData.customUrl || randomId
-      setGeneratedLink(`https://${baseUrl}/g/${urlPath}`)
+      // "link" now means "web"
+      try {
+        const response = await fetch("/api/giveaways", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(giveawayData),
+        })
+
+        if (response.ok) {
+          const result = await response.json()
+          // In a real deployment, this would be `https://sycord.com/g/${result.giveawayId}`
+          setGeneratedLink(`/g/${result.giveawayId}`)
+          setGiveawayCreated(true)
+          toast.success("Giveaway created on web successfully!")
+        } else {
+          throw new Error("Failed to create giveaway on web.")
+        }
+      } catch (error) {
+        console.error("Error creating giveaway on web:", error)
+        toast.error("Failed to create giveaway on web.")
+      }
+    } else {
+      // Handle server-side giveaway creation (if applicable)
+      setGiveawayCreated(true)
+      toast.success("Giveaway created on server successfully!")
     }
-    setGiveawayCreated(true)
   }
 
   const copyLink = () => {
@@ -1131,10 +1151,10 @@ export default function ServerConfigPage() {
                         Create on Server
                       </Button>
                       <Button
-                        onClick={() => handleMethodSelect("link")}
+                        onClick={() => handleMethodSelect("link")} // This is now "Create on Web"
                         className="bg-white text-black hover:bg-gray-100"
                       >
-                        Create with Link
+                        Create on Web
                       </Button>
                     </div>
                   </div>
@@ -1214,7 +1234,7 @@ export default function ServerConfigPage() {
                           </Select>
                         </div>
                       )}
-                      {giveawayData.method === "link" && (
+                      {giveawayData.method === "link" && ( // This is now "Create on Web"
                         <div>
                           <Label className="text-white text-sm mb-2 block">Custom URL (Optional)</Label>
                           <Input
@@ -1330,7 +1350,7 @@ export default function ServerConfigPage() {
                 {giveawayCreated && (
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium text-white">Giveaway Created!</h3>
-                    {giveawayData.method === "link" && (
+                    {giveawayData.method === "link" && ( // This is now "Create on Web"
                       <div className="space-y-2">
                         <p className="text-gray-400">Share this link with your community:</p>
                         <div className="flex items-center justify-between bg-black/60 border-white/20 rounded-md p-2">

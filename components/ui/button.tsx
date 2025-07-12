@@ -5,16 +5,16 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        default: "bg-white text-black hover:bg-gray-100", // Changed to white/black
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-gray-100 text-gray-900 hover:bg-gray-200", // Changed to grey/dark grey
-        ghost: "hover:bg-gray-100 hover:text-gray-900", // Changed to grey/dark grey
-        link: "text-primary underline-offset-4 hover:underline",
+        default: "bg-white text-black hover:bg-gray-100 [&_svg]:text-white", // Added [&_svg]:text-white
+        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 [&_svg]:text-white", // Added [&_svg]:text-white
+        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground [&_svg]:text-white", // Added [&_svg]:text-white
+        secondary: "bg-gray-100 text-gray-900 hover:bg-gray-200 [&_svg]:text-white", // Added [&_svg]:text-white
+        ghost: "hover:bg-gray-100 hover:text-gray-900 [&_svg]:text-white", // Added [&_svg]:text-white
+        link: "text-primary underline-offset-4 hover:underline [&_svg]:text-white", // Added [&_svg]:text-white
       },
       size: {
         default: "h-10 px-4 py-2",

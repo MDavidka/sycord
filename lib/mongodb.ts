@@ -1,32 +1,45 @@
-import { MongoClient, type Db } from "mongodb"
+import { MongoClient, ServerApiVersion } from "mongodb"
 
-// Make MongoDB URI optional during build time
-const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/fallback"
-const options = {}
+const uri = process.env.MONGODB_URI
+
+if (!uri) {
+  throw new Error("Please define the MONGODB_URI environment variable inside .env.local")
+}
 
 let client: MongoClient
 let clientPromise: Promise<MongoClient>
 
 if (process.env.NODE_ENV === "development") {
+  // In development mode, use a global variable so that the client is not recreated on every hot reload
   const globalWithMongo = global as typeof globalThis & {
     _mongoClientPromise?: Promise<MongoClient>
   }
 
   if (!globalWithMongo._mongoClientPromise) {
-    client = new MongoClient(uri, options)
+    client = new MongoClient(uri, {
+      serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+      },
+    })
     globalWithMongo._mongoClientPromise = client.connect()
   }
   clientPromise = globalWithMongo._mongoClientPromise
 } else {
-  client = new MongoClient(uri, options)
+  // In production mode, it's best to not use a global variable.
+  client = new MongoClient(uri, {
+    serverApi: {
+      version: ServerApiVersion.v1,
+      strict: true,
+      deprecationErrors: true,
+    },
+  })
   clientPromise = client.connect()
 }
 
-// Add the missing connectToDatabase export
-export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db }> {
+export async function connectToDatabase() {
   const client = await clientPromise
-  const db = client.db("dash-discord-bot") // Replace with your actual database name
+  const db = client.db("sycord") // Assuming your database name is "sycord"
   return { client, db }
 }
-
-export default clientPromise
