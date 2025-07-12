@@ -1,16 +1,14 @@
 import type { ObjectId } from "mongodb"
 
 export interface User {
-  _id: ObjectId
+  _id?: ObjectId | string
+  discordId: string
+  name: string
   email: string
-  name?: string
-  image?: string
-  servers?: {
-    serverId: string
-    serverName: string
-    serverIcon?: string
-    isBotAdded: boolean
-  }[]
+  password?: string
+  joined_since: string
+  is_tester?: boolean // Add this line
+  servers: ServerConfig[]
   plugins?: UserPlugin[] // Changed from downloaded_plugins to plugins
 }
 
@@ -18,12 +16,12 @@ export interface Plugin {
   _id: string
   name: string
   description: string
-  iconUrl?: string
-  thumbnailUrl?: string
-  active: boolean
+  created_by: string
+  created_at: string
   installs: number
-  createdAt: string
-  updatedAt: string
+  active: boolean
+  iconUrl?: string // Added
+  thumbnailUrl?: string // Added
 }
 
 export interface UserPlugin {
@@ -31,8 +29,31 @@ export interface UserPlugin {
   name: string
   description: string
   installed_at: string
-  iconUrl?: string
-  thumbnailUrl?: string
+  iconUrl?: string // Added
+  thumbnailUrl?: string // Added
+}
+
+export interface StaffMember {
+  userId: string
+  username: string
+  avatar?: string
+  reputation: number
+  maxReputation: number
+  joinedAt: string
+  lastActive?: string
+}
+
+export interface TicketEmbed {
+  title: string
+  description: string
+  color: string
+  thumbnail?: string
+  footer?: string
+  fields?: {
+    name: string
+    value: string
+    inline?: boolean
+  }[]
 }
 
 export interface ServerConfig {
@@ -40,8 +61,14 @@ export interface ServerConfig {
   server_name: string
   server_icon?: string
   is_bot_added: boolean
-  moderation_level: "off" | "on" | "lockdown"
-  roles_and_names: { [key: string]: string }
+  roles_and_names: { [key: string]: string } // <id>:<name>
+  channels: { [key: string]: string } // <id>:<name>
+  server_stats: {
+    total_members: number
+    total_bots: number
+    total_admins: number
+  }
+  moderation_level: "off" | "on" | "lockdown" // New 3-way moderation level
   welcome: {
     enabled: boolean
     channel_id?: string
@@ -49,6 +76,7 @@ export interface ServerConfig {
     dm_enabled?: boolean
   }
   moderation: {
+    // Basic filters
     link_filter: {
       enabled: boolean
       config: "all_links" | "whitelist_only" | "phishing_only"
@@ -70,6 +98,8 @@ export interface ServerConfig {
       enabled: boolean
       role_id?: string
     }
+
+    // Advanced security features
     permission_abuse: {
       enabled: boolean
       notify_owner_on_role_change: boolean
@@ -79,13 +109,13 @@ export interface ServerConfig {
       enabled: boolean
       new_bot_notifications: boolean
       bot_activity_monitoring: boolean
-      bot_timeout_threshold: number
+      bot_timeout_threshold: number // actions per minute
     }
     token_webhook_abuse: {
       enabled: boolean
       webhook_creation_monitor: boolean
       webhook_auto_revoke: boolean
-      webhook_verification_timeout: number
+      webhook_verification_timeout: number // seconds
       leaked_webhook_scanner: boolean
     }
     invite_hijacking: {
@@ -96,9 +126,9 @@ export interface ServerConfig {
     mass_ping_protection: {
       enabled: boolean
       anti_mention_flood: boolean
-      mention_rate_limit: number
+      mention_rate_limit: number // mentions per minute
       message_cooldown_on_raid: boolean
-      cooldown_duration: number
+      cooldown_duration: number // seconds
     }
     malicious_file_scanner: {
       enabled: boolean
@@ -108,10 +138,12 @@ export interface ServerConfig {
     }
   }
   support: {
+    staff: StaffMember[]
     ticket_system: {
       enabled: boolean
       channel_id?: string
       priority_role_id?: string
+      embed: TicketEmbed
     }
     auto_answer: {
       enabled: boolean
@@ -131,13 +163,31 @@ export interface ServerConfig {
     member_leaves: boolean
   }
   last_updated?: string
-  channels?: { [key: string]: string }
-  server_stats?: {
-    total_members?: number
-    total_bots?: number
-    total_admins?: number
-  }
+  // New fields for custom bot
   botProfilePictureUrl?: string
   customBotName?: string
   botToken?: string
+}
+
+export interface DiscordRole {
+  id: string
+  name: string
+  color: number
+  position: number
+  permissions: string
+}
+
+export interface DiscordChannel {
+  id: string
+  name: string
+  type: number
+}
+
+export interface DiscordGuild {
+  id: string
+  name: string
+  icon?: string
+  owner: boolean
+  permissions: string
+  approximate_member_count?: number
 }

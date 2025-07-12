@@ -51,17 +51,47 @@ import {
   Lock,
   EyeOff,
   Megaphone,
+  Flag,
+  Star,
+  Palette,
+  ImageIcon,
+  Type,
+  LifeBuoy,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import PluginsTab from "@/components/plugins-tab"
+import { Progress } from "@/components/ui/progress"
 
 // Define UserData interface
 interface UserData {
   name: string
   email: string
   joined_since: string
+}
+
+interface StaffMember {
+  userId: string
+  username: string
+  avatar?: string
+  reputation: number
+  maxReputation: number
+  joinedAt: string
+  lastActive?: string
+}
+
+interface TicketEmbed {
+  title: string
+  description: string
+  color: string
+  thumbnail?: string
+  footer?: string
+  fields?: {
+    name: string
+    value: string
+    inline?: boolean
+  }[]
 }
 
 // Update the ServerConfig interface to match the new structure
@@ -141,10 +171,12 @@ interface ServerConfig {
     }
   }
   support: {
+    staff: StaffMember[]
     ticket_system: {
       enabled: boolean
       channel_id?: string
       priority_role_id?: string
+      embed: TicketEmbed
     }
     auto_answer: {
       enabled: boolean
@@ -310,6 +342,41 @@ export default function ServerConfigPage() {
       return "Unknown Channel"
     }
     return serverConfig.channels[channelId]
+  }
+
+  // Staff management functions
+  const flagStaff = (userId: string) => {
+    if (!serverConfig) return
+
+    const updatedStaff = serverConfig.support.staff.map((staff) =>
+      staff.userId === userId ? { ...staff, reputation: 0 } : staff,
+    )
+
+    updateServerConfig({
+      support: {
+        ...serverConfig.support,
+        staff: updatedStaff,
+      },
+    })
+  }
+
+  const addStaffMember = () => {
+    if (!serverConfig) return
+
+    const newStaff: StaffMember = {
+      userId: `temp_${Date.now()}`,
+      username: "New Staff Member",
+      reputation: 20,
+      maxReputation: 20,
+      joinedAt: new Date().toISOString(),
+    }
+
+    updateServerConfig({
+      support: {
+        ...serverConfig.support,
+        staff: [...(serverConfig.support.staff || []), newStaff],
+      },
+    })
   }
 
   // Giveaway functions
@@ -663,15 +730,15 @@ export default function ServerConfigPage() {
               Sentinel
             </Button>
             <Button
-              variant={activeTab === "helpdesk" ? "secondary" : "ghost"}
+              variant={activeTab === "support" ? "secondary" : "ghost"}
               size="sm"
-              onClick={() => setActiveTab("helpdesk")}
+              onClick={() => setActiveTab("support")}
               className={`${
-                activeTab === "helpdesk" ? "bg-white text-black" : "text-white hover:bg-white/10"
+                activeTab === "support" ? "bg-white text-black" : "text-white hover:bg-white/10"
               } transition-colors flex-shrink-0 text-sm px-4 h-9`}
             >
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Helpdesk
+              <LifeBuoy className="h-4 w-4 mr-2" />
+              Support
             </Button>
             <Button
               variant={activeTab === "events" ? "secondary" : "ghost"}
@@ -1694,17 +1761,107 @@ export default function ServerConfigPage() {
           </div>
         )}
 
-        {/* Helpdesk Tab */}
-        {activeTab === "helpdesk" && (
+        {/* Support Tab */}
+        {activeTab === "support" && (
           <div className="space-y-6">
+            {/* Staff Insights */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center text-xl">
+                  <Users className="h-6 w-6 mr-3" />
+                  Staff Insights
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  Manage your support staff and monitor their performance
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-medium text-white">Staff Members</h3>
+                  <Button onClick={addStaffMember} size="sm" className="bg-white text-black hover:bg-gray-200">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Staff
+                  </Button>
+                </div>
+
+                {/* Staff List */}
+                <div className="space-y-3">
+                  {serverConfig.support?.staff?.length > 0 ? (
+                    serverConfig.support.staff.map((staff) => (
+                      <div
+                        key={staff.userId}
+                        className="flex items-center justify-between p-4 rounded-lg border border-white/10 bg-black/20"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
+                            {staff.avatar ? (
+                              <Image
+                                src={staff.avatar || "/placeholder.svg"}
+                                alt={staff.username}
+                                width={40}
+                                height={40}
+                                className="rounded-full"
+                              />
+                            ) : (
+                              <Users className="h-5 w-5 text-gray-400" />
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-white">{staff.username}</h4>
+                            <p className="text-sm text-gray-400">
+                              Joined {new Date(staff.joinedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-4">
+                          {/* Reputation Bar */}
+                          <div className="flex items-center space-x-2">
+                            <Star className="h-4 w-4 text-yellow-500" />
+                            <div className="w-24">
+                              <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+                                <span>Rep.</span>
+                                <span>
+                                  {staff.reputation}/{staff.maxReputation}
+                                </span>
+                              </div>
+                              <Progress value={(staff.reputation / staff.maxReputation) * 100} className="h-2" />
+                            </div>
+                          </div>
+
+                          {/* Flag Staff Button */}
+                          <Button
+                            onClick={() => flagStaff(staff.userId)}
+                            variant="outline"
+                            size="sm"
+                            className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                            disabled={staff.reputation === 0}
+                          >
+                            <Flag className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <Users className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                      <p className="text-gray-400">No staff members added yet</p>
+                      <p className="text-sm text-gray-500">Add staff members to start tracking their performance</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Ticket System */}
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="text-white flex items-center text-xl">
                   <MessageSquare className="h-6 w-6 mr-3" />
-                  Support System
+                  Ticket System
                 </CardTitle>
                 <CardDescription className="text-gray-400">
-                  Configure ticket system and automated support responses
+                  Configure ticket system and customize embed appearance
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -1714,20 +1871,30 @@ export default function ServerConfigPage() {
                     <p className="text-sm text-gray-400">Allow users to create support tickets</p>
                   </div>
                   <Switch
-                    checked={serverConfig.support.ticket_system.enabled}
+                    checked={serverConfig.support?.ticket_system?.enabled || false}
                     onCheckedChange={(checked) =>
                       updateServerConfig({
                         support: {
                           ...serverConfig.support,
-                          ticket_system: { ...serverConfig.support.ticket_system, enabled: checked },
+                          ticket_system: {
+                            ...serverConfig.support?.ticket_system,
+                            enabled: checked,
+                            embed: serverConfig.support?.ticket_system?.embed || {
+                              title: "Support Ticket",
+                              description: "Click the button below to create a support ticket.",
+                              color: "#5865F2",
+                              footer: "Support Team",
+                            },
+                          },
                         },
                       })
                     }
                   />
                 </div>
 
-                {serverConfig.support.ticket_system.enabled && (
-                  <div className="space-y-4">
+                {serverConfig.support?.ticket_system?.enabled && (
+                  <div className="space-y-6">
+                    {/* Basic Settings */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label className="text-white text-sm mb-2 block">Ticket Channel</Label>
@@ -1803,16 +1970,196 @@ export default function ServerConfigPage() {
                       </div>
                     </div>
 
+                    {/* Embed Customization */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium text-white flex items-center">
+                        <Palette className="h-5 w-5 mr-2" />
+                        Customize Embed
+                      </h3>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Embed Settings */}
+                        <div className="space-y-4">
+                          <div>
+                            <Label className="text-white text-sm mb-2 block flex items-center">
+                              <Type className="h-4 w-4 mr-2" />
+                              Title
+                            </Label>
+                            <Input
+                              placeholder="Support Ticket"
+                              value={serverConfig.support.ticket_system.embed?.title || ""}
+                              onChange={(e) =>
+                                updateServerConfig({
+                                  support: {
+                                    ...serverConfig.support,
+                                    ticket_system: {
+                                      ...serverConfig.support.ticket_system,
+                                      embed: {
+                                        ...serverConfig.support.ticket_system.embed,
+                                        title: e.target.value,
+                                      },
+                                    },
+                                  },
+                                })
+                              }
+                              className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                            />
+                          </div>
+
+                          <div>
+                            <Label className="text-white text-sm mb-2 block">Description</Label>
+                            <Textarea
+                              placeholder="Click the button below to create a support ticket."
+                              value={serverConfig.support.ticket_system.embed?.description || ""}
+                              onChange={(e) =>
+                                updateServerConfig({
+                                  support: {
+                                    ...serverConfig.support,
+                                    ticket_system: {
+                                      ...serverConfig.support.ticket_system,
+                                      embed: {
+                                        ...serverConfig.support.ticket_system.embed,
+                                        description: e.target.value,
+                                      },
+                                    },
+                                  },
+                                })
+                              }
+                              className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[100px]"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label className="text-white text-sm mb-2 block flex items-center">
+                                <Palette className="h-4 w-4 mr-2" />
+                                Color
+                              </Label>
+                              <Input
+                                type="color"
+                                value={serverConfig.support.ticket_system.embed?.color || "#5865F2"}
+                                onChange={(e) =>
+                                  updateServerConfig({
+                                    support: {
+                                      ...serverConfig.support,
+                                      ticket_system: {
+                                        ...serverConfig.support.ticket_system,
+                                        embed: {
+                                          ...serverConfig.support.ticket_system.embed,
+                                          color: e.target.value,
+                                        },
+                                      },
+                                    },
+                                  })
+                                }
+                                className="bg-black/60 border-white/20 h-10"
+                              />
+                            </div>
+
+                            <div>
+                              <Label className="text-white text-sm mb-2 block flex items-center">
+                                <ImageIcon className="h-4 w-4 mr-2" />
+                                Thumbnail URL
+                              </Label>
+                              <Input
+                                placeholder="https://example.com/image.png"
+                                value={serverConfig.support.ticket_system.embed?.thumbnail || ""}
+                                onChange={(e) =>
+                                  updateServerConfig({
+                                    support: {
+                                      ...serverConfig.support,
+                                      ticket_system: {
+                                        ...serverConfig.support.ticket_system,
+                                        embed: {
+                                          ...serverConfig.support.ticket_system.embed,
+                                          thumbnail: e.target.value,
+                                        },
+                                      },
+                                    },
+                                  })
+                                }
+                                className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label className="text-white text-sm mb-2 block">Footer Text</Label>
+                            <Input
+                              placeholder="Support Team"
+                              value={serverConfig.support.ticket_system.embed?.footer || ""}
+                              onChange={(e) =>
+                                updateServerConfig({
+                                  support: {
+                                    ...serverConfig.support,
+                                    ticket_system: {
+                                      ...serverConfig.support.ticket_system,
+                                      embed: {
+                                        ...serverConfig.support.ticket_system.embed,
+                                        footer: e.target.value,
+                                      },
+                                    },
+                                  },
+                                })
+                              }
+                              className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Embed Preview */}
+                        <div className="space-y-4">
+                          <h4 className="text-white font-medium">Preview</h4>
+                          <div
+                            className="border-l-4 bg-gray-800/50 p-4 rounded-r-lg"
+                            style={{ borderLeftColor: serverConfig.support.ticket_system.embed?.color || "#5865F2" }}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                {serverConfig.support.ticket_system.embed?.title && (
+                                  <h3 className="text-white font-semibold mb-2">
+                                    {serverConfig.support.ticket_system.embed.title}
+                                  </h3>
+                                )}
+                                {serverConfig.support.ticket_system.embed?.description && (
+                                  <p className="text-gray-300 text-sm mb-3">
+                                    {serverConfig.support.ticket_system.embed.description}
+                                  </p>
+                                )}
+                                {serverConfig.support.ticket_system.embed?.footer && (
+                                  <p className="text-gray-400 text-xs">
+                                    {serverConfig.support.ticket_system.embed.footer}
+                                  </p>
+                                )}
+                              </div>
+                              {serverConfig.support.ticket_system.embed?.thumbnail && (
+                                <div className="ml-4">
+                                  <Image
+                                    src={serverConfig.support.ticket_system.embed.thumbnail || "/placeholder.svg"}
+                                    alt="Thumbnail"
+                                    width={80}
+                                    height={80}
+                                    className="rounded object-cover"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Auto-Answer Q&A */}
                     <div>
                       <Label className="text-white text-sm mb-2 block">Auto-Answer Q&A Pairs</Label>
                       <Textarea
                         placeholder="Q: How do I reset my password?&#10;A: Click on 'Forgot Password' on the login page.&#10;&#10;Q: How do I contact support?&#10;A: Create a ticket using the !ticket command."
-                        value={serverConfig.support.auto_answer.qa_pairs || ""}
+                        value={serverConfig.support?.auto_answer?.qa_pairs || ""}
                         onChange={(e) =>
                           updateServerConfig({
                             support: {
                               ...serverConfig.support,
-                              auto_answer: { ...serverConfig.support.auto_answer, qa_pairs: e.target.value },
+                              auto_answer: { ...serverConfig.support?.auto_answer, qa_pairs: e.target.value },
                             },
                           })
                         }
