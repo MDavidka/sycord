@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useSession } from "next-auth/react"
 import { useRouter, useParams } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -26,6 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog"
 import {
   Shield,
@@ -138,7 +137,6 @@ interface ServerConfig {
     link_filter: {
       enabled: boolean
       config: "all_links" | "whitelist_only" | "phishing_only"
-      whitelist?: string[]
     }
     bad_word_filter: {
       enabled: boolean
@@ -197,16 +195,14 @@ interface ServerConfig {
   }
   support: {
     staff: StaffMember[]
+    reputation_enabled: boolean
+    max_reputation_score: number
     ticket_system: {
       enabled: boolean
       channel_id?: string
       priority_role_id?: string
       embed: TicketEmbed
       settings: TicketSettings
-    }
-    auto_answer: {
-      enabled: boolean
-      qa_pairs?: string
     }
   }
   giveaway: {
@@ -253,11 +249,15 @@ export default function ServerConfigPage() {
   const params = useParams()
   const serverId = params.serverId as string
 
-  // Add state for info modal
+  // Add state for modals
   const [showInfoModal, setShowInfoModal] = useState(false)
   const [showReputationInfo, setShowReputationInfo] = useState(false)
   const [showEmbedSettings, setShowEmbedSettings] = useState(false)
   const [showTicketSettings, setShowTicketSettings] = useState(false)
+  const [showLockdownWarning, setShowLockdownWarning] = useState(false)
+  const [showFlagStaffWarning, setShowFlagStaffWarning] = useState(false)
+  const [staffToFlag, setStaffToFlag] = useState<string | null>(null)
+
   const [userData, setUserData] = useState<UserData | null>(null)
   const [serverConfig, setServerConfig] = useState<ServerConfig | null>(null)
   const [userServers, setUserServers] = useState<any[]>([])
@@ -331,8 +331,32 @@ export default function ServerConfigPage() {
       const configResponse = await fetch(`/api/user-config/${serverId}`)
       if (configResponse.ok) {
         const configData = await configResponse.json()
+        // Initialize default values for new fields if they don't exist
+        const initialConfig: ServerConfig = {
+          ...configData.server,
+          support: {
+            ...configData.server.support,
+            reputation_enabled: configData.server.support?.reputation_enabled ?? false,
+            max_reputation_score: configData.server.support?.max_reputation_score ?? 20,
+            ticket_system: {
+              ...configData.server.support?.ticket_system,
+              embed: configData.server.support?.ticket_system?.embed || {
+                title: "Support Ticket",
+                description: "Click the button below to create a support ticket.",
+                color: "#5865F2",
+                footer: "Support Team",
+              },
+              settings: configData.server.support?.ticket_system?.settings || {
+                autoAnswer: { enabled: false, qa_pairs: "" },
+                blockedUsers: { enabled: false, userIds: [] },
+                inactivityClose: { enabled: false, timeoutMinutes: 30 },
+                logging: { enabled: false },
+              },
+            },
+          },
+        }
+        setServerConfig(initialConfig)
         setUserData(configData.user)
-        setServerConfig(configData.server)
       }
     } catch (error) {
       console.error("Error loading data:", error)
@@ -374,11 +398,16 @@ export default function ServerConfigPage() {
   }
 
   // Staff management functions
-  const flagStaff = (userId: string) => {
-    if (!serverConfig) return
+  const handleFlagStaffClick = (userId: string) => {
+    setStaffToFlag(userId)
+    setShowFlagStaffWarning(true)
+  }
+
+  const confirmFlagStaff = () => {
+    if (!serverConfig || !staffToFlag) return
 
     const updatedStaff = serverConfig.support.staff.map((staff) =>
-      staff.userId === userId ? { ...staff, reputation: 0 } : staff,
+      staff.userId === staffToFlag ? { ...staff, reputation: 5 } : staff,
     )
 
     updateServerConfig({
@@ -387,6 +416,8 @@ export default function ServerConfigPage() {
         staff: updatedStaff,
       },
     })
+    setShowFlagStaffWarning(false)
+    setStaffToFlag(null)
   }
 
   // Send ticket embed function
@@ -464,6 +495,11 @@ export default function ServerConfigPage() {
   const handleModerationLevelChange = (level: "off" | "on" | "lockdown") => {
     if (!serverConfig) return
 
+    if (level === "lockdown") {
+      setShowLockdownWarning(true)
+      return // Prevent immediate change, wait for confirmation
+    }
+
     const updatedModeration = { ...serverConfig.moderation }
 
     if (level === "off") {
@@ -479,19 +515,28 @@ export default function ServerConfigPage() {
       updatedModeration.bad_word_filter.enabled = true
       updatedModeration.permission_abuse.enabled = true
       updatedModeration.malicious_bot_detection.enabled = true
-    } else if (level === "lockdown") {
-      // Turn on all security features
-      Object.keys(updatedModeration).forEach((key) => {
-        if (typeof updatedModeration[key] === "object" && updatedModeration[key]?.enabled !== undefined) {
-          updatedModeration[key].enabled = true
-        }
-      })
     }
 
     updateServerConfig({
       moderation_level: level,
       moderation: updatedModeration,
     })
+  }
+
+  const confirmLockdown = () => {
+    if (!serverConfig) return
+    const updatedModeration = { ...serverConfig.moderation }
+    // Turn on all security features
+    Object.keys(updatedModeration).forEach((key) => {
+      if (typeof updatedModeration[key] === "object" && updatedModeration[key]?.enabled !== undefined) {
+        updatedModeration[key].enabled = true
+      }
+    })
+    updateServerConfig({
+      moderation_level: "lockdown",
+      moderation: updatedModeration,
+    })
+    setShowLockdownWarning(false)
   }
 
   const handleSaveBotSettings = async () => {
@@ -1772,6 +1817,11 @@ export default function ServerConfigPage() {
                         vulnerabilities.
                       </p>
                       <p>
+                        We analyzed the timing, methods, and impact of phishing links, mass joins, and admin bypasses.
+                        By comparing dozens of attacks, we built a deep understanding of both technical and human
+                        vulnerabilities.
+                      </p>
+                      <p>
                         This research became the foundation for every security function we built into Sycord. Our bot
                         doesn't just follow generic rules - it understands real attack patterns and adapts to protect
                         your server accordingly.
@@ -1781,6 +1831,48 @@ export default function ServerConfigPage() {
                 </Card>
               </div>
             )}
+
+            {/* Lockdown Warning Dialog */}
+            <Dialog open={showLockdownWarning} onOpenChange={setShowLockdownWarning}>
+              <DialogContent className="glass-card max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="text-white flex items-center">
+                    <Lock className="h-5 w-5 mr-2" />
+                    Lockdown Confirmation
+                  </DialogTitle>
+                  <DialogDescription className="text-gray-400">
+                    Are you sure you want to activate Lockdown Mode?
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-gray-300">
+                    Activating lockdown mode will lock all channels in your server, preventing members from sending
+                    messages. This is intended for severe raid situations.
+                  </p>
+                  <div className="flex justify-center">
+                    <Image
+                      src="/placeholder.svg?height=150&width=250"
+                      alt="Lockdown Active"
+                      width={250}
+                      height={150}
+                      className="rounded-lg"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowLockdownWarning(false)}
+                    className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={confirmLockdown} className="bg-white text-black hover:bg-gray-200">
+                    Lock Channels
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
 
@@ -1800,20 +1892,77 @@ export default function ServerConfigPage() {
                       Monitor your support staff performance and reputation
                     </CardDescription>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowReputationInfo(true)}
-                    className="border-gray-500/50 text-gray-400 hover:bg-gray-500/10"
-                  >
-                    <Info className="h-4 w-4 mr-2" />
-                    What is reputation?
-                  </Button>
+                  <Dialog open={showReputationInfo} onOpenChange={setShowReputationInfo}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="text-gray-400 hover:bg-gray-500/10">
+                        <Info className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="glass-card max-w-md">
+                      <DialogHeader>
+                        <DialogTitle className="text-white flex items-center">
+                          <Image
+                            src="/new-blue-logo.png"
+                            alt="Sycord"
+                            width={20}
+                            height={20}
+                            className="rounded mr-2"
+                          />
+                          Reputation System
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-400">
+                          How our staff reputation system works
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="text-gray-300 space-y-3 text-sm">
+                        <p>The reputation system tracks staff performance and prevents abuse of moderation powers.</p>
+                        <p>
+                          Staff members start with a configurable max reputation. Each moderation action (kicks, bans,
+                          timeouts) reduces reputation by 1 point.
+                        </p>
+                        <p>
+                          When reputation reaches 0, the staff member is temporarily blocked from performing moderation
+                          actions until their reputation resets.
+                        </p>
+                        <p>
+                          Reputation automatically resets to max reputation every 24 hours to allow continued moderation
+                          while preventing spam actions.
+                        </p>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-medium text-white">Staff Members</h3>
+                  <div className="flex items-center space-x-2">
+                    <Label htmlFor="max-rep" className="text-white text-sm">
+                      Max Rep:
+                    </Label>
+                    <Input
+                      id="max-rep"
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={serverConfig.support.max_reputation_score}
+                      onChange={(e) =>
+                        updateServerConfig({
+                          support: {
+                            ...serverConfig.support,
+                            max_reputation_score: Number.parseInt(e.target.value) || 20,
+                          },
+                        })
+                      }
+                      className="bg-black/60 border-white/20 text-white h-7 w-20 text-xs"
+                    />
+                  </div>
+                </div>
+
                 {/* Staff List */}
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                  {" "}
+                  {/* Added max-h and overflow for mobile optimization */}
                   {serverConfig.support?.staff?.length > 0 ? (
                     serverConfig.support.staff.map((staff) => (
                       <div
@@ -1831,31 +1980,28 @@ export default function ServerConfigPage() {
 
                         <div className="flex items-center space-x-4">
                           {/* Reputation Bar with Sycord Logo */}
-                          <div className="flex items-center space-x-2">
-                            <Image src="/new-blue-logo.png" alt="Sycord" width={16} height={16} className="rounded" />
-                            <div className="w-24">
-                              <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
-                                <span>Rep.</span>
-                                <span>
-                                  {staff.reputation}/{staff.maxReputation}
-                                </span>
+                          {serverConfig.support.reputation_enabled && (
+                            <div className="flex items-center space-x-2">
+                              <Image src="/new-blue-logo.png" alt="Sycord" width={16} height={16} className="rounded" />
+                              <div className="w-24">
+                                <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+                                  <span>Rep.</span>
+                                  <span>
+                                    {staff.reputation}/{serverConfig.support.max_reputation_score}
+                                  </span>
+                                </div>
+                                <Progress
+                                  value={(staff.reputation / serverConfig.support.max_reputation_score) * 100}
+                                  className="h-2 bg-gray-800"
+                                  indicatorClassName="bg-blue-800" // Dark blue for indicator
+                                />
                               </div>
-                              <Progress
-                                value={(staff.reputation / staff.maxReputation) * 100}
-                                className="h-2 bg-gray-800"
-                                style={
-                                  {
-                                    "--progress-background": "#1e3a8a", // Dark blue
-                                    "--progress-foreground": "#3b82f6", // Blue
-                                  } as React.CSSProperties
-                                }
-                              />
                             </div>
-                          </div>
+                          )}
 
                           {/* Flag Staff Button */}
                           <Button
-                            onClick={() => flagStaff(staff.userId)}
+                            onClick={() => handleFlagStaffClick(staff.userId)}
                             variant="outline"
                             size="sm"
                             className="border-red-500/50 text-red-400 hover:bg-red-500/10"
@@ -1876,8 +2022,58 @@ export default function ServerConfigPage() {
                     </div>
                   )}
                 </div>
+                <div className="flex items-center justify-between pt-4">
+                  <div>
+                    <h3 className="font-medium text-white text-base">Enable Reputation System</h3>
+                    <p className="text-sm text-gray-400">Track and manage staff reputation</p>
+                  </div>
+                  <Switch
+                    checked={serverConfig.support.reputation_enabled}
+                    onCheckedChange={(checked) =>
+                      updateServerConfig({
+                        support: {
+                          ...serverConfig.support,
+                          reputation_enabled: checked,
+                        },
+                      })
+                    }
+                  />
+                </div>
               </CardContent>
             </Card>
+
+            {/* Flag Staff Warning Dialog */}
+            <Dialog open={showFlagStaffWarning} onOpenChange={setShowFlagStaffWarning}>
+              <DialogContent className="glass-card max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="text-white flex items-center">
+                    <Flag className="h-5 w-5 mr-2 text-red-400" />
+                    Flag Staff Member
+                  </DialogTitle>
+                  <DialogDescription className="text-gray-400">
+                    Are you sure you want to flag this staff member?
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-gray-300">
+                    Flagging a staff member will reduce their reputation score to 5. This action is irreversible for the
+                    current reputation cycle.
+                  </p>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowFlagStaffWarning(false)}
+                    className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+                  >
+                    Cancel
+                  </Button>
+                  <Button onClick={confirmFlagStaff} className="bg-red-600 text-white hover:bg-red-700">
+                    Flag Staff
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             {/* Ticket System */}
             <Card className="glass-card">
@@ -2439,34 +2635,6 @@ export default function ServerConfigPage() {
           </div>
         )}
 
-        {/* Reputation Info Modal */}
-        <Dialog open={showReputationInfo} onOpenChange={setShowReputationInfo}>
-          <DialogContent className="glass-card max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-white flex items-center">
-                <Image src="/new-blue-logo.png" alt="Sycord" width={20} height={20} className="rounded mr-2" />
-                Reputation System
-              </DialogTitle>
-              <DialogDescription className="text-gray-400">How our staff reputation system works</DialogDescription>
-            </DialogHeader>
-            <div className="text-gray-300 space-y-3 text-sm">
-              <p>The reputation system tracks staff performance and prevents abuse of moderation powers.</p>
-              <p>
-                Staff members start with 20/20 reputation. Each moderation action (kicks, bans, timeouts) reduces
-                reputation by 1 point.
-              </p>
-              <p>
-                When reputation reaches 0/20, the staff member is temporarily blocked from performing moderation actions
-                until their reputation resets.
-              </p>
-              <p>
-                Reputation automatically resets to 20/20 every 24 hours to allow continued moderation while preventing
-                spam actions.
-              </p>
-            </div>
-          </DialogContent>
-        </Dialog>
-
         {/* Events Tab */}
         {activeTab === "events" && (
           <div className="space-y-6">
@@ -2560,9 +2728,7 @@ export default function ServerConfigPage() {
                             </div>
                             <div className="text-center">
                               <h4 className="font-medium text-white">Share Link</h4>
-                              <p classNameclassName="text-xs text-gray-400 mt-1">
-                                Generate a link you can share anywhere
-                              </p>
+                              <p className="text-xs text-gray-400 mt-1">Generate a link you can share anywhere</p>
                             </div>
                           </Button>
                         </div>
