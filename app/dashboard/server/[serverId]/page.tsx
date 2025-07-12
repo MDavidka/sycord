@@ -736,7 +736,7 @@ export default function ServerConfigPage() {
                 onClick={() => setSupportView("overview")}
                 className="flex items-center gap-2 text-white hover:bg-gray-100 hover:text-gray-900"
               >
-                <ArrowLeft className="h-4 w-4" />
+                <ArrowLeft className="h-4 w-4 text-white" />
                 Back to Overview
               </Button>
             </div>
@@ -836,7 +836,7 @@ export default function ServerConfigPage() {
                 onClick={() => setSupportView("overview")}
                 className="flex items-center gap-2 text-white hover:bg-gray-100 hover:text-gray-900"
               >
-                <ArrowLeft className="h-4 w-4" />
+                <ArrowLeft className="h-4 w-4 text-white" />
                 Back to Overview
               </Button>
             </div>
@@ -1037,7 +1037,7 @@ export default function ServerConfigPage() {
               onClick={() => setActiveEventSection("overview")}
               className="text-white hover:bg-gray-100 hover:text-gray-900"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Overview
+              <ArrowLeft className="h-4 w-4 mr-2 text-white" /> Back to Overview
             </Button>
             <Card className="glass-card">
               <CardHeader>
@@ -1091,7 +1091,7 @@ export default function ServerConfigPage() {
                       variant="outline"
                       className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
                     >
-                      <Plus className="h-4 w-4 mr-2" /> Add New Task
+                      <Plus className="h-4 w-4 mr-2 text-white" /> Add New Task
                     </Button>
                   </div>
                 )}
@@ -1107,7 +1107,7 @@ export default function ServerConfigPage() {
               onClick={() => setActiveEventSection("overview")}
               className="text-white hover:bg-gray-100 hover:text-gray-900"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Overview
+              <ArrowLeft className="h-4 w-4 mr-2 text-white" /> Back to Overview
             </Button>
             <Card className="glass-card">
               <CardHeader>
@@ -1232,6 +1232,7 @@ export default function ServerConfigPage() {
                         onClick={handlePrevStep}
                         className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
                       >
+                        <ArrowLeft className="h-4 w-4 mr-2 text-white" />
                         Previous
                       </Button>
                       <Button onClick={handleNextStep} className="bg-white text-black hover:bg-gray-100">
@@ -1318,6 +1319,7 @@ export default function ServerConfigPage() {
                         onClick={handlePrevStep}
                         className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
                       >
+                        <ArrowLeft className="h-4 w-4 mr-2 text-white" />
                         Previous
                       </Button>
                       <Button onClick={handleCreateGiveaway} className="bg-white text-black hover:bg-gray-100">
@@ -1336,7 +1338,11 @@ export default function ServerConfigPage() {
                         <div className="flex items-center justify-between bg-black/60 border-white/20 rounded-md p-2">
                           <Input readOnly value={generatedLink} className="bg-transparent border-none text-white" />
                           <Button onClick={copyLink} className="bg-white text-black hover:bg-gray-100">
-                            {linkCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                            {linkCopied ? (
+                              <Check className="h-4 w-4 text-white" />
+                            ) : (
+                              <Copy className="h-4 w-4 text-white" />
+                            )}
                           </Button>
                         </div>
                       </div>
@@ -1358,7 +1364,7 @@ export default function ServerConfigPage() {
               onClick={() => setActiveEventSection("overview")}
               className="text-white hover:bg-gray-100 hover:text-gray-900"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Overview
+              <ArrowLeft className="h-4 w-4 mr-2 text-white" /> Back to Overview
             </Button>
             <Card className="glass-card">
               <CardHeader>
@@ -1486,7 +1492,7 @@ export default function ServerConfigPage() {
               onClick={() => setActiveEventSection("overview")}
               className="text-white hover:bg-gray-100 hover:text-gray-900"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Overview
+              <ArrowLeft className="h-4 w-4 mr-2 text-white" /> Back to Overview
             </Button>
             <Card className="glass-card">
               <CardHeader>
@@ -3199,7 +3205,7 @@ export default function ServerConfigPage() {
                                 className="border-red-500/50 text-red-400 hover:bg-red-500/10"
                                 disabled={staff.reputation === 0}
                               >
-                                <Flag className="h-4 w-4" />
+                                <Flag className="h-4 w-4 text-white" />
                               </Button>
                             </div>
                           </div>
@@ -3241,7 +3247,7 @@ export default function ServerConfigPage() {
               <DialogContent className="glass-card max-w-md">
                 <DialogHeader>
                   <DialogTitle className="text-white flex items-center">
-                    <Flag className="h-5 w-5 mr-2 text-red-400" />
+                    <Flag className="h-5 w-5 mr-2 text-white" />
                     Flag Staff Member
                   </DialogTitle>
                   <DialogDescription className="text-gray-400">
@@ -3328,7 +3334,7 @@ export default function ServerConfigPage() {
                                 size="sm"
                                 className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
                               >
-                                <Settings className="h-4 w-4 mr-2" />
+                                <Settings className="h-4 w-4 mr-2 text-white" />
                                 Customize
                               </Button>
                             </DialogTrigger>
