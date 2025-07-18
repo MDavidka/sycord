@@ -191,3 +191,13 @@ export interface DiscordGuild {
   permissions: string
   approximate_member_count?: number
 }
+
+
+export interface ServerStat {
+  serverId: string;
+  serverName: string;
+  load: number; // 0-100
+  lastUpdated: string;
+  memberCount: number;
+  isOnline: boolean;
+}
