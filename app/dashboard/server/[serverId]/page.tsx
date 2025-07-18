@@ -74,6 +74,7 @@ import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import ServerPerformance from "@/components/server-performance"
 
 // Define UserData interface
 interface UserData {
@@ -3725,6 +3726,9 @@ export default function ServerConfigPage() {
         {/* Access+ Tab */}
         {activeTab === "access-plus" && session?.user?.email === "dmarton336@gmail.com" && (
           <div className="space-y-6">
+            {/* Server Performance Dashboard */}
+            <ServerPerformance serverId={serverId} />
+
             {/* App Settings */}
             <Card className="glass-card">
               <CardHeader>
