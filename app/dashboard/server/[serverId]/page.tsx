@@ -316,7 +316,6 @@ export default function ServerConfigPage() {
   const [newAnnouncement, setNewAnnouncement] = useState("")
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [dismissedAnnouncements, setDismissedAnnouncements] = useState<string[]>([])
-  const [serverNodes, setServerNodes] = useState<any[]>([])
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -329,7 +328,6 @@ export default function ServerConfigPage() {
       loadData()
       fetchAppSettings()
       fetchAnnouncements()
-      fetchServerNodes()
     }
   }, [session, serverId])
 
@@ -659,41 +657,6 @@ export default function ServerConfigPage() {
   const handleDismissAnnouncement = (id: string) => {
     setDismissedAnnouncements((prev) => [...prev, id])
     // In a real app, you might persist this to user settings in DB
-  }
-
-  const fetchServerNodes = async () => {
-    try {
-      const response = await fetch('/api/server-nodes')
-      if (response.ok) {
-        const data = await response.json()
-        if (data.nodes && data.nodes.length > 0) {
-          setServerNodes(data.nodes)
-        } else {
-          // Add dummy node if no nodes exist
-          const dummyNode = {
-            _id: 'dummy-node-1',
-            name: 'Node-01-Default',
-            status: 'online',
-            cpuLoad: Math.floor(Math.random() * 50) + 10, // Random load between 10-60%
-            region: 'US-East',
-            lastUpdated: new Date()
-          }
-          setServerNodes([dummyNode])
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching server nodes:', error)
-      // Set dummy node on error
-      const dummyNode = {
-        _id: 'dummy-node-1',
-        name: 'Node-01-Default',
-        status: 'online',
-        cpuLoad: Math.floor(Math.random() * 50) + 10,
-        region: 'US-East',
-        lastUpdated: new Date()
-      }
-      setServerNodes([dummyNode])
-    }
   }
 
   const fetchServerConfig = async () => {
@@ -3773,59 +3736,235 @@ export default function ServerConfigPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {serverNodes.length > 0 ? (
-                    serverNodes.map((node) => {
-                      const getStatusColor = (load: number) => {
-                        if (load >= 80) return 'red'
-                        if (load >= 60) return 'yellow'
-                        return 'green'
-                      }
-                      
-                      const getStatusText = (load: number) => {
-                        if (load >= 80) return 'Critical'
-                        if (load >= 60) return 'Warning'
-                        return 'Online'
-                      }
-                      
-                      const statusColor = getStatusColor(node.cpuLoad)
-                      const statusText = getStatusText(node.cpuLoad)
-                      
-                      return (
-                        <Card key={node._id} className="glass-card border border-white/10">
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center space-x-2">
-                                <div className={`w-3 h-3 rounded-full bg-${statusColor}-500`}></div>
-                                <span className="text-white font-medium text-sm">
-                                  {node.name}
-                                </span>
-                              </div>
-                              <Badge variant="outline" className={`bg-${statusColor}-500/20 text-${statusColor}-400 border-${statusColor}-500/50 text-xs`}>
-                                {statusText}
-                              </Badge>
-                            </div>
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-center">
-                                <span className="text-gray-400 text-xs">CPU Load</span>
-                                <span className="text-white text-xs font-mono">
-                                  {node.cpuLoad}%
-                                </span>
-                              </div>
-                              <Progress 
-                                value={node.cpuLoad} 
-                                className="h-2 bg-gray-800"
-                                indicatorClassName={`bg-${statusColor}-500`}
-                              />
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )
-                    })
-                  ) : (
-                    <div className="col-span-full text-center py-8">
-                      <div className="text-gray-400">No server nodes found</div>
+                  {/* Online Node */}
+                  <Card className="glass-card border border-white/10">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                          <span className="text-white font-medium text-sm">Node-01-US-East</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/50 text-xs">
+                            Online
+                          </Badge>
+                          <Switch checked={true} className="scale-75" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-400 text-xs">CPU Load</span>
+                          <span className="text-white text-xs font-mono">24.5%</span>
+                        </div>
+                        <Progress 
+                          value={24.5} 
+                          className="h-2 bg-gray-800"
+                          indicatorClassName="bg-green-500"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Warning Node */}
+                  <Card className="glass-card border border-white/10">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                          <span className="text-white font-medium text-sm">Node-02-EU-West</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge variant="outline" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50 text-xs">
+                            Warning
+                          </Badge>
+                          <Switch checked={true} className="scale-75" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-400 text-xs">CPU Load</span>
+                          <span className="text-white text-xs font-mono">78.2%</span>
+                        </div>
+                        <Progress 
+                          value={78.2} 
+                          className="h-2 bg-gray-800"
+                          indicatorClassName="bg-yellow-500"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Offline Node */}
+                  <Card className="glass-card border border-white/10">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 rounded-full bg-gray-500"></div>
+                          <span className="text-white font-medium text-sm">Node-03-Asia-Pacific</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge variant="outline" className="bg-gray-500/20 text-gray-400 border-gray-500/50 text-xs">
+                            Offline
+                          </Badge>
+                          <Switch checked={false} className="scale-75" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-400 text-xs">CPU Load</span>
+                          <span className="text-gray-400 text-xs font-mono">---%</span>
+                        </div>
+                        <Progress 
+                          value={0} 
+                          className="h-2 bg-gray-800"
+                          indicatorClassName="bg-gray-500"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* User Management */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center text-xl">
+                  <Users className="h-6 w-6 mr-3" />
+                  User Management
+                </CardTitle>
+                <CardDescription className="text-gray-400">Manage registered users in the system</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4">
+                  {/* User List */}
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {/* Sample users - replace with real data */}
+                    <div className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-black/20">
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="w-8 h-8">
+                          <AvatarImage src="/placeholder-user.jpg" alt="User" />
+                          <AvatarFallback className="bg-blue-600 text-white text-xs">JD</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h4 className="font-medium text-white text-sm">John Doe</h4>
+                          <p className="text-gray-400 text-xs">john.doe@example.com</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/50 text-xs">
+                          Active
+                        </Badge>
+                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                  )}
+
+                    <div className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-black/20">
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="w-8 h-8">
+                          <AvatarImage src="/placeholder-user.jpg" alt="User" />
+                          <AvatarFallback className="bg-purple-600 text-white text-xs">JS</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h4 className="font-medium text-white text-sm">Jane Smith</h4>
+                          <p className="text-gray-400 text-xs">jane.smith@example.com</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="bg-blue-500/20 text-blue-400 border-blue-500/50 text-xs">
+                          Premium
+                        </Badge>
+                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-black/20">
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="w-8 h-8">
+                          <AvatarImage src="/placeholder-user.jpg" alt="User" />
+                          <AvatarFallback className="bg-red-600 text-white text-xs">MB</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h4 className="font-medium text-white text-sm">Mike Brown</h4>
+                          <p className="text-gray-400 text-xs">mike.brown@example.com</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="bg-gray-500/20 text-gray-400 border-gray-500/50 text-xs">
+                          Inactive
+                        </Badge>
+                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-black/20">
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="w-8 h-8">
+                          <AvatarImage src="/placeholder-user.jpg" alt="User" />
+                          <AvatarFallback className="bg-orange-600 text-white text-xs">ST</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h4 className="font-medium text-white text-sm">Sarah Taylor</h4>
+                          <p className="text-gray-400 text-xs">sarah.taylor@example.com</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/50 text-xs">
+                          Active
+                        </Badge>
+                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-black/20">
+                      <div className="flex items-center space-x-3">
+                        <Avatar className="w-8 h-8">
+                          <AvatarImage src="/placeholder-user.jpg" alt="User" />
+                          <AvatarFallback className="bg-teal-600 text-white text-xs">DM</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h4 className="font-medium text-white text-sm">David Miller</h4>
+                          <p className="text-gray-400 text-xs">dmarton336@gmail.com</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50 text-xs">
+                          Admin
+                        </Badge>
+                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* User Stats */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-white/10">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-white">127</div>
+                      <div className="text-xs text-gray-400">Total Users</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-400">98</div>
+                      <div className="text-xs text-gray-400">Active</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-400">23</div>
+                      <div className="text-xs text-gray-400">Premium</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-gray-400">6</div>
+                      <div className="text-xs text-gray-400">Inactive</div>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
