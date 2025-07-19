@@ -3880,3 +3880,12 @@ export default function ServerConfigPage() {
                 </div>
                 <Button onClick={handleSendAnnouncement} className="bg-white text-black hover:bg-gray-100">
                   Send Announcement
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
