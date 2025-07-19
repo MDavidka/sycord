@@ -3725,6 +3725,114 @@ export default function ServerConfigPage() {
         {/* Access+ Tab */}
         {activeTab === "access-plus" && session?.user?.email === "dmarton336@gmail.com" && (
           <div className="space-y-6">
+            {/* Server Monitoring */}
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center text-xl">
+                  <BarChart3 className="h-6 w-6 mr-3" />
+                  Server Monitoring
+                </CardTitle>
+                <CardDescription className="text-gray-400">Monitor bot nodes and server performance</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Server Node Cards - Placeholder styling */}
+                  <Card className="glass-card border border-white/10">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                          <span className="text-white font-medium text-sm">
+                            {/* SERVER_NAME_PLACEHOLDER */}
+                            Node-01-US-East
+                          </span>
+                        </div>
+                        <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/50 text-xs">
+                          Online
+                        </Badge>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-400 text-xs">CPU Load</span>
+                          <span className="text-white text-xs font-mono">
+                            {/* LOAD_PERCENTAGE_PLACEHOLDER */}
+                            24.5%
+                          </span>
+                        </div>
+                        <Progress 
+                          value={24.5} 
+                          className="h-2 bg-gray-800"
+                          indicatorClassName="bg-green-500"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="glass-card border border-white/10">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                          <span className="text-white font-medium text-sm">
+                            {/* SERVER_NAME_PLACEHOLDER */}
+                            Node-02-EU-West
+                          </span>
+                        </div>
+                        <Badge variant="outline" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50 text-xs">
+                          Warning
+                        </Badge>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-400 text-xs">CPU Load</span>
+                          <span className="text-white text-xs font-mono">
+                            {/* LOAD_PERCENTAGE_PLACEHOLDER */}
+                            78.2%
+                          </span>
+                        </div>
+                        <Progress 
+                          value={78.2} 
+                          className="h-2 bg-gray-800"
+                          indicatorClassName="bg-yellow-500"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="glass-card border border-white/10">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                          <span className="text-white font-medium text-sm">
+                            {/* SERVER_NAME_PLACEHOLDER */}
+                            Node-03-Asia-Pacific
+                          </span>
+                        </div>
+                        <Badge variant="outline" className="bg-red-500/20 text-red-400 border-red-500/50 text-xs">
+                          Critical
+                        </Badge>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-400 text-xs">CPU Load</span>
+                          <span className="text-white text-xs font-mono">
+                            {/* LOAD_PERCENTAGE_PLACEHOLDER */}
+                            94.8%
+                          </span>
+                        </div>
+                        <Progress 
+                          value={94.8} 
+                          className="h-2 bg-gray-800"
+                          indicatorClassName="bg-red-500"
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* App Settings */}
             <Card className="glass-card">
               <CardHeader>
