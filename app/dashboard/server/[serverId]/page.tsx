@@ -316,6 +316,8 @@ export default function ServerConfigPage() {
   const [newAnnouncement, setNewAnnouncement] = useState("")
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [dismissedAnnouncements, setDismissedAnnouncements] = useState<string[]>([])
+  const [serverNodes, setServerNodes] = useState<any[]>([])
+  const [isLoadingNodes, setIsLoadingNodes] = useState(false)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -328,8 +330,32 @@ export default function ServerConfigPage() {
       loadData()
       fetchAppSettings()
       fetchAnnouncements()
+      if (session?.user?.email === "dmarton336@gmail.com") {
+        fetchServerMonitoring()
+      }
     }
   }, [session, serverId])
+
+  // Auto-refresh server monitoring data every 5 seconds for Access+ tab
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+
+    if (session?.user?.email === "dmarton336@gmail.com" && activeTab === "access-plus") {
+      // Initial fetch
+      fetchServerMonitoring()
+      
+      // Set up interval to update stats every 5 seconds
+      interval = setInterval(() => {
+        updateServerStats()
+      }, 5000)
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval)
+      }
+    }
+  }, [session?.user?.email, activeTab])
 
   useEffect(() => {
     if (serverConfig) {
@@ -631,6 +657,35 @@ export default function ServerConfigPage() {
       }
     } catch (error) {
       console.error("Error fetching announcements:", error)
+    }
+  }
+
+  const fetchServerMonitoring = async () => {
+    try {
+      setIsLoadingNodes(true)
+      const response = await fetch("/api/server-monitoring")
+      if (response.ok) {
+        const data = await response.json()
+        setServerNodes(data.nodes)
+      }
+    } catch (error) {
+      console.error("Error fetching server monitoring data:", error)
+    } finally {
+      setIsLoadingNodes(false)
+    }
+  }
+
+  const updateServerStats = async () => {
+    try {
+      const response = await fetch("/api/server-monitoring", {
+        method: "POST"
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setServerNodes(data.nodes)
+      }
+    } catch (error) {
+      console.error("Error updating server stats:", error)
     }
   }
 
