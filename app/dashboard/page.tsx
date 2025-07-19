@@ -202,21 +202,16 @@ export default function Dashboard() {
                               </Button>
                             </Link>
                           ) : (
-                            <>
-                              <div className="text-sm text-gray-400 mr-4">
-                                Add the bot to this server to start configuring
-                              </div>
-                              <a
-                                href={BOT_INVITE_URL}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-block"
-                              >
-                                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
-                                  Invite Bot
-                                </Button>
-                              </a>
-                            </>
+                            <a
+                              href={BOT_INVITE_URL}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-block"
+                            >
+                              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+                                Invite Bot
+                              </Button>
+                            </a>
                           )}
                         </div>
                       </div>
