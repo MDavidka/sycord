@@ -25,7 +25,7 @@ if (process.env.NODE_ENV === "development") {
 // Add the missing connectToDatabase export
 export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db }> {
   const client = await clientPromise
-  const db = client.db("dash-discord-bot") // Replace with your actual database name
+  const db = client.db("dash-bot") // Replace with your actual database name
   return { client, db }
 }
 
