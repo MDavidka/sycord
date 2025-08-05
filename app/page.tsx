@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -23,6 +24,7 @@ export default function LandingPage() {
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null)
   const [adminCode, setAdminCode] = useState("")
   const [isCodeValid, setIsCodeValid] = useState(false)
+  const [showCodeInput, setShowCodeInput] = useState(false)
   const [codeError, setCodeError] = useState("")
   const router = useRouter()
 
@@ -47,13 +49,19 @@ export default function LandingPage() {
       setCodeError("")
       router.push("/login")
     } else {
-      setCodeError("Invalid admin code. Please try again.")
-      setAdminCode("")
+      setCodeError("Invalid code")
+      setTimeout(() => setCodeError(""), 1000)
     }
   }
 
+  useEffect(() => {
+    if (adminCode === ADMIN_CODE) {
+      handleCodeSubmit()
+    }
+  }, [adminCode])
+
   const handleGetStarted = () => {
-    if (!isCodeValid) {
+    if (isCodeValid) {
       router.push("/login")
     }
   }
@@ -103,31 +111,40 @@ export default function LandingPage() {
             The intelligent Discord bot that moderates your server, manages tickets, and keeps your community engaged
             with smart automation.
           </p>
+          
+          {/* Beta Code Input */}
+          {!isCodeValid && (
+            <div className="mb-8 max-w-md mx-auto">
+              <Input
+                type="text"
+                placeholder="Enter beta code"
+                value={adminCode}
+                onChange={(e) => setAdminCode(e.target.value)}
+                className={`bg-black/50 text-white border-gray-500/30 focus:border-white text-center text-lg py-3 transition-colors ${
+                  codeError ? 'border-red-500 animate-pulse' : ''
+                }`}
+              />
+            </div>
+          )}
 
-          {/* Beta Access Input */}
-          <div className="max-w-md mx-auto mb-8">
-            <Input
-              type="text"
-              placeholder=""
-              value={adminCode}
-              onChange={(e) => setAdminCode(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleCodeSubmit()}
-              className={`bg-white text-black border-gray-300 focus:border-gray-500 text-center transition-all duration-200 ${
-                codeError ? 'border-red-500 animate-pulse' : ''
-              }`}
-            />
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg" 
-              className="text-lg px-8 py-3 hover-glow bg-white text-black hover:bg-gray-200"
-              onClick={() => router.push("/login")}
-            >
-              Get Started
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </div>
+          {isCodeValid && (
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              {isMaintenanceMode ? (
+                <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
+                  Under Maintenance ({maintenanceTime})
+                </Button>
+              ) : (
+                <Button 
+                  size="lg" 
+                  className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 hover-glow"
+                  onClick={handleGetStarted}
+                >
+                  Proceed to Login
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
@@ -249,19 +266,23 @@ export default function LandingPage() {
             Join thousands of communities already using <span className="text-white font-bold">Sycord</span> to create
             better Discord experiences.
           </p>
-          {isMaintenanceMode ? (
-            <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
-              Under Maintenance ({maintenanceTime})
-            </Button>
-          ) : (
-            <Button 
-              size="lg" 
-              className="text-lg px-8 py-3 hover-glow bg-white text-black hover:bg-gray-200"
-              onClick={() => router.push("/login")}
-            >
-              Get Started Now
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
+          {isCodeValid && (
+            <>
+              {isMaintenanceMode ? (
+                <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
+                  Under Maintenance ({maintenanceTime})
+                </Button>
+              ) : (
+                <Button 
+                  size="lg" 
+                  className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 hover-glow"
+                  onClick={handleGetStarted}
+                >
+                  Get Started Now
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              )}
+            </>
           )}
         </div>
       </section>
