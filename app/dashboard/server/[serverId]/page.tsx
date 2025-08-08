@@ -295,6 +295,11 @@ export default function ServerConfigPage() {
   const [userServers, setUserServers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [serverStats, setServerStats] = useState<{
+    total_members: number
+    total_bots: number
+    total_admins: number
+  } | null>(null)
   const [activeTab, setActiveTab] = useState("home") // Changed default active tab to "home"
   const [supportView, setSupportView] = useState<SupportView>("overview")
   const [activeEventSection, setActiveEventSection] = useState<EventView>("overview")
@@ -366,6 +371,13 @@ export default function ServerConfigPage() {
       if (userServersResponse.ok) {
         const userServersData = await userServersResponse.json()
         setUserServers(userServersData.servers)
+      }
+
+      // Load server statistics
+      const statsResponse = await fetch(`/api/server-stats/${serverId}`)
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json()
+        setServerStats(statsData.server_stats)
       }
 
       // Load user and server configuration
@@ -2101,15 +2113,15 @@ export default function ServerConfigPage() {
                   {/* Server Statistics */}
                   <div className="flex items-center space-x-4 text-xs">
                     <div className="text-center">
-                      <div className="font-bold text-white">{serverConfig.server_stats?.total_members || 0}</div>
+                      <div className="font-bold text-white">{serverStats?.total_members || 0}</div>
                       <div className="text-gray-400">Members</div>
                     </div>
                     <div className="text-center">
-                      <div className="font-bold text-white">{serverConfig.server_stats?.total_bots || 0}</div>
+                      <div className="font-bold text-white">{serverStats?.total_bots || 0}</div>
                       <div className="text-gray-400">Bots</div>
                     </div>
                     <div className="text-center">
-                      <div className="font-bold text-white">{serverConfig.server_stats?.total_admins || 0}</div>
+                      <div className="font-bold text-white">{serverStats?.total_admins || 0}</div>
                       <div className="text-gray-400">Admins</div>
                     </div>
                   </div>
