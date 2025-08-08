@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
     // Find the user and their server data
     const user = await users.findOne(
       { 
-        email: session.user.email,
+        discordId: session.user.id,
         "servers.server_id": params.serverId 
       },
       {
