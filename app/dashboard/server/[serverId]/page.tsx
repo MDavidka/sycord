@@ -4064,3 +4064,4 @@ export default function ServerConfigPage() {
       </div>
     </div>
   )
+}
