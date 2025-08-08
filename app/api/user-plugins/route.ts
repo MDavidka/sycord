@@ -1,10 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { connectToDatabase } from "@/lib/mongodb"
+import clientPromise from "@/lib/mongodb"
+import type { User, Plugin } from "@/lib/types"
 import { ObjectId } from "mongodb"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
@@ -12,13 +13,20 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { db } = await connectToDatabase()
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const usersCollection = db.collection<User>("users")
 
-    const user = await db.collection("users").findOne({ email: session.user.email }, { projection: { plugins: 1 } })
+    const user = await usersCollection.findOne({ email: session.user.email })
 
-    const plugins = user?.plugins || []
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
 
-    return NextResponse.json({ plugins })
+    // Return 'installedPlugins' for consistency with the client-side component
+    const installedPlugins = user?.plugins || []
+
+    return NextResponse.json({ installedPlugins })
   } catch (error) {
     console.error("Error fetching user plugins:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -33,47 +41,79 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { pluginId, action } = await request.json()
-    const { db } = await connectToDatabase()
+    const body = await request.json()
+    const { pluginId, action } = body // Expecting 'action' field
+
+    if (!pluginId || !action) {
+      return NextResponse.json({ error: "Plugin ID and action are required" }, { status: 400 })
+    }
+
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const usersCollection = db.collection<User>("users")
+    const pluginsCollection = db.collection<Plugin>("plugins")
+
+    const user = await usersCollection.findOne({ email: session.user.email })
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
 
     if (action === "install") {
-      // Get plugin details
-      const plugin = await db.collection("plugins").findOne({ _id: new ObjectId(pluginId) })
+      const plugin = await pluginsCollection.findOne({ _id: new ObjectId(pluginId) })
 
       if (!plugin) {
         return NextResponse.json({ error: "Plugin not found" }, { status: 404 })
       }
 
-      // Add plugin to user's installed plugins
-      await db.collection("users").updateOne(
+      const isPluginInstalled = user.plugins?.some((p) => p.pluginId === pluginId)
+
+      if (isPluginInstalled) {
+        return NextResponse.json({ message: "Plugin already installed" }, { status: 200 })
+      }
+
+      const newUserPlugin = {
+        pluginId: plugin._id.toString(),
+        name: plugin.name,
+        description: plugin.description,
+        installed_at: new Date().toISOString(),
+        iconUrl: plugin.iconUrl,
+        thumbnailUrl: plugin.thumbnailUrl,
+      }
+
+      await usersCollection.updateOne(
         { email: session.user.email },
-        {
-          $addToSet: {
-            plugins: {
-              pluginId: pluginId,
-              name: plugin.name,
-              description: plugin.description,
-              installed_at: new Date().toISOString(),
-            },
-          },
-        },
+        { $push: { plugins: newUserPlugin } }, // Use 'plugins' array
       )
 
-      // Increment install count
-      await db.collection("plugins").updateOne({ _id: new ObjectId(pluginId) }, { $inc: { installs: 1 } })
+      await pluginsCollection.updateOne({ _id: new ObjectId(pluginId) }, { $inc: { installs: 1 } })
+
+      return NextResponse.json({ message: "Plugin installed successfully" })
     } else if (action === "uninstall") {
-      // Remove plugin from user's installed plugins
-      await db
-        .collection("users")
-        .updateOne({ email: session.user.email }, { $pull: { plugins: { pluginId: pluginId } } })
+      const isPluginInstalled = user.plugins?.some((p) => p.pluginId === pluginId)
 
-      // Decrement install count
-      await db.collection("plugins").updateOne({ _id: new ObjectId(pluginId) }, { $inc: { installs: -1 } })
+      if (!isPluginInstalled) {
+        return NextResponse.json({ message: "Plugin not installed" }, { status: 200 })
+      }
+
+      await usersCollection.updateOne(
+        { email: session.user.email },
+        { $pull: { plugins: { pluginId: pluginId } } }, // Use 'plugins' array
+      )
+
+      await pluginsCollection.updateOne({ _id: new ObjectId(pluginId) }, { $inc: { installs: -1 } })
+
+      return NextResponse.json({ message: "Plugin uninstalled successfully" })
+    } else {
+      return NextResponse.json({ error: "Invalid action" }, { status: 400 })
     }
-
-    return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Error managing user plugin:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
+}
+
+// The DELETE route is no longer needed as POST handles uninstall
+export async function DELETE() {
+  return NextResponse.json({ error: "This endpoint is deprecated. Use POST with action 'uninstall'." }, { status: 405 })
 }

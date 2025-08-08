@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ArrowLeft, Plus, Package, Users, Calendar } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 interface Plugin {
   _id: string
@@ -19,6 +20,7 @@ interface Plugin {
   created_at: string
   installs: number
   active: boolean
+  thumbnail?: string
 }
 
 export default function AdminPluginsPage() {
@@ -31,6 +33,7 @@ export default function AdminPluginsPage() {
   const [newPlugin, setNewPlugin] = useState({
     name: "",
     description: "",
+    thumbnail: "",
   })
 
   useEffect(() => {
@@ -75,7 +78,7 @@ export default function AdminPluginsPage() {
       })
 
       if (response.ok) {
-        setNewPlugin({ name: "", description: "" })
+        setNewPlugin({ name: "", description: "", thumbnail: "" })
         setShowCreateForm(false)
         await fetchPlugins()
       }
@@ -154,6 +157,15 @@ export default function AdminPluginsPage() {
                   className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[100px]"
                 />
               </div>
+              <div>
+                <Label className="text-white text-sm mb-2 block">Thumbnail URL (Optional)</Label>
+                <Input
+                  placeholder="https://example.com/thumbnail.png"
+                  value={newPlugin.thumbnail}
+                  onChange={(e) => setNewPlugin({ ...newPlugin, thumbnail: e.target.value })}
+                  className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                />
+              </div>
               <div className="flex space-x-3">
                 <Button
                   onClick={handleCreatePlugin}
@@ -181,8 +193,18 @@ export default function AdminPluginsPage() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
-                      <Package className="h-5 w-5 text-white" />
+                    <div className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden">
+                      {plugin.thumbnail ? (
+                        <Image
+                          src={plugin.thumbnail || "/placeholder.svg"}
+                          alt={plugin.name}
+                          width={40}
+                          height={40}
+                          className="rounded-lg object-cover"
+                        />
+                      ) : (
+                        <Package className="h-5 w-5 text-white" />
+                      )}
                     </div>
                     <div>
                       <CardTitle className="text-white text-lg">{plugin.name}</CardTitle>

@@ -61,7 +61,7 @@ export default function LoginPage() {
         <Card className="glass-card max-w-md w-full">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
-              <Image src="/bot-icon.png" alt="Sycord Bot" width={48} height={48} className="rounded-xl" />
+              <Image src="/new-blue-logo.png" alt="Sycord Bot" width={48} height={48} className="rounded-xl" />
             </div>
             <CardTitle className="text-3xl font-bold text-white">Maintenance Mode</CardTitle>
             <CardDescription className="text-gray-400">
@@ -84,7 +84,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md glass-card animate-fade-in">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <Image src="/bot-icon.png" alt="Sycord Bot" width={48} height={48} className="rounded-xl" />
+            <Image src="/new-blue-logo.png" alt="Sycord Bot" width={48} height={48} className="rounded-xl" />
           </div>
           <CardTitle className="text-2xl font-bold text-white">
             Welcome to <span className="text-white">Sycord</span>
