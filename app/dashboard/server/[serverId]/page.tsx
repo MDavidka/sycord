@@ -294,12 +294,16 @@ export default function ServerConfigPage() {
   const [serverConfig, setServerConfig] = useState<ServerConfig | null>(null)
   const [userServers, setUserServers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [serverStats, setServerStats] = useState<{
     total_members: number
     total_bots: number
     total_admins: number
-  } | null>(null)
+  }>({
+    total_members: 0,
+    total_bots: 0,
+    total_admins: 0
+  })
+  const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState("home") // Changed default active tab to "home"
   const [supportView, setSupportView] = useState<SupportView>("overview")
   const [activeEventSection, setActiveEventSection] = useState<EventView>("overview")
@@ -364,6 +368,18 @@ export default function ServerConfigPage() {
     }
   }, [serverConfig])
 
+  const fetchServerStats = async () => {
+    try {
+      const response = await fetch(`/api/server-stats/${serverId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setServerStats(data.serverStats)
+      }
+    } catch (error) {
+      console.error("Error fetching server stats:", error)
+    }
+  }
+
   const loadData = async () => {
     try {
       // Load user servers for navbar
@@ -371,13 +387,6 @@ export default function ServerConfigPage() {
       if (userServersResponse.ok) {
         const userServersData = await userServersResponse.json()
         setUserServers(userServersData.servers)
-      }
-
-      // Load server statistics
-      const statsResponse = await fetch(`/api/server-stats/${serverId}`)
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json()
-        setServerStats(statsData.server_stats)
       }
 
       // Load user and server configuration
@@ -429,6 +438,9 @@ export default function ServerConfigPage() {
         setServerConfig(initialConfig)
         setUserData(configData.user)
       }
+
+      // Load server statistics
+      await fetchServerStats()
     } catch (error) {
       console.error("Error loading data:", error)
     } finally {
@@ -2113,15 +2125,15 @@ export default function ServerConfigPage() {
                   {/* Server Statistics */}
                   <div className="flex items-center space-x-4 text-xs">
                     <div className="text-center">
-                      <div className="font-bold text-white">{serverStats?.total_members || 0}</div>
+                      <div className="font-bold text-white">{serverStats.total_members}</div>
                       <div className="text-gray-400">Members</div>
                     </div>
                     <div className="text-center">
-                      <div className="font-bold text-white">{serverStats?.total_bots || 0}</div>
+                      <div className="font-bold text-white">{serverStats.total_bots}</div>
                       <div className="text-gray-400">Bots</div>
                     </div>
                     <div className="text-center">
-                      <div className="font-bold text-white">{serverStats?.total_admins || 0}</div>
+                      <div className="font-bold text-white">{serverStats.total_admins}</div>
                       <div className="text-gray-400">Admins</div>
                     </div>
                   </div>
