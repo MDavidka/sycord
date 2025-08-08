@@ -3,44 +3,64 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import clientPromise from "@/lib/mongodb"
 
-export async function GET(request: Request, { params }: { params: { serverId: string } }) {
+// Szerver típus definiálása a biztonságosabb kódhoz
+type ServerData = {
+  server_id: string
+  server_stats?: {
+    total_members?: number
+    total_bots?: number
+    total_admins?: number
+  }
+}
+
+export async function GET(
+  request: Request,
+  { params }: { params: { serverId: string } }
+) {
   try {
+    // Ellenőrizzük, hogy van-e session
     const session = await getServerSession(authOptions)
 
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!params?.serverId) {
+      return NextResponse.json({ error: "Hiányzó szerver azonosító" }, { status: 400 })
     }
 
+    if (!session?.user) {
+      return NextResponse.json({ error: "Nincs jogosultság" }, { status: 401 })
+    }
+
+    // Kapcsolódás az adatbázishoz
     const client = await clientPromise
     const db = client.db("dash-bot")
     const users = db.collection("users")
 
-    // Find the user and their server data
-    const userData = await users.findOne({
-      email: session.user.email
-    })
+    // Felhasználó lekérése email alapján
+    const userData = await users.findOne({ email: session.user.email })
 
     if (!userData) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+      return NextResponse.json({ error: "Felhasználó nem található" }, { status: 404 })
     }
 
-    // Find the specific server in user's servers
-    const server = userData.server?.find((s: any) => s.server_id === params.serverId)
+    // Megfelelő szerver keresése a `servers` tömbben
+    const server: ServerData | undefined = userData.servers?.find(
+      (s: ServerData) => s.server_id === params.serverId
+    )
 
     if (!server) {
-      return NextResponse.json({ error: "Server not found" }, { status: 404 })
+      return NextResponse.json({ error: "Szerver nem található" }, { status: 404 })
     }
 
-    // Return server stats or default values if not available
+    // Statisztikák biztonságos lekérése
+    const stats = server.server_stats || {}
     const serverStats = {
-      total_members: server.server_stats?.total_members || 0,
-      total_bots: server.server_stats?.total_bots || 0,
-      total_admins: server.server_stats?.total_admins || 0
+      total_members: stats.total_members || 0,
+      total_bots: stats.total_bots || 0,
+      total_admins: stats.total_admins || 0
     }
 
     return NextResponse.json({ serverStats })
   } catch (error) {
-    console.error("Error fetching server stats:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("Hiba a szerver statisztikák lekérdezésekor:", error)
+    return NextResponse.json({ error: "Belső szerverhiba" }, { status: 500 })
   }
 }
