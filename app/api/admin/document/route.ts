@@ -1,29 +1,7 @@
 import { NextResponse } from "next/server"
-
-// Check if MongoDB URI is available
-const isMongoAvailable = !!process.env.MONGODB_URI
-
-// Only import MongoDB client if URI is available
-let clientPromise: Promise<any> | null = null
-if (isMongoAvailable) {
-  clientPromise = import("@/lib/mongodb").then((module) => module.default)
-}
+import clientPromise from "@/lib/mongodb"
 
 export async function GET() {
-  if (!isMongoAvailable || !clientPromise) {
-    return NextResponse.json({
-      error: "Database not configured",
-      document: {
-        id: "main",
-        content:
-          "# Welcome to the Secret Admin Document\n\nDatabase is not configured. Please set MONGODB_URI environment variable.",
-        lastUpdated: new Date().toISOString(),
-        lastUpdatedBy: "System",
-      },
-      editors: [],
-    })
-  }
-
   try {
     const client = await clientPromise
     const db = client.db("dash-bot")
@@ -57,10 +35,6 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!isMongoAvailable || !clientPromise) {
-    return NextResponse.json({ error: "Database not configured" }, { status: 503 })
-  }
-
   try {
     const body = await request.json()
     const { content, username } = body

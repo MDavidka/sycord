@@ -28,9 +28,6 @@ interface UserServer {
   lastConfigUpdate?: string
 }
 
-const BOT_INVITE_URL =
-  "https://discord.com/oauth2/authorize?client_id=1319362022286295123&permissions=2048&integration_type=0&scope=bot"
-
 export default function Dashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -38,6 +35,7 @@ export default function Dashboard() {
   const [availableGuilds, setAvailableGuilds] = useState<DiscordGuild[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  // Add state for the add server modal
   const [showAddServerModal, setShowAddServerModal] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
 
@@ -61,12 +59,14 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
+      // Fetch user's configured servers
       const userServersResponse = await fetch("/api/user-servers")
       if (userServersResponse.ok) {
         const userServersData = await userServersResponse.json()
         setUserServers(userServersData.servers)
       }
 
+      // Fetch available Discord guilds
       const guildsResponse = await fetch("/api/discord/guilds")
       if (guildsResponse.ok) {
         const guildsData = await guildsResponse.json()
@@ -94,6 +94,8 @@ export default function Dashboard() {
       })
 
       if (response.ok) {
+        // Show success message and redirect to server config
+        // The server config page will handle the "waiting for bot" state
         await fetchData()
         router.push(`/dashboard/server/${guild.id}`)
       }
@@ -129,7 +131,7 @@ export default function Dashboard() {
       <header className="glass-card border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center space-x-4">
-            <Image src="/new-blue-logo.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
+            <Image src="/bot-icon.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
             <div>
               <h1 className="text-2xl font-bold text-white">
                 <span className="text-white">Sycord</span> Dashboard
@@ -202,16 +204,7 @@ export default function Dashboard() {
                               </Button>
                             </Link>
                           ) : (
-                            <a
-                              href={BOT_INVITE_URL}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-block"
-                            >
-                              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
-                                Invite Bot
-                              </Button>
-                            </a>
+                            <div className="text-sm text-gray-400">Add the bot to this server to start configuring</div>
                           )}
                         </div>
                       </div>
@@ -248,56 +241,85 @@ export default function Dashboard() {
                   </div>
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon"
                     onClick={() => setShowAddServerModal(false)}
-                    className="text-gray-400 hover:text-white"
+                    className="text-white hover:bg-white/10"
                   >
-                    Close
+                    ×
                   </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="relative w-full mb-6">
+                <div className="relative mb-4">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
-                    type="search"
                     placeholder="Search servers..."
-                    className="pr-10 bg-black text-white"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    autoFocus
+                    className="pl-10 bg-black/60 border-white/20 text-white placeholder-gray-400"
                   />
-                  <Search className="absolute right-3 top-3 h-4 w-4 text-gray-400 pointer-events-none" />
                 </div>
 
                 {filteredGuilds.length === 0 ? (
-                  <p className="text-gray-400 text-center mt-8">No servers found</p>
+                  <div className="text-center py-12">
+                    <Users className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-white mb-2">
+                      {searchTerm ? "No servers found" : "All servers configured"}
+                    </h3>
+                    <p className="text-gray-400 mb-4">
+                      {searchTerm
+                        ? "No servers match your search."
+                        : "You've already configured all your available servers."}
+                    </p>
+                  </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto">
                     {filteredGuilds.map((guild) => (
                       <Card
                         key={guild.id}
-                        className="glass-card hover-glow cursor-pointer"
-                        onClick={() => handleSelectServer(guild)}
+                        className="mobile-block hover-glow cursor-pointer transition-all"
+                        onClick={() => {
+                          handleSelectServer(guild)
+                          setShowAddServerModal(false)
+                        }}
                       >
-                        <CardContent className="p-4 flex items-center space-x-4">
-                          <div className="relative w-12 h-12 flex-shrink-0">
+                        <CardContent className="p-4">
+                          <div className="flex items-center space-x-3">
                             <Image
                               src={
                                 guild.icon
-                                  ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`
-                                  : "/placeholder.svg?height=64&width=64"
+                                  ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`
+                                  : "/placeholder.svg?height=40&width=40"
                               }
                               alt={guild.name}
-                              width={48}
-                              height={48}
+                              width={40}
+                              height={40}
                               className="rounded-lg"
                             />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-white truncate">{guild.name}</h3>
-                            <p className="text-sm text-gray-400">
-                              Members: {guild.approximate_member_count ?? "?"}
-                            </p>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium text-white truncate">{guild.name}</h3>
+                              <div className="flex items-center space-x-2 mt-1">
+                                {guild.approximate_member_count && (
+                                  <div className="flex items-center text-xs text-gray-400">
+                                    <Users className="h-3 w-3 mr-1" />
+                                    {guild.approximate_member_count.toLocaleString()}
+                                  </div>
+                                )}
+                                {guild.owner && (
+                                  <Badge
+                                    variant="secondary"
+                                    className="bg-gray-500/20 text-gray-400 border-gray-500/30 text-xs"
+                                  >
+                                    <Crown className="h-3 w-3 mr-1" />
+                                    Owner
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            <Button size="sm" className="bg-white text-black hover:bg-gray-200">
+                              <Plus className="h-4 w-4 mr-1" />
+                              Add
+                            </Button>
                           </div>
                         </CardContent>
                       </Card>
@@ -307,6 +329,34 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* Instructions for Bot Setup */}
+        {userServers.some((server) => !server.isBotAdded) && (
+          <Card className="glass-card mt-8">
+            <CardHeader>
+              <CardTitle className="text-white text-lg">Next Steps</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 text-sm text-gray-300">
+                <p>
+                  <strong>1.</strong> You've selected your servers and dummy configurations have been created.
+                </p>
+                <p>
+                  <strong>2.</strong> Now you need to add the Sycord bot to your Discord servers.
+                </p>
+                <p>
+                  <strong>3.</strong> Once the bot joins, it will automatically update the configuration and you can
+                  start customizing settings.
+                </p>
+                <div className="mt-4 p-3 bg-gray-500/10 rounded-lg border border-gray-500/30">
+                  <p className="text-gray-400 text-sm">
+                    <strong>Bot Invite Link:</strong> Contact the bot developer for the invitation link.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

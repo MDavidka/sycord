@@ -1,7 +1,5 @@
-import type { ObjectId } from "mongodb"
-
 export interface User {
-  _id?: ObjectId | string
+  _id?: string
   discordId: string
   name: string
   email: string
@@ -9,51 +7,6 @@ export interface User {
   joined_since: string
   is_tester?: boolean // Add this line
   servers: ServerConfig[]
-  plugins?: UserPlugin[] // Changed from downloaded_plugins to plugins
-}
-
-export interface Plugin {
-  _id: string
-  name: string
-  description: string
-  created_by: string
-  created_at: string
-  installs: number
-  active: boolean
-  iconUrl?: string // Added
-  thumbnailUrl?: string // Added
-}
-
-export interface UserPlugin {
-  pluginId: string
-  name: string
-  description: string
-  installed_at: string
-  iconUrl?: string // Added
-  thumbnailUrl?: string // Added
-}
-
-export interface StaffMember {
-  userId: string
-  username: string
-  avatar?: string
-  reputation: number
-  maxReputation: number
-  joinedAt: string
-  lastActive?: string
-}
-
-export interface TicketEmbed {
-  title: string
-  description: string
-  color: string
-  thumbnail?: string
-  footer?: string
-  fields?: {
-    name: string
-    value: string
-    inline?: boolean
-  }[]
 }
 
 export interface ServerConfig {
@@ -138,12 +91,10 @@ export interface ServerConfig {
     }
   }
   support: {
-    staff: StaffMember[]
     ticket_system: {
       enabled: boolean
       channel_id?: string
       priority_role_id?: string
-      embed: TicketEmbed
     }
     auto_answer: {
       enabled: boolean

@@ -1,15 +1,10 @@
-
-"use client"
-
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Bot, Shield, MessageSquare, Clock, Users, Zap, ArrowRight, Github, Twitter, Lock } from "lucide-react"
+import { Bot, Shield, MessageSquare, Clock, Users, Zap, ArrowRight, Github, Twitter } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import clientPromise from "@/lib/mongodb"
 
 interface AppSettings {
   maintenanceMode: {
@@ -18,52 +13,16 @@ interface AppSettings {
   }
 }
 
-const ADMIN_CODE = "7625819-7528-715"
+export default async function LandingPage() {
+  let appSettings: AppSettings | null = null
 
-export default function LandingPage() {
-  const [appSettings, setAppSettings] = useState<AppSettings | null>(null)
-  const [adminCode, setAdminCode] = useState("")
-  const [isCodeValid, setIsCodeValid] = useState(false)
-  const [showCodeInput, setShowCodeInput] = useState(false)
-  const [codeError, setCodeError] = useState("")
-  const router = useRouter()
-
-  useEffect(() => {
-    const fetchAppSettings = async () => {
-      try {
-        const response = await fetch("/api/app-settings")
-        if (response.ok) {
-          const data = await response.json()
-          setAppSettings(data)
-        }
-      } catch (error) {
-        console.error("Failed to fetch app settings:", error)
-      }
-    }
-    fetchAppSettings()
-  }, [])
-
-  const handleCodeSubmit = () => {
-    if (adminCode === ADMIN_CODE) {
-      setIsCodeValid(true)
-      setCodeError("")
-      router.push("/login")
-    } else {
-      setCodeError("Invalid code")
-      setTimeout(() => setCodeError(""), 1000)
-    }
-  }
-
-  useEffect(() => {
-    if (adminCode === ADMIN_CODE) {
-      handleCodeSubmit()
-    }
-  }, [adminCode])
-
-  const handleGetStarted = () => {
-    if (isCodeValid) {
-      router.push("/login")
-    }
+  try {
+    const client = await clientPromise
+    const db = client.db("dash-bot")
+    const settingsCollection = db.collection("app_settings")
+    appSettings = (await settingsCollection.findOne({})) as AppSettings | null
+  } catch (error) {
+    console.error("Failed to fetch app settings:", error)
   }
 
   const isMaintenanceMode = appSettings?.maintenanceMode.enabled || false
@@ -75,25 +34,20 @@ export default function LandingPage() {
       <nav className="glass-card border-b border-white/10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Image src="/new-blue-logo.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
+            <Image src="/bot-icon.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
             <span className="text-2xl font-bold">
               <span className="text-white">Sycord</span>
             </span>
           </div>
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="outline" 
-              className="border-white/20 text-white hover:bg-white/10 bg-transparent"
-              onClick={handleGetStarted}
-            >
-              Login
-            </Button>
-            <Button 
-              className="bg-white text-black hover:bg-gray-200"
-              onClick={handleGetStarted}
-            >
-              Get Started
-            </Button>
+            <Link href="/login">
+              <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
+                Login
+              </Button>
+            </Link>
+            <Link href="/login">
+              <Button className="bg-white text-black hover:bg-gray-200">Get Started</Button>
+            </Link>
           </div>
         </div>
       </nav>
@@ -101,8 +55,8 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 text-center">
         <div className="max-w-4xl mx-auto animate-fade-in">
-          <Badge variant="secondary" className="mb-4 bg-orange-500/20 text-orange-300 border-orange-500/30">
-            Beta Project - Admin Access Required
+          <Badge variant="secondary" className="mb-4 bg-gray-500/20 text-gray-300 border-gray-500/30">
+            Advanced Discord Bot
           </Badge>
           <h1 className="text-5xl md:text-7xl font-bold mb-6">
             Meet <span className="text-white">Sycord</span>
@@ -111,40 +65,20 @@ export default function LandingPage() {
             The intelligent Discord bot that moderates your server, manages tickets, and keeps your community engaged
             with smart automation.
           </p>
-          
-          {/* Beta Code Input */}
-          {!isCodeValid && (
-            <div className="mb-8 max-w-md mx-auto">
-              <Input
-                type="text"
-                placeholder="Enter beta code"
-                value={adminCode}
-                onChange={(e) => setAdminCode(e.target.value)}
-                className={`bg-black/50 text-white border-gray-500/30 focus:border-white text-center text-lg py-3 transition-colors ${
-                  codeError ? 'border-red-500 animate-pulse' : ''
-                }`}
-              />
-            </div>
-          )}
-
-          {isCodeValid && (
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              {isMaintenanceMode ? (
-                <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
-                  Under Maintenance ({maintenanceTime})
-                </Button>
-              ) : (
-                <Button 
-                  size="lg" 
-                  className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 hover-glow"
-                  onClick={handleGetStarted}
-                >
-                  Proceed to Login
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            {isMaintenanceMode ? (
+              <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
+                Under Maintenance ({maintenanceTime})
+              </Button>
+            ) : (
+              <Link href="/login">
+                <Button size="lg" className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 hover-glow">
+                  Add to Discord
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
-              )}
-            </div>
-          )}
+              </Link>
+            )}
+          </div>
         </div>
       </section>
 
@@ -266,23 +200,17 @@ export default function LandingPage() {
             Join thousands of communities already using <span className="text-white font-bold">Sycord</span> to create
             better Discord experiences.
           </p>
-          {isCodeValid && (
-            <>
-              {isMaintenanceMode ? (
-                <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
-                  Under Maintenance ({maintenanceTime})
-                </Button>
-              ) : (
-                <Button 
-                  size="lg" 
-                  className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 hover-glow"
-                  onClick={handleGetStarted}
-                >
-                  Get Started Now
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              )}
-            </>
+          {isMaintenanceMode ? (
+            <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
+              Under Maintenance ({maintenanceTime})
+            </Button>
+          ) : (
+            <Link href="/login">
+              <Button size="lg" className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 hover-glow">
+                Get Started Now
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
           )}
         </div>
       </section>
@@ -292,7 +220,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="flex items-center space-x-2 mb-4 md:mb-0">
-              <Image src="/new-blue-logo.png" alt="Sycord Bot" width={24} height={24} className="rounded" />
+              <Image src="/bot-icon.png" alt="Sycord Bot" width={24} height={24} className="rounded" />
               <span className="text-lg font-semibold">
                 <span className="text-white">Sycord</span> Bot
               </span>
