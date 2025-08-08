@@ -1,27 +1,37 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import "./globals.css"
-import { Providers } from "./providers"
-
-const inter = Inter({ subsets: ["latin"] })
+import type { Metadata } from 'next'
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
+import './globals.css'
+import Providers from './providers'
+import { Toaster } from 'react-hot-toast'
 
 export const metadata: Metadata = {
-  title: "Sycord - AI-Powered Discord Bot",
-  description:
-    "The intelligent Discord bot that moderates your server, answers questions with AI, and keeps your community engaged.",
-    generator: 'v0.dev'
+  title: 'v0 App',
+  description: 'Created with v0',
+  generator: 'v0.dev',
 }
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode
-}) {
+}>) {
   return (
-    <html lang="en" className="dark">
-      <body className={inter.className}>
-        <Providers>{children}</Providers>
+    <html lang="en" className="dark bg-black">
+      <head>
+        <style>{`
+html {
+  font-family: ${GeistSans.style.fontFamily};
+  --font-sans: ${GeistSans.variable};
+  --font-mono: ${GeistMono.variable};
+}
+        `}</style>
+      </head>
+      <body className="bg-black min-h-screen">
+        <Providers>
+          <Toaster />
+          {children}
+        </Providers>
       </body>
     </html>
   )

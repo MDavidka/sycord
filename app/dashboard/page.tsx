@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Plus, Search, Users, Crown, Settings } from "lucide-react"
+import { Plus, Search, Users, Crown, Settings } from 'lucide-react'
 import Image from "next/image"
 import Link from "next/link"
 
@@ -331,28 +331,25 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Instructions for Bot Setup */}
+        {/* Invite Bot Section */}
         {userServers.some((server) => !server.isBotAdded) && (
           <Card className="glass-card mt-8">
             <CardHeader>
-              <CardTitle className="text-white text-lg">Next Steps</CardTitle>
+              <CardTitle className="text-white text-lg">Add Bot to Server</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3 text-sm text-gray-300">
+              <div className="space-y-4 text-sm text-gray-300">
                 <p>
-                  <strong>1.</strong> You've selected your servers and dummy configurations have been created.
+                  You've selected your servers and configurations have been created. Now add the Sycord bot to start configuring your server settings.
                 </p>
-                <p>
-                  <strong>2.</strong> Now you need to add the Sycord bot to your Discord servers.
-                </p>
-                <p>
-                  <strong>3.</strong> Once the bot joins, it will automatically update the configuration and you can
-                  start customizing settings.
-                </p>
-                <div className="mt-4 p-3 bg-gray-500/10 rounded-lg border border-gray-500/30">
-                  <p className="text-gray-400 text-sm">
-                    <strong>Bot Invite Link:</strong> Contact the bot developer for the invitation link.
-                  </p>
+                <div className="flex justify-center">
+                  <Button
+                    onClick={() => window.open("https://discord.com/oauth2/authorize?client_id=1319362022286295123&permissions=1478210153510&integration_type=0&scope=bot", "_blank")}
+                    className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 hover-glow"
+                  >
+                    <Plus className="h-5 w-5 mr-2" />
+                    Invite Sycord Bot
+                  </Button>
                 </div>
               </div>
             </CardContent>

@@ -33,8 +33,17 @@
   }
   body {
     @apply bg-background text-foreground;
-    background: linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #000000 100%);
+    background: linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #000000 100%) !important;
     min-height: 100vh;
+  }
+  
+  html {
+    background: #000000 !important;
+  }
+  
+  /* Ensure all containers maintain dark background */
+  #__next, [data-nextjs-scroll-focus-boundary] {
+    background: transparent !important;
   }
 }
 
