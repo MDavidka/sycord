@@ -22,9 +22,10 @@ const ADMIN_CODE = "7625819-7528-715"
 export default function LandingPage() {
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null)
   const [adminCode, setAdminCode] = useState("")
-  const [codeError, setCodeError] = useState("")
+  const [shake, setShake] = useState(false)
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
+  const lastValidRef = useRef(false) // Track if last input was valid
 
   useEffect(() => {
     const fetchAppSettings = async () => {
@@ -48,9 +49,18 @@ export default function LandingPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setAdminCode(value)
-    setCodeError("")
+
     if (value === ADMIN_CODE) {
+      lastValidRef.current = true
       router.push("/login")
+    } else {
+      // If user previously typed the right code, reset
+      if (lastValidRef.current) lastValidRef.current = false
+      // If input length > 0 and code is wrong, trigger shake
+      if (value.length > 0) {
+        setShake(true)
+        setTimeout(() => setShake(false), 500)
+      }
     }
   }
 
@@ -101,18 +111,17 @@ export default function LandingPage() {
           </p>
 
           {/* Minimal Admin Code Input */}
-          <div className="max-w-sm mx-auto">
+          <div className="mx-auto" style={{ maxWidth: "360px" }}>
             <Input
               ref={inputRef}
               type="text"
               placeholder="Enter admin code"
               value={adminCode}
               onChange={handleInputChange}
-              className="bg-black/50 text-white border-orange-500/30 focus:border-orange-500 transition-opacity duration-700 ease-in-out animate-fade-in"
+              className={`bg-black/50 text-white border-orange-500/30 focus:border-orange-500 transition-opacity duration-700 ease-in-out animate-fade-in ${
+                shake ? "animate-shake" : ""
+              }`}
             />
-            {codeError && (
-              <p className="text-red-400 text-sm mt-2">{codeError}</p>
-            )}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
@@ -292,6 +301,16 @@ export default function LandingPage() {
           to {
             opacity: 1;
           }
+        }
+
+        /* Shake animation */
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          20%, 60% { transform: translateX(-8px); }
+          40%, 80% { transform: translateX(8px); }
+        }
+        .animate-shake {
+          animation: shake 0.5s ease;
         }
       `}</style>
     </div>
