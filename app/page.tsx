@@ -1,14 +1,13 @@
-
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardDescription, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Bot, Shield, MessageSquare, Clock, Users, Zap, ArrowRight, Github, Twitter, Lock } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 
 interface AppSettings {
@@ -23,10 +22,9 @@ const ADMIN_CODE = "7625819-7528-715"
 export default function LandingPage() {
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null)
   const [adminCode, setAdminCode] = useState("")
-  const [isCodeValid, setIsCodeValid] = useState(false)
-  const [showCodeInput, setShowCodeInput] = useState(false)
   const [codeError, setCodeError] = useState("")
   const router = useRouter()
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const fetchAppSettings = async () => {
@@ -43,20 +41,27 @@ export default function LandingPage() {
     fetchAppSettings()
   }, [])
 
-  const handleCodeSubmit = () => {
-    if (adminCode === ADMIN_CODE) {
-      setIsCodeValid(true)
-      setCodeError("")
-    } else {
-      setCodeError("Invalid admin code. Please try again.")
+  useEffect(() => {
+    // Focus input on mount
+    inputRef.current?.focus()
+  }, [])
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAdminCode(e.target.value)
+    setCodeError("")
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleCodeSubmit()
     }
   }
 
-  const handleGetStarted = () => {
-    if (isCodeValid) {
+  const handleCodeSubmit = () => {
+    if (adminCode === ADMIN_CODE) {
       router.push("/login")
     } else {
-      setShowCodeInput(true)
+      setCodeError("Invalid admin code. Please try again.")
     }
   }
 
@@ -75,16 +80,16 @@ export default function LandingPage() {
             </span>
           </div>
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="border-white/20 text-white hover:bg-white/10 bg-transparent"
-              onClick={handleGetStarted}
+              onClick={() => router.push("/login")}
             >
               Login
             </Button>
-            <Button 
+            <Button
               className="bg-white text-black hover:bg-gray-200"
-              onClick={handleGetStarted}
+              onClick={() => router.push("/login")}
             >
               Get Started
             </Button>
@@ -105,64 +110,35 @@ export default function LandingPage() {
             The intelligent Discord bot that moderates your server, manages tickets, and keeps your community engaged
             with smart automation.
           </p>
-          
-          {/* Beta Notice */}
-          <Card className="glass-card border border-orange-500/30 mb-8 max-w-2xl mx-auto">
-            <CardHeader>
-              <CardTitle className="text-orange-300 flex items-center justify-center text-xl">
-                <Lock className="h-6 w-6 mr-3" />
-                Beta Access Required
-              </CardTitle>
-              <CardDescription className="text-gray-400">
-                This project is currently in beta. Please enter the admin code to proceed.
-              </CardDescription>
-            </CardHeader>
-            {showCodeInput && !isCodeValid && (
-              <CardContent className="space-y-4">
-                <Input
-                  type="text"
-                  placeholder="Enter admin code"
-                  value={adminCode}
-                  onChange={(e) => setAdminCode(e.target.value)}
-                  className="bg-black/50 text-white border-orange-500/30 focus:border-orange-500"
-                />
-                {codeError && (
-                  <p className="text-red-400 text-sm">{codeError}</p>
-                )}
-                <Button 
-                  onClick={handleCodeSubmit}
-                  className="w-full bg-orange-500 hover:bg-orange-600 text-white"
-                >
-                  Verify Code
-                </Button>
-              </CardContent>
-            )}
-            {isCodeValid && (
-              <CardContent>
-                <p className="text-green-400 mb-4">✓ Admin code verified! You can now proceed.</p>
-              </CardContent>
-            )}
-          </Card>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          {/* Minimal Admin Code Input */}
+          <div className="max-w-sm mx-auto">
+            <Input
+              ref={inputRef}
+              type="text"
+              placeholder="Enter admin code"
+              value={adminCode}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              className="bg-black/50 text-white border-orange-500/30 focus:border-orange-500 transition-opacity duration-700 ease-in-out animate-fade-in"
+            />
+            {codeError && (
+              <p className="text-red-400 text-sm mt-2">{codeError}</p>
+            )}
+            <Button
+              onClick={handleCodeSubmit}
+              className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              Verify Code
+            </Button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
             {isMaintenanceMode ? (
               <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
                 Under Maintenance ({maintenanceTime})
               </Button>
-            ) : (
-              <Button 
-                size="lg" 
-                className={`text-lg px-8 py-3 hover-glow ${
-                  isCodeValid 
-                    ? "bg-white text-black hover:bg-gray-200" 
-                    : "bg-orange-500 hover:bg-orange-600 text-white"
-                }`}
-                onClick={handleGetStarted}
-              >
-                {isCodeValid ? "Proceed to Login" : "Enter Admin Code"}
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            )}
+            ) : null}
           </div>
         </div>
       </section>
@@ -290,16 +266,12 @@ export default function LandingPage() {
               Under Maintenance ({maintenanceTime})
             </Button>
           ) : (
-            <Button 
-              size="lg" 
-              className={`text-lg px-8 py-3 hover-glow ${
-                isCodeValid 
-                  ? "bg-white text-black hover:bg-gray-200" 
-                  : "bg-orange-500 hover:bg-orange-600 text-white"
-              }`}
-              onClick={handleGetStarted}
+            <Button
+              size="lg"
+              className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3"
+              onClick={() => router.push("/login")}
             >
-              {isCodeValid ? "Get Started Now" : "Enter Admin Code"}
+              Get Started Now
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           )}
@@ -328,6 +300,18 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      <style jsx>{`
+        .animate-fade-in {
+          animation: fadeIn 1s ease forwards;
+          opacity: 0;
+        }
+        @keyframes fadeIn {
+          to {
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   )
 }
