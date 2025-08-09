@@ -26,7 +26,6 @@ export default function LandingPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Fetch app settings from API
     fetch("/api/app-settings")
       .then((res) => res.json())
       .then((data) => setAppSettings(data))
@@ -45,9 +44,7 @@ export default function LandingPage() {
     return (
       <main className="flex flex-col items-center justify-center min-h-screen p-6">
         <h1 className="text-3xl font-bold">We&apos;re Under Maintenance</h1>
-        <p className="mt-2">
-          We&apos;re making improvements. Please check back later.
-        </p>
+        <p className="mt-2">We&apos;re making improvements. Please check back later.</p>
         {appSettings.maintenanceMode.estimatedTime && (
           <p className="mt-1 text-gray-500">
             Estimated time: {appSettings.maintenanceMode.estimatedTime}
@@ -59,7 +56,7 @@ export default function LandingPage() {
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-6">
-      {/* Example: logo or hero section */}
+      {/* Keep all your original hero section */}
       <Image
         src="/new-bot-logo.png"
         alt="Bot Logo"
@@ -73,17 +70,15 @@ export default function LandingPage() {
         This website is currently in beta access. Enter your beta access code below to continue.
       </p>
 
-      {/* Replaced 'Add to Discord' with this block */}
-      <div className="w-full max-w-sm flex flex-col gap-3">
+      {/* Replaced Add to Discord button with same-sized input */}
+      <div className="flex flex-col items-center gap-2 w-full max-w-xs">
         <Input
           placeholder="Enter beta access code"
           value={betaCode}
           onChange={(e) => setBetaCode(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleAccess()}
           className="h-10"
         />
-        <Button onClick={handleAccess} className="h-10">
-          Access Beta
-        </Button>
         {error && <p className="text-red-500 text-sm">{error}</p>}
       </div>
     </main>
