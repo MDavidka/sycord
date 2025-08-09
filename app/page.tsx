@@ -42,26 +42,15 @@ export default function LandingPage() {
   }, [])
 
   useEffect(() => {
-    // Focus input on mount
     inputRef.current?.focus()
   }, [])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAdminCode(e.target.value)
+    const value = e.target.value
+    setAdminCode(value)
     setCodeError("")
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleCodeSubmit()
-    }
-  }
-
-  const handleCodeSubmit = () => {
-    if (adminCode === ADMIN_CODE) {
+    if (value === ADMIN_CODE) {
       router.push("/login")
-    } else {
-      setCodeError("Invalid admin code. Please try again.")
     }
   }
 
@@ -119,18 +108,11 @@ export default function LandingPage() {
               placeholder="Enter admin code"
               value={adminCode}
               onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
               className="bg-black/50 text-white border-orange-500/30 focus:border-orange-500 transition-opacity duration-700 ease-in-out animate-fade-in"
             />
             {codeError && (
               <p className="text-red-400 text-sm mt-2">{codeError}</p>
             )}
-            <Button
-              onClick={handleCodeSubmit}
-              className="mt-4 w-full bg-orange-500 hover:bg-orange-600 text-white"
-            >
-              Verify Code
-            </Button>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
