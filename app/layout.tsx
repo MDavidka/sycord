@@ -6,9 +6,9 @@ import Providers from './providers'
 import { Toaster } from 'react-hot-toast'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.dev',
+  title: 'all in one bot',
+  description: 'Created by MDavid',
+  generator: '.',
 }
 
 export default function RootLayout({
