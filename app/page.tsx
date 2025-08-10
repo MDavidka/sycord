@@ -1,3 +1,4 @@
+// app/page.tsx  (or pages/index.tsx if you're on the pages router)
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -24,8 +25,7 @@ export default function LandingPage() {
   const [adminCode, setAdminCode] = useState("")
   const [shake, setShake] = useState(false)
   const router = useRouter()
-  const inputRef = useRef<HTMLInputElement>(null)
-  const lastValidRef = useRef(false) // Track if last input was valid
+  const inputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     const fetchAppSettings = async () => {
@@ -43,6 +43,7 @@ export default function LandingPage() {
   }, [])
 
   useEffect(() => {
+    // autofocus the input when component mounts
     inputRef.current?.focus()
   }, [])
 
@@ -50,18 +51,26 @@ export default function LandingPage() {
     const value = e.target.value
     setAdminCode(value)
 
-    if (value === ADMIN_CODE) {
-      lastValidRef.current = true
-      router.push("/login")
-    } else {
-      // If user previously typed the right code, reset
-      if (lastValidRef.current) lastValidRef.current = false
-      // If input length > 0 and code is wrong, trigger shake
-      if (value.length > 0) {
+    // check only when user reaches the full code length
+    if (value.trim().length === ADMIN_CODE.length) {
+      if (value.trim() === ADMIN_CODE) {
+        // exact match -> redirect immediately
+        router.push("/login")
+      } else {
+        // wrong code -> shake
         setShake(true)
         setTimeout(() => setShake(false), 500)
       }
     }
+  }
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pasted = e.clipboardData.getData("text").trim()
+    if (pasted === ADMIN_CODE) {
+      e.preventDefault()
+      router.push("/login")
+    }
+    // otherwise let the paste happen
   }
 
   const isMaintenanceMode = appSettings?.maintenanceMode.enabled || false
@@ -79,14 +88,14 @@ export default function LandingPage() {
             </span>
           </div>
           <div className="flex items-center space-x-4">
-            <Button
-              variant="outline"
+            <Button 
+              variant="outline" 
               className="border-white/20 text-white hover:bg-white/10 bg-transparent"
               onClick={() => router.push("/login")}
             >
               Login
             </Button>
-            <Button
+            <Button 
               className="bg-white text-black hover:bg-gray-200"
               onClick={() => router.push("/login")}
             >
@@ -110,17 +119,27 @@ export default function LandingPage() {
             with smart automation.
           </p>
 
-          {/* Minimal Admin Code Input */}
-          <div className="mx-auto" style={{ maxWidth: "360px" }}>
+          {/* Compact Admin Code Input (minimal) */}
+          <div className="max-w-sm mx-auto">
             <Input
-              ref={inputRef}
+              // forward the ref if your Input component supports it. If it doesn't, you can replace <Input> with a plain <input>.
+              ref={inputRef as any}
               type="text"
               placeholder="Enter admin code"
               value={adminCode}
               onChange={handleInputChange}
-              className={`bg-black/50 text-white border-orange-500/30 focus:border-orange-500 transition-opacity duration-700 ease-in-out animate-fade-in ${
+              onPaste={handlePaste}
+              aria-label="Admin code"
+              maxLength={ADMIN_CODE.length}
+              className={`bg-black/50 text-white border-orange-500/30 focus:border-orange-500 transition-all duration-300 ${
                 shake ? "animate-shake" : ""
               }`}
+              style={{
+                // keep it compact (won't reach across the whole site on mobile)
+                maxWidth: "240px",
+                width: "100%",
+                margin: "0 auto",
+              }}
             />
           </div>
 
@@ -257,8 +276,8 @@ export default function LandingPage() {
               Under Maintenance ({maintenanceTime})
             </Button>
           ) : (
-            <Button
-              size="lg"
+            <Button 
+              size="lg" 
               className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3"
               onClick={() => router.push("/login")}
             >
@@ -292,25 +311,23 @@ export default function LandingPage() {
         </div>
       </footer>
 
+      {/* Local styles for fade-in and shake */}
       <style jsx>{`
         .animate-fade-in {
           animation: fadeIn 1s ease forwards;
           opacity: 0;
         }
         @keyframes fadeIn {
-          to {
-            opacity: 1;
-          }
+          to { opacity: 1; }
         }
 
-        /* Shake animation */
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
           20%, 60% { transform: translateX(-8px); }
           40%, 80% { transform: translateX(8px); }
         }
         .animate-shake {
-          animation: shake 0.5s ease;
+          animation: shake 0.5s ease-in-out;
         }
       `}</style>
     </div>
