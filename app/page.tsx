@@ -1,4 +1,3 @@
-// app/page.tsx  (or pages/index.tsx)
 "use client"
 
 import { useState, useEffect, useRef } from "react"
@@ -138,7 +137,6 @@ export default function LandingPage() {
       e.preventDefault()
       triggerSuccessThenRedirect()
     }
-    // otherwise allow normal paste
   }
 
   // input change: redirect immediately if exact-length and matches
@@ -158,10 +156,8 @@ export default function LandingPage() {
 
   // confetti + glow then redirect
   const triggerSuccessThenRedirect = () => {
-    // quick visual confirmation
     setGlowSuccess(true)
     spawnConfetti()
-    // short delay so user sees confetti/glow
     setTimeout(() => {
       router.push("/login")
     }, 700)
@@ -181,10 +177,7 @@ export default function LandingPage() {
       el.style.background = colors[Math.floor(Math.random() * colors.length)]
       el.style.transform = `rotate(${Math.random() * 360}deg)`
       parent.appendChild(el)
-      // remove after animation
-      setTimeout(() => {
-        el.remove()
-      }, 1200)
+      setTimeout(() => { el.remove() }, 1200)
     }
   }
 
@@ -192,8 +185,7 @@ export default function LandingPage() {
   const maintenanceTime = appSettings?.maintenanceMode.estimatedTime || "30 minutes"
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* subtle animated gradient background for hero */}
+    <div className="min-h-screen bg-black text-white relative overflow-x-hidden">
       <div className="hero-gradient" aria-hidden />
 
       {/* Navigation */}
@@ -201,21 +193,22 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Image src="/new-blue-logo.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
-            <span className="text-2xl font-bold">
-              <span className="text-white">Sycord</span>
+            <span className="text-2xl font-bold sparkling">
+              Sycord
             </span>
           </div>
           <div className="flex items-center space-x-4">
+            {/* Buttons locked: no redirect without admin code */}
             <Button
               variant="outline"
-              className="border-white/20 text-white hover:bg-white/10 bg-transparent"
-              onClick={() => router.push("/login")}
+              className="border-white/20 text-white bg-transparent cursor-not-allowed"
+              disabled
             >
               Login
             </Button>
             <Button
-              className="bg-white text-black hover:bg-gray-200"
-              onClick={() => router.push("/login")}
+              className="bg-white text-black cursor-not-allowed"
+              disabled
             >
               Get Started
             </Button>
@@ -227,24 +220,13 @@ export default function LandingPage() {
       <section className="container mx-auto px-4 py-20 text-center relative">
         <div className="max-w-4xl mx-auto animate-fade-in">
           <Badge variant="secondary" className="mb-4 bg-orange-500/20 text-orange-300 border-orange-500/30">
-            Beta Project - Admin Access Required
+            Romomve Beta Project - Admin Access Required
           </Badge>
 
           <div className="flex items-center justify-center gap-6">
             <h1 className="text-5xl md:text-7xl font-bold mb-6">
-              Meet <span className="text-white">Sycord</span>
+              Meet <span className="text-white sparkling">Sycord</span>
             </h1>
-
-            {/* Mascot - small bot SVG that waves on hover */}
-            <div className="mascot" title="Sycord">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <rect x="2" y="4" width="20" height="16" rx="3" fill="rgba(255,255,255,0.06)"/>
-                <circle cx="8.5" cy="11.5" r="1.4" fill="#fff"/>
-                <circle cx="15.5" cy="11.5" r="1.4" fill="#fff"/>
-                <rect x="10" y="15" width="4" height="1.2" rx="0.6" fill="#fff" />
-                <path className="mascot-arm" d="M18 8c0 .55-.45 1-1 1s-1-.45-1-1 .45-1 1-1 1 .45 1 1z" fill="#fff"/>
-              </svg>
-            </div>
           </div>
 
           <p className="text-xl md:text-2xl text-gray-300 mb-2 leading-relaxed">
@@ -252,8 +234,8 @@ export default function LandingPage() {
             with smart automation.
           </p>
 
-          {/* typing microheadline */}
-          <p className="text-sm text-orange-300 mb-6 h-6">
+          {/* typing microheadline - dark blue text */}
+          <p className="text-sm mb-6 h-6 typing-text">
             {typedText}
             <span className="typing-cursor">|</span>
           </p>
@@ -276,7 +258,7 @@ export default function LandingPage() {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
             {isMaintenanceMode ? (
-              <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
+              <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3" disabled>
                 Under Maintenance ({maintenanceTime})
               </Button>
             ) : null}
@@ -292,7 +274,6 @@ export default function LandingPage() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {/** If appSettings is null show skeleton cards else show real cards */}
           {(appSettings === null ? Array.from({ length: 6 }) : [
             {
               Icon: MessageSquare,
@@ -332,7 +313,6 @@ export default function LandingPage() {
             }
           ]).map((c, idx) => {
             if (appSettings === null) {
-              // skeleton card
               return (
                 <div key={idx} className="glass-card p-6 animate-fade-in skeleton-card" ref={el => (cardRefs.current[idx] = el as HTMLElement)}>
                   <div className="h-6 bg-white/6 rounded mb-4 w-24 animate-pulse" />
@@ -379,14 +359,15 @@ export default function LandingPage() {
           </div>
 
           {isMaintenanceMode ? (
-            <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
+            <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3" disabled>
               Under Maintenance ({maintenanceTime})
             </Button>
           ) : (
             <Button
               size="lg"
-              className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3"
-              onClick={() => router.push("/login")}
+              className="bg-white text-black cursor-not-allowed text-lg px-8 py-3"
+              disabled
+              onClick={() => { /* locked, no redirect */ }}
             >
               Get Started Now
               <ArrowRight className="ml-2 h-5 w-5" />
@@ -418,7 +399,6 @@ export default function LandingPage() {
         </div>
       </footer>
 
-      {/* Local styles kept here so you don't need to hunt for them */}
       <style jsx>{`
         .animate-fade-in {
           animation: fadeIn 1s ease forwards;
@@ -444,11 +424,11 @@ export default function LandingPage() {
           100% { filter: hue-rotate(0deg); }
         }
 
-        /* admin input styling (compact) */
+        /* admin input styling with dark blue border and dark blue typing text */
         .admin-input {
           background: rgba(255,255,255,0.03);
           color: #000;
-          border: 1px solid rgba(255,140,50,0.18);
+          border: 2px solid #0a2540; /* dark blue border */
           padding: 10px 12px;
           border-radius: 8px;
           text-align: center;
@@ -457,12 +437,14 @@ export default function LandingPage() {
           display: block;
           margin: 0 auto;
           transition: box-shadow 180ms ease, transform 180ms ease;
+          font-weight: 600;
+          font-size: 1rem;
         }
 
         .admin-input:focus {
           outline: none;
-          box-shadow: 0 6px 24px rgba(255,140,50,0.08);
-          border-color: rgba(255,140,50,0.6);
+          box-shadow: 0 6px 24px rgba(10, 37, 64, 0.6);
+          border-color: #0a2540;
         }
 
         .glow-success {
@@ -493,20 +475,49 @@ export default function LandingPage() {
           100% { transform: translateY(420px) rotate(360deg); opacity: 0; }
         }
 
-        /* mascot wave on hover */
-        .mascot { display: inline-flex; align-items:center; justify-content:center; }
-        .mascot svg { transition: transform 300ms ease; transform-origin: center 14px; }
-        .mascot:hover svg { transform: rotate(-8deg) translateY(-2px); }
+        /* typing cursor */
+        .typing-cursor { opacity: 0.9; margin-left: 6px; display: inline-block; animation: blink 900ms steps(1,end) infinite; }
+        @keyframes blink { 50% { opacity: 0 } }
 
-        /* card reveal animation when scrolled into view */
+        /* typing text color dark blue */
+        .typing-text {
+          color: #0a2540; /* dark blue */
+          font-weight: 600;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          letter-spacing: 0.04em;
+        }
+
+        /* mascot removed */
+
+        /* sparkling effect for Sycord text */
+        @keyframes sparkle {
+          0%, 100% {
+            text-shadow:
+              0 0 3px #7fd1ff,
+              0 0 5px #7fd1ff,
+              0 0 10px #7fd1ff,
+              0 0 15px #4a90e2,
+              0 0 20px #4a90e2;
+          }
+          50% {
+            text-shadow:
+              0 0 4px #9bddff,
+              0 0 7px #9bddff,
+              0 0 12px #6caeff,
+              0 0 17px #5c88d9,
+              0 0 25px #4a90e2;
+          }
+        }
+        .sparkling {
+          animation: sparkle 2.8s ease-in-out infinite;
+          color: #4a90e2;
+        }
+
+        /* card reveal animation */
         .card-reveal { opacity: 0; transform: translateY(16px); transition: all 560ms cubic-bezier(.2,.9,.2,1); }
         .card-reveal.in-view { opacity: 1; transform: translateY(0); }
 
         .skeleton-card { border-radius: 12px; padding: 20px; }
-
-        /* typing cursor */
-        .typing-cursor { opacity: 0.9; margin-left: 6px; display: inline-block; animation: blink 900ms steps(1,end) infinite; }
-        @keyframes blink { 50% { opacity: 0 } }
 
         /* keep previous hover-glow but add slight scale for micro-interaction */
         .glass-card:hover, .glass-card:focus { transform: translateY(-6px) scale(1.008); transition: transform 220ms ease; }
