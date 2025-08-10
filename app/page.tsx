@@ -1,14 +1,14 @@
+// app/page.tsx  (or pages/index.tsx)
 "use client"
 
+import { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardDescription, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Bot, Shield, MessageSquare, Clock, Users, Zap, ArrowRight, Github, Twitter, Lock } from "lucide-react"
+import { Bot, Shield, MessageSquare, Clock, Users, Zap, ArrowRight, Github, Twitter } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
 
 interface AppSettings {
   maintenanceMode: {
@@ -20,58 +20,171 @@ interface AppSettings {
 const ADMIN_CODE = "7625819-7528-715"
 
 export default function LandingPage() {
+  const router = useRouter()
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null)
   const [adminCode, setAdminCode] = useState("")
-  const [isCodeValid, setIsCodeValid] = useState(false)
   const [shake, setShake] = useState(false)
-  const router = useRouter()
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [glowSuccess, setGlowSuccess] = useState(false)
+  const inputRef = useRef<HTMLInputElement | null>(null)
+
+  // Typing effect
+  const typingPhrases = [
+    "Moderate smarter…",
+    "Automate faster…",
+    "Grow your community…"
+  ]
+  const [typedText, setTypedText] = useState("")
+  const [typingIndex, setTypingIndex] = useState(0)
+  const [charIndex, setCharIndex] = useState(0)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // Social proof rotator
+  const socialProof = [
+    { quote: "Sycord cut moderation time in half.", who: "Nova Server" },
+    { quote: "Tickets get handled automatically — love it.", who: "GameHub" },
+    { quote: "Invite tracking that actually works.", who: "Study Group" }
+  ]
+  const [proofIndex, setProofIndex] = useState(0)
+
+  // For scroll-triggered reveals
+  const cardRefs = useRef<HTMLElement[]>([])
 
   useEffect(() => {
+    // fetch app settings (skeleton shown until loaded)
     const fetchAppSettings = async () => {
       try {
         const response = await fetch("/api/app-settings")
         if (response.ok) {
           const data = await response.json()
           setAppSettings(data)
+        } else {
+          // keep null -> show skeletons
+          setAppSettings({ maintenanceMode: { enabled: false } })
         }
-      } catch (error) {
-        console.error("Failed to fetch app settings:", error)
+      } catch (err) {
+        console.error("Failed to fetch app settings:", err)
+        setAppSettings({ maintenanceMode: { enabled: false } })
       }
     }
     fetchAppSettings()
   }, [])
 
-  // Check admin code instantly on input change
+  // Autofocus input
   useEffect(() => {
-    if (adminCode === ADMIN_CODE) {
-      setIsCodeValid(true)
-    } else {
-      setIsCodeValid(false)
-    }
-  }, [adminCode])
+    inputRef.current?.focus()
+  }, [])
 
-  // Shake animation on wrong code if user tries to proceed
-  const handleInvalidCodeAttempt = () => {
-    setShake(true)
-    setTimeout(() => setShake(false), 500)
-    if (inputRef.current) inputRef.current.focus()
+  // Typing effect loop
+  useEffect(() => {
+    let timeout: any
+    const currentPhrase = typingPhrases[typingIndex % typingPhrases.length]
+
+    if (!isDeleting) {
+      if (charIndex <= currentPhrase.length) {
+        timeout = setTimeout(() => {
+          setTypedText(currentPhrase.slice(0, charIndex))
+          setCharIndex(c => c + 1)
+        }, 80)
+      } else {
+        // pause then start deleting
+        timeout = setTimeout(() => setIsDeleting(true), 800)
+      }
+    } else {
+      if (charIndex >= 0) {
+        timeout = setTimeout(() => {
+          setTypedText(currentPhrase.slice(0, charIndex))
+          setCharIndex(c => c - 1)
+        }, 35)
+      } else {
+        setIsDeleting(false)
+        setTypingIndex(i => (i + 1) % typingPhrases.length)
+        setCharIndex(0)
+      }
+    }
+
+    return () => clearTimeout(timeout)
+  }, [charIndex, isDeleting, typingIndex])
+
+  // Social proof rotator
+  useEffect(() => {
+    const id = setInterval(() => {
+      setProofIndex(i => (i + 1) % socialProof.length)
+    }, 4200)
+    return () => clearInterval(id)
+  }, [])
+
+  // IntersectionObserver for reveal
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          const el = entry.target as HTMLElement
+          if (entry.isIntersecting) {
+            el.classList.add("in-view")
+            observer.unobserve(el)
+          }
+        })
+      },
+      { threshold: 0.15 }
+    )
+    cardRefs.current.forEach(el => el && observer.observe(el))
+    return () => observer.disconnect()
+  }, [])
+
+  // handle paste (immediate redirect if exact)
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pasted = e.clipboardData.getData("text").trim()
+    if (pasted === ADMIN_CODE) {
+      e.preventDefault()
+      triggerSuccessThenRedirect()
+    }
+    // otherwise allow normal paste
   }
 
-  // Handle buttons - only redirect if code is valid
-  const handleGetStarted = () => {
-    if (isCodeValid) {
-      router.push("/login")
-    } else {
-      handleInvalidCodeAttempt()
+  // input change: redirect immediately if exact-length and matches
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setAdminCode(value)
+
+    if (value.trim().length === ADMIN_CODE.length) {
+      if (value.trim() === ADMIN_CODE) {
+        triggerSuccessThenRedirect()
+      } else {
+        setShake(true)
+        setTimeout(() => setShake(false), 520)
+      }
     }
   }
 
-  const handleLogin = () => {
-    if (isCodeValid) {
+  // confetti + glow then redirect
+  const triggerSuccessThenRedirect = () => {
+    // quick visual confirmation
+    setGlowSuccess(true)
+    spawnConfetti()
+    // short delay so user sees confetti/glow
+    setTimeout(() => {
       router.push("/login")
-    } else {
-      handleInvalidCodeAttempt()
+    }, 700)
+  }
+
+  // small confetti impl (lightweight DOM + CSS)
+  const spawnConfetti = () => {
+    const parent = document.body
+    const colors = ["#FFB86B", "#FF8A80", "#8BE9FD", "#C3FF88", "#FFD580"]
+    for (let i = 0; i < 22; i++) {
+      const el = document.createElement("span")
+      el.className = "sy-confetti"
+      const size = Math.floor(Math.random() * 8) + 6
+      el.style.width = `${size}px`
+      el.style.height = `${size}px`
+      el.style.left = `${50 + (Math.random() - 0.5) * 40}vw`
+      el.style.background = colors[Math.floor(Math.random() * colors.length)]
+      el.style.transform = `rotate(${Math.random() * 360}deg)`
+      parent.appendChild(el)
+      // remove after animation
+      setTimeout(() => {
+        el.remove()
+      }, 1200)
     }
   }
 
@@ -80,25 +193,29 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
+      {/* subtle animated gradient background for hero */}
+      <div className="hero-gradient" aria-hidden />
+
       {/* Navigation */}
       <nav className="glass-card border-b border-white/10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
+            <Image src="/new-blue-logo.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
             <span className="text-2xl font-bold">
-              <SparklingText text="Sycord" />
+              <span className="text-white">Sycord</span>
             </span>
           </div>
           <div className="flex items-center space-x-4">
             <Button
               variant="outline"
-              className="border-blue-700/70 text-blue-500 hover:bg-blue-900 bg-transparent"
-              onClick={handleLogin}
+              className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+              onClick={() => router.push("/login")}
             >
               Login
             </Button>
             <Button
-              className="bg-blue-700 text-white hover:bg-blue-800"
-              onClick={handleGetStarted}
+              className="bg-white text-black hover:bg-gray-200"
+              onClick={() => router.push("/login")}
             >
               Get Started
             </Button>
@@ -107,58 +224,62 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20 text-center">
+      <section className="container mx-auto px-4 py-20 text-center relative">
         <div className="max-w-4xl mx-auto animate-fade-in">
-          <h1 className="text-5xl md:text-7xl font-bold mb-6">
-            Meet <SparklingText text="Sycord" />
-          </h1>
-          <TypingEffect
-            text="The intelligent Discord bot that moderates your server, manages tickets, and keeps your community engaged with smart automation."
-            className="text-xl md:text-2xl mb-8 leading-relaxed"
-            textColor="text-blue-500"
-          />
+          <Badge variant="secondary" className="mb-4 bg-orange-500/20 text-orange-300 border-orange-500/30">
+            Beta Project - Admin Access Required
+          </Badge>
 
-          {/* Admin Code Input */}
-          <Card className="glass-card border border-blue-700/50 max-w-xs mx-auto">
-            <CardContent className="p-6">
-              <Input
-                ref={inputRef}
-                type="text"
-                placeholder="Enter admin code"
-                value={adminCode}
-                onChange={(e) => setAdminCode(e.target.value)}
-                className={`bg-black/50 text-white border-blue-500 focus:border-blue-400 transition-all duration-300 ${
-                  shake ? "animate-shake" : ""
-                }`}
-                style={{ maxWidth: "280px", margin: "0 auto" }}
-                spellCheck={false}
-                autoComplete="off"
-              />
-            </CardContent>
-          </Card>
+          <div className="flex items-center justify-center gap-6">
+            <h1 className="text-5xl md:text-7xl font-bold mb-6">
+              Meet <span className="text-white">Sycord</span>
+            </h1>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
+            {/* Mascot - small bot SVG that waves on hover */}
+            <div className="mascot" title="Sycord">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <rect x="2" y="4" width="20" height="16" rx="3" fill="rgba(255,255,255,0.06)"/>
+                <circle cx="8.5" cy="11.5" r="1.4" fill="#fff"/>
+                <circle cx="15.5" cy="11.5" r="1.4" fill="#fff"/>
+                <rect x="10" y="15" width="4" height="1.2" rx="0.6" fill="#fff" />
+                <path className="mascot-arm" d="M18 8c0 .55-.45 1-1 1s-1-.45-1-1 .45-1 1-1 1 .45 1 1z" fill="#fff"/>
+              </svg>
+            </div>
+          </div>
+
+          <p className="text-xl md:text-2xl text-gray-300 mb-2 leading-relaxed">
+            The intelligent Discord bot that moderates your server, manages tickets, and keeps your community engaged
+            with smart automation.
+          </p>
+
+          {/* typing microheadline */}
+          <p className="text-sm text-orange-300 mb-6 h-6">
+            {typedText}
+            <span className="typing-cursor">|</span>
+          </p>
+
+          {/* Compact Admin Code Input */}
+          <div className="max-w-sm mx-auto">
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder="Enter admin code"
+              value={adminCode}
+              onChange={handleInputChange}
+              onPaste={handlePaste}
+              aria-label="Admin code"
+              maxLength={ADMIN_CODE.length}
+              className={`admin-input ${shake ? "animate-shake" : ""} ${glowSuccess ? "glow-success" : ""}`}
+            />
+            <p className="text-xs text-gray-500 mt-2">Hint: ask your admin for the code — or paste it here.</p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
             {isMaintenanceMode ? (
-              <Button
-                size="lg"
-                className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3"
-                disabled
-              >
+              <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
                 Under Maintenance ({maintenanceTime})
               </Button>
-            ) : (
-              <Button
-                size="lg"
-                className={`text-lg px-8 py-3 hover-glow bg-blue-700 text-white hover:bg-blue-800 ${
-                  !isCodeValid ? "opacity-70 cursor-not-allowed" : ""
-                }`}
-                onClick={handleGetStarted}
-                disabled={!isCodeValid}
-              >
-                Enter Admin Code
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            )}
+            ) : null}
           </div>
         </div>
       </section>
@@ -167,143 +288,105 @@ export default function LandingPage() {
       <section className="container mx-auto px-4 py-20">
         <div className="text-center mb-16">
           <h2 className="text-4xl font-bold mb-4">Powerful Features</h2>
-          <p className="text-xl text-gray-400">
-            Everything you need to manage and grow your Discord community
-          </p>
+          <p className="text-xl text-gray-400">Everything you need to manage and grow your Discord community</p>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <Card className="glass-card hover-glow animate-fade-in">
-            <CardHeader>
-              <MessageSquare className="h-12 w-12 text-blue-500 mb-4" />
-              <CardTitle className="text-white">Smart Support System</CardTitle>
-              <CardDescription className="text-gray-400">
-                Automated ticket system with intelligent responses
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="text-sm text-gray-300 space-y-2">
-                <li>• Automated ticket management</li>
-                <li>• Custom response system</li>
-                <li>• User reporting features</li>
-              </ul>
-            </CardContent>
-          </Card>
+          {/** If appSettings is null show skeleton cards else show real cards */}
+          {(appSettings === null ? Array.from({ length: 6 }) : [
+            {
+              Icon: MessageSquare,
+              title: "Smart Support System",
+              desc: "Automated ticket system with intelligent responses",
+              items: ["Automated ticket management", "Custom response system", "User reporting features"]
+            },
+            {
+              Icon: Shield,
+              title: "Advanced Moderation",
+              desc: "Comprehensive protection with fraud detection and raid protection",
+              items: ["Suspicious account filtering", "Advanced fraud protection", "Raid protection"]
+            },
+            {
+              Icon: Users,
+              title: "Welcome & Invite Tracking",
+              desc: "Welcome new members and track who invited them",
+              items: ["Custom welcome messages", "Invite tracking system", "Auto role assignment"]
+            },
+            {
+              Icon: Clock,
+              title: "Smart Announcements",
+              desc: "Triggered announcements and web-based giveaways",
+              items: ["Time-based triggers", "Member count milestones", "Web giveaway system"]
+            },
+            {
+              Icon: Zap,
+              title: "Real-time Dashboard",
+              desc: "Monitor and configure your bot from anywhere",
+              items: ["Live server statistics", "Feature toggles", "Configuration management"]
+            },
+            {
+              Icon: Bot,
+              title: "Easy Setup",
+              desc: "Get started in minutes with our simple setup process",
+              items: ["One-click Discord integration", "Guided configuration", "24/7 support"]
+            }
+          ]).map((c, idx) => {
+            if (appSettings === null) {
+              // skeleton card
+              return (
+                <div key={idx} className="glass-card p-6 animate-fade-in skeleton-card" ref={el => (cardRefs.current[idx] = el as HTMLElement)}>
+                  <div className="h-6 bg-white/6 rounded mb-4 w-24 animate-pulse" />
+                  <div className="h-4 bg-white/6 rounded mb-2 w-48 animate-pulse" />
+                  <div className="h-3 bg-white/6 rounded mt-4 w-full animate-pulse" />
+                </div>
+              )
+            }
 
-          <Card className="glass-card hover-glow animate-fade-in">
-            <CardHeader>
-              <Shield className="h-12 w-12 text-blue-500 mb-4" />
-              <CardTitle className="text-white">Advanced Moderation</CardTitle>
-              <CardDescription className="text-gray-400">
-                Comprehensive protection with fraud detection and raid protection
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="text-sm text-gray-300 space-y-2">
-                <li>• Suspicious account filtering</li>
-                <li>• Advanced fraud protection</li>
-                <li>• Raid protection</li>
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card hover-glow animate-fade-in">
-            <CardHeader>
-              <Users className="h-12 w-12 text-blue-500 mb-4" />
-              <CardTitle className="text-white">Welcome & Invite Tracking</CardTitle>
-              <CardDescription className="text-gray-400">
-                Welcome new members and track who invited them
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="text-sm text-gray-300 space-y-2">
-                <li>• Custom welcome messages</li>
-                <li>• Invite tracking system</li>
-                <li>• Auto role assignment</li>
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card hover-glow animate-fade-in">
-            <CardHeader>
-              <Clock className="h-12 w-12 text-blue-500 mb-4" />
-              <CardTitle className="text-white">Smart Announcements</CardTitle>
-              <CardDescription className="text-gray-400">
-                Triggered announcements and web-based giveaways
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="text-sm text-gray-300 space-y-2">
-                <li>• Time-based triggers</li>
-                <li>• Member count milestones</li>
-                <li>• Web giveaway system</li>
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card hover-glow animate-fade-in">
-            <CardHeader>
-              <Zap className="h-12 w-12 text-blue-500 mb-4" />
-              <CardTitle className="text-white">Real-time Dashboard</CardTitle>
-              <CardDescription className="text-gray-400">
-                Monitor and configure your bot from anywhere
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="text-sm text-gray-300 space-y-2">
-                <li>• Live server statistics</li>
-                <li>• Feature toggles</li>
-                <li>• Configuration management</li>
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card hover-glow animate-fade-in">
-            <CardHeader>
-              <Bot className="h-12 w-12 text-blue-500 mb-4" />
-              <CardTitle className="text-white">Easy Setup</CardTitle>
-              <CardDescription className="text-gray-400">
-                Get started in minutes with our simple setup process
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="text-sm text-gray-300 space-y-2">
-                <li>• One-click Discord integration</li>
-                <li>• Guided configuration</li>
-                <li>• 24/7 support</li>
-              </ul>
-            </CardContent>
-          </Card>
+            const Icon = (c as any).Icon
+            return (
+              <Card key={idx} className="glass-card hover-glow card-reveal" ref={el => (cardRefs.current[idx] = el as HTMLElement)}>
+                <CardHeader>
+                  <Icon className="h-12 w-12 text-gray-400 mb-4" />
+                  <CardTitle className="text-white">{(c as any).title}</CardTitle>
+                  <CardDescription className="text-gray-400">
+                    {(c as any).desc}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="text-sm text-gray-300 space-y-2">
+                    {((c as any).items as string[]).map((it, i) => <li key={i}>• {it}</li>)}
+                  </ul>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* CTA + Social Proof */}
       <section className="container mx-auto px-4 py-20">
         <div className="glass-card border border-white/10 p-12 text-center">
-          <h2 className="text-4xl font-bold mb-4">
-            Ready to Transform Your Discord Server?
-          </h2>
-          <TypingEffect
-            text="Join thousands of communities already using Sycord to create better Discord experiences."
-            className="text-xl mb-8"
-            textColor="text-blue-500"
-          />
+          <h2 className="text-4xl font-bold mb-4">Ready to Transform Your Discord Server?</h2>
+          <p className="text-xl text-gray-300 mb-8">
+            Join thousands of communities already using <span className="text-white font-bold">Sycord</span> to create
+            better Discord experiences.
+          </p>
+
+          {/* small rotating social proof */}
+          <div className="mb-8">
+            <blockquote className="text-gray-300 italic">“{socialProof[proofIndex].quote}”</blockquote>
+            <div className="text-sm text-gray-500 mt-2">— {socialProof[proofIndex].who}</div>
+          </div>
+
           {isMaintenanceMode ? (
-            <Button
-              size="lg"
-              className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3"
-              disabled
-            >
+            <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
               Under Maintenance ({maintenanceTime})
             </Button>
           ) : (
             <Button
               size="lg"
-              className={`text-lg px-8 py-3 hover-glow bg-blue-700 text-white hover:bg-blue-800 ${
-                !isCodeValid ? "opacity-70 cursor-not-allowed" : ""
-              }`}
-              onClick={handleGetStarted}
-              disabled={!isCodeValid}
+              className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3"
+              onClick={() => router.push("/login")}
             >
               Get Started Now
               <ArrowRight className="ml-2 h-5 w-5" />
@@ -317,8 +400,9 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="flex items-center space-x-2 mb-4 md:mb-0">
+              <Image src="/new-blue-logo.png" alt="Sycord Bot" width={24} height={24} className="rounded" />
               <span className="text-lg font-semibold">
-                <SparklingText text="Sycord Bot" />
+                <span className="text-white">Sycord</span> Bot
               </span>
             </div>
             <div className="flex items-center space-x-6">
@@ -328,125 +412,105 @@ export default function LandingPage() {
               <Link href="#" className="text-gray-400 hover:text-white transition-colors">
                 <Twitter className="h-5 w-5" />
               </Link>
+              <span className="text-gray-400 text-sm">© 2024 Sycord Bot. All rights reserved.</span>
             </div>
           </div>
         </div>
       </footer>
 
-      {/* Custom Styles */}
+      {/* Local styles kept here so you don't need to hunt for them */}
       <style jsx>{`
-        .animate-shake {
-          animation: shake 0.5s;
-        }
-        @keyframes shake {
-          0%,
-          100% {
-            transform: translateX(0);
-          }
-          20%,
-          60% {
-            transform: translateX(-6px);
-          }
-          40%,
-          80% {
-            transform: translateX(6px);
-          }
-        }
-        .hover-glow:hover {
-          box-shadow: 0 0 8px 2px #2563eb;
-        }
-        .glass-card {
-          background: rgba(255 255 255 / 0.05);
-          backdrop-filter: blur(10px);
-          border-radius: 12px;
-        }
         .animate-fade-in {
           animation: fadeIn 1s ease forwards;
           opacity: 0;
         }
-        @keyframes fadeIn {
-          to {
-            opacity: 1;
-          }
-        }
-        .sparkle {
-          position: relative;
-          color: #3b82f6;
-          font-weight: 900;
-        }
-        .sparkle::before {
-          content: "";
-          position: absolute;
+        @keyframes fadeIn { to { opacity: 1; } }
+
+        /* hero gradient */
+        .hero-gradient {
+          position: fixed;
           top: 0;
           left: 0;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, #60a5fa, transparent);
-          background-size: 200% 100%;
-          animation: sparkle 3s infinite;
+          right: 0;
+          height: 36vh;
           pointer-events: none;
-          mix-blend-mode: screen;
-          opacity: 0.7;
+          background: linear-gradient(120deg, rgba(255,138,96,0.04), rgba(139,92,246,0.03), rgba(59,130,246,0.025));
+          animation: gradientShift 12s ease-in-out infinite;
+          z-index: 0;
         }
-        @keyframes sparkle {
-          0% {
-            background-position: -200% 0;
-          }
-          100% {
-            background-position: 200% 0;
-          }
+        @keyframes gradientShift {
+          0% { filter: hue-rotate(0deg); }
+          50% { filter: hue-rotate(25deg); }
+          100% { filter: hue-rotate(0deg); }
         }
+
+        /* admin input styling (compact) */
+        .admin-input {
+          background: rgba(255,255,255,0.03);
+          color: #000;
+          border: 1px solid rgba(255,140,50,0.18);
+          padding: 10px 12px;
+          border-radius: 8px;
+          text-align: center;
+          width: 100%;
+          max-width: 240px;
+          display: block;
+          margin: 0 auto;
+          transition: box-shadow 180ms ease, transform 180ms ease;
+        }
+
+        .admin-input:focus {
+          outline: none;
+          box-shadow: 0 6px 24px rgba(255,140,50,0.08);
+          border-color: rgba(255,140,50,0.6);
+        }
+
+        .glow-success {
+          box-shadow: 0 10px 30px rgba(94, 234, 212, 0.18);
+          border-color: rgba(94, 234, 212, 0.9);
+        }
+
+        /* shake animation */
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          20%, 60% { transform: translateX(-8px); }
+          40%, 80% { transform: translateX(8px); }
+        }
+        .animate-shake { animation: shake 0.52s ease-in-out; }
+
+        /* small confetti element */
+        .sy-confetti {
+          position: fixed;
+          top: 12vh;
+          z-index: 9999;
+          border-radius: 2px;
+          opacity: 0.95;
+          animation: confettiFall 1.05s linear forwards;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+        }
+        @keyframes confettiFall {
+          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(420px) rotate(360deg); opacity: 0; }
+        }
+
+        /* mascot wave on hover */
+        .mascot { display: inline-flex; align-items:center; justify-content:center; }
+        .mascot svg { transition: transform 300ms ease; transform-origin: center 14px; }
+        .mascot:hover svg { transform: rotate(-8deg) translateY(-2px); }
+
+        /* card reveal animation when scrolled into view */
+        .card-reveal { opacity: 0; transform: translateY(16px); transition: all 560ms cubic-bezier(.2,.9,.2,1); }
+        .card-reveal.in-view { opacity: 1; transform: translateY(0); }
+
+        .skeleton-card { border-radius: 12px; padding: 20px; }
+
+        /* typing cursor */
+        .typing-cursor { opacity: 0.9; margin-left: 6px; display: inline-block; animation: blink 900ms steps(1,end) infinite; }
+        @keyframes blink { 50% { opacity: 0 } }
+
+        /* keep previous hover-glow but add slight scale for micro-interaction */
+        .glass-card:hover, .glass-card:focus { transform: translateY(-6px) scale(1.008); transition: transform 220ms ease; }
       `}</style>
     </div>
-  )
-}
-
-// SparklingText component with improved subtle effect
-function SparklingText({ text }: { text: string }) {
-  return <span className="sparkle">{text}</span>
-}
-
-// Typing effect component with dark blue text
-function TypingEffect({
-  text,
-  className,
-  textColor = "text-blue-600"
-}: {
-  text: string
-  className?: string
-  textColor?: string
-}) {
-  const [displayedText, setDisplayedText] = useState("")
-  useEffect(() => {
-    let currentIndex = 0
-    const interval = setInterval(() => {
-      setDisplayedText(text.slice(0, currentIndex))
-      currentIndex++
-      if (currentIndex > text.length) {
-        clearInterval(interval)
-      }
-    }, 30)
-    return () => clearInterval(interval)
-  }, [text])
-  return (
-    <p className={`${className} ${textColor}`} style={{ fontWeight: "500" }}>
-      {displayedText}
-      <span className="cursor">|</span>
-      <style jsx>{`
-        .cursor {
-          display: inline-block;
-          width: 1ch;
-          animation: blink 1.2s steps(2, start) infinite;
-        }
-        @keyframes blink {
-          0%, 100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0;
-          }
-        }
-      `}</style>
-    </p>
   )
 }
