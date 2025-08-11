@@ -196,11 +196,14 @@ export default function Dashboard() {
               {userServers.map((server) => {
                 const randomColor = getRandomColor()
                 const randomZoom = Math.random() * 10 + 1
+                const randomPositionX = Math.random() * 100
+                const randomPositionY = Math.random() * 100
 
                 return (
                   <Card key={server.serverId} className="hover-glow animate-fade-in group">
                     <div className="h-16 rounded-t-lg overflow-hidden relative" style={{ backgroundColor: randomColor }}>
-                      <div className="absolute inset-0 flex items-center justify-center opacity-30">
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black opacity-50"></div>
                         <Image
                           src={
                             server.serverIcon
@@ -211,7 +214,11 @@ export default function Dashboard() {
                           width={64}
                           height={64}
                           className="rounded-xl"
-                          style={{ transform: `scale(${randomZoom})`, transformOrigin: `${Math.random() * 100}% ${Math.random() * 100}%` }}
+                          style={{
+                            transform: `scale(${randomZoom})`,
+                            transformOrigin: `${randomPositionX}% ${randomPositionY}%`,
+                            opacity: 0.3
+                          }}
                         />
                       </div>
                     </div>
