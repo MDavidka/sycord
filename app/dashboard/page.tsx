@@ -195,11 +195,12 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {userServers.map((server) => {
                 const randomColor = getRandomColor()
+                const randomZoom = Math.random() * 10 + 1
 
                 return (
                   <Card key={server.serverId} className="hover-glow animate-fade-in group">
-                    <div className="h-16 rounded-t-lg relative overflow-hidden" style={{ backgroundColor: randomColor }}>
-                      <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="h-16 rounded-t-lg overflow-hidden relative" style={{ backgroundColor: randomColor }}>
+                      <div className="absolute inset-0 flex items-center justify-center opacity-30">
                         <Image
                           src={
                             server.serverIcon
@@ -210,11 +211,25 @@ export default function Dashboard() {
                           width={64}
                           height={64}
                           className="rounded-xl"
+                          style={{ transform: `scale(${randomZoom})`, transformOrigin: `${Math.random() * 100}% ${Math.random() * 100}%` }}
                         />
                       </div>
                     </div>
                     <CardContent className="p-6">
                       <div className="flex items-start space-x-4">
+                        <div className="relative">
+                          <Image
+                            src={
+                              server.serverIcon
+                                ? `https://cdn.discordapp.com/icons/${server.serverId}/${server.serverIcon}.png?size=64`
+                                : "/placeholder.svg?height=64&width=64"
+                            }
+                            alt={server.serverName}
+                            width={64}
+                            height={64}
+                            className="rounded-xl"
+                          />
+                        </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="text-lg font-semibold text-white truncate">{server.serverName}</h3>
                           <div className="flex items-center space-x-2 mt-2">
