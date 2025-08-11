@@ -1,10 +1,10 @@
+// app/page.tsx  (or pages/index.tsx)
 "use client"
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardDescription, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Bot, Shield, MessageSquare, Clock, Users, Zap, ArrowRight, Github, Twitter } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
@@ -24,6 +24,7 @@ export default function LandingPage() {
   const [adminCode, setAdminCode] = useState("")
   const [shake, setShake] = useState(false)
   const [glowSuccess, setGlowSuccess] = useState(false)
+  const [isAuthorized, setIsAuthorized] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   // Typing effect
@@ -130,23 +131,24 @@ export default function LandingPage() {
     return () => observer.disconnect()
   }, [])
 
-  // handle paste (immediate redirect if exact)
+  // handle paste (authorize if exact)
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const pasted = e.clipboardData.getData("text").trim()
     if (pasted === ADMIN_CODE) {
       e.preventDefault()
-      triggerSuccessThenRedirect()
+      authorize()
     }
+    // otherwise allow normal paste
   }
 
-  // input change: redirect immediately if exact-length and matches
+  // input change: authorize immediately if matches
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setAdminCode(value)
 
     if (value.trim().length === ADMIN_CODE.length) {
       if (value.trim() === ADMIN_CODE) {
-        triggerSuccessThenRedirect()
+        authorize()
       } else {
         setShake(true)
         setTimeout(() => setShake(false), 520)
@@ -154,10 +156,12 @@ export default function LandingPage() {
     }
   }
 
-  // confetti + glow then redirect
-  const triggerSuccessThenRedirect = () => {
+  // authorize -> glow, confetti, mark authorized and redirect
+  const authorize = () => {
     setGlowSuccess(true)
+    setIsAuthorized(true)
     spawnConfetti()
+    // short delay so user sees confetti/glow
     setTimeout(() => {
       router.push("/login")
     }, 700)
@@ -166,7 +170,7 @@ export default function LandingPage() {
   // small confetti impl (lightweight DOM + CSS)
   const spawnConfetti = () => {
     const parent = document.body
-    const colors = ["#FFB86B", "#FF8A80", "#8BE9FD", "#C3FF88", "#FFD580"]
+    const colors = ["#3b82f6", "#60a5fa", "#93c5fd", "#bfdbfe"]
     for (let i = 0; i < 22; i++) {
       const el = document.createElement("span")
       el.className = "sy-confetti"
@@ -177,17 +181,31 @@ export default function LandingPage() {
       el.style.background = colors[Math.floor(Math.random() * colors.length)]
       el.style.transform = `rotate(${Math.random() * 360}deg)`
       parent.appendChild(el)
-      setTimeout(() => { el.remove() }, 1200)
+      // remove after animation
+      setTimeout(() => {
+        el.remove()
+      }, 1200)
+    }
+  }
+
+  // helper to block navigation unless authorized
+  const protectedNavigate = (path: string) => {
+    if (isAuthorized) {
+      router.push(path)
+    } else {
+      // small feedback if blocked
+      setShake(true)
+      setTimeout(() => setShake(false), 520)
+      inputRef.current?.focus()
     }
   }
 
   const isMaintenanceMode = appSettings?.maintenanceMode.enabled || false
   const maintenanceTime = appSettings?.maintenanceMode.estimatedTime || "30 minutes"
 
-  const buttonsDisabled = adminCode.trim() !== ADMIN_CODE
-
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-x-hidden">
+    <div className="min-h-screen bg-black text-white">
+      {/* subtle animated gradient background for hero */}
       <div className="hero-gradient" aria-hidden />
 
       {/* Navigation */}
@@ -195,24 +213,23 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Image src="/new-blue-logo.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
-            <span className="text-2xl font-bold sparkling">
-              Sycord
+            <span className="text-2xl font-bold">
+              <span className="sparkle-text">Sycord</span>
             </span>
           </div>
           <div className="flex items-center space-x-4">
-            {/* Buttons disabled and locked until admin code entered */}
             <Button
               variant="outline"
-              className="border-white/20 text-white bg-transparent cursor-not-allowed"
-              disabled
-              onClick={e => e.preventDefault()}
+              className={`border-white/20 text-white hover:bg-white/10 bg-transparent ${!isAuthorized ? "opacity-60 cursor-not-allowed" : ""}`}
+              onClick={() => protectedNavigate("/login")}
+              disabled={!isAuthorized}
             >
               Login
             </Button>
             <Button
-              className="bg-white text-black cursor-not-allowed"
-              disabled
-              onClick={e => e.preventDefault()}
+              className={`bg-white text-black hover:bg-gray-200 ${!isAuthorized ? "opacity-60 cursor-not-allowed" : ""}`}
+              onClick={() => protectedNavigate("/login")}
+              disabled={!isAuthorized}
             >
               Get Started
             </Button>
@@ -223,13 +240,9 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 text-center relative">
         <div className="max-w-4xl mx-auto animate-fade-in">
-          <Badge variant="secondary" className="mb-4 bg-orange-500/20 text-orange-300 border-orange-500/30">
-            Romove Beta Project - Admin Access Required
-          </Badge>
-
           <div className="flex items-center justify-center gap-6">
             <h1 className="text-5xl md:text-7xl font-bold mb-6">
-              Meet <span className="text-white sparkling">Sycord</span>
+              Meet <span className="sparkle-text">Sycord</span>
             </h1>
           </div>
 
@@ -238,7 +251,7 @@ export default function LandingPage() {
             with smart automation.
           </p>
 
-          {/* typing microheadline - dark blue text */}
+          {/* typing microheadline (dark blue) */}
           <p className="text-sm mb-6 h-6 typing-text">
             {typedText}
             <span className="typing-cursor">|</span>
@@ -256,14 +269,13 @@ export default function LandingPage() {
               aria-label="Admin code"
               maxLength={ADMIN_CODE.length}
               className={`admin-input ${shake ? "animate-shake" : ""} ${glowSuccess ? "glow-success" : ""}`}
-              autoComplete="off"
             />
             <p className="text-xs text-gray-500 mt-2">Hint: ask your admin for the code — or paste it here.</p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
             {isMaintenanceMode ? (
-              <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3" disabled>
+              <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
                 Under Maintenance ({maintenanceTime})
               </Button>
             ) : null}
@@ -279,6 +291,7 @@ export default function LandingPage() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {/** If appSettings is null show skeleton cards else show real cards */}
           {(appSettings === null ? Array.from({ length: 6 }) : [
             {
               Icon: MessageSquare,
@@ -318,6 +331,7 @@ export default function LandingPage() {
             }
           ]).map((c, idx) => {
             if (appSettings === null) {
+              // skeleton card
               return (
                 <div key={idx} className="glass-card p-6 animate-fade-in skeleton-card" ref={el => (cardRefs.current[idx] = el as HTMLElement)}>
                   <div className="h-6 bg-white/6 rounded mb-4 w-24 animate-pulse" />
@@ -364,15 +378,15 @@ export default function LandingPage() {
           </div>
 
           {isMaintenanceMode ? (
-            <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3" disabled>
+            <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
               Under Maintenance ({maintenanceTime})
             </Button>
           ) : (
             <Button
               size="lg"
-              className="bg-white text-black cursor-not-allowed text-lg px-8 py-3"
-              disabled
-              onClick={e => e.preventDefault()}
+              className={`bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 ${!isAuthorized ? "opacity-60 cursor-not-allowed" : ""}`}
+              onClick={() => protectedNavigate("/login")}
+              disabled={!isAuthorized}
             >
               Get Started Now
               <ArrowRight className="ml-2 h-5 w-5" />
@@ -404,6 +418,7 @@ export default function LandingPage() {
         </div>
       </footer>
 
+      {/* Local styles kept here so you don't need to hunt for them */}
       <style jsx>{`
         .animate-fade-in {
           animation: fadeIn 1s ease forwards;
@@ -429,11 +444,11 @@ export default function LandingPage() {
           100% { filter: hue-rotate(0deg); }
         }
 
-        /* admin input styling with dark blue border and dark blue typing text */
+        /* admin input styling (compact) */
         .admin-input {
           background: rgba(255,255,255,0.03);
-          color: #000;
-          border: 2px solid #0a2540; /* dark blue border */
+          color: #fff;
+          border: 1px solid #1e3a8a; /* dark blue border */
           padding: 10px 12px;
           border-radius: 8px;
           text-align: center;
@@ -441,20 +456,20 @@ export default function LandingPage() {
           max-width: 240px;
           display: block;
           margin: 0 auto;
-          transition: box-shadow 180ms ease, transform 180ms ease;
-          font-weight: 600;
-          font-size: 1rem;
+          transition: box-shadow 180ms ease, transform 180ms ease, border-color 180ms ease;
         }
+
+        .admin-input::placeholder { color: rgba(255,255,255,0.5); }
 
         .admin-input:focus {
           outline: none;
-          box-shadow: 0 6px 24px rgba(10, 37, 64, 0.6);
-          border-color: #0a2540;
+          box-shadow: 0 6px 24px rgba(30, 58, 138, 0.18);
+          border-color: #1e3a8a;
         }
 
         .glow-success {
-          box-shadow: 0 10px 30px rgba(94, 234, 212, 0.18);
-          border-color: rgba(94, 234, 212, 0.9);
+          box-shadow: 0 10px 30px rgba(96, 165, 250, 0.28);
+          border-color: rgba(96, 165, 250, 0.95);
         }
 
         /* shake animation */
@@ -480,45 +495,36 @@ export default function LandingPage() {
           100% { transform: translateY(420px) rotate(360deg); opacity: 0; }
         }
 
-        /* typing cursor */
-        .typing-cursor { opacity: 0.9; margin-left: 6px; display: inline-block; animation: blink 900ms steps(1,end) infinite; }
-        @keyframes blink { 50% { opacity: 0 } }
-
-        /* typing text color dark blue */
-        .typing-text {
-          color: #0a2540; /* dark blue */
-          font-weight: 600;
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          letter-spacing: 0.04em;
-        }
-
-        /* mascot removed */
-
-        /* sparkling effect for Sycord text */
-        @keyframes sparkle {
-          0%, 100% {
-            text-shadow:
-              0 0 4px #7fd1ff,
-              0 0 6px #7fd1ff,
-              0 0 8px #4a90e2;
-          }
-          50% {
-            text-shadow:
-              0 0 5px #9bddff,
-              0 0 7px #6caeff,
-              0 0 10px #5c88d9;
-          }
-        }
-        .sparkling {
-          animation: sparkle 3s ease-in-out infinite;
-          color: #4a90e2;
-        }
-
-        /* card reveal animation */
+        /* card reveal animation when scrolled into view */
         .card-reveal { opacity: 0; transform: translateY(16px); transition: all 560ms cubic-bezier(.2,.9,.2,1); }
         .card-reveal.in-view { opacity: 1; transform: translateY(0); }
 
         .skeleton-card { border-radius: 12px; padding: 20px; }
+
+        /* typing cursor */
+        .typing-cursor { opacity: 0.9; margin-left: 6px; display: inline-block; animation: blink 900ms steps(1,end) infinite; }
+        @keyframes blink { 50% { opacity: 0 } }
+
+        /* sparkle on title - subtle, minimal */
+        .sparkle-text {
+          position: relative;
+          display: inline-block;
+          background: linear-gradient(90deg, #ffffff, #93c5fd, #ffffff);
+          background-size: 200% 200%;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: sparkle 4.5s linear infinite;
+        }
+        @keyframes sparkle {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+
+        /* typing text dark blue */
+        .typing-text {
+          color: #1e3a8a;
+        }
 
         /* keep previous hover-glow but add slight scale for micro-interaction */
         .glass-card:hover, .glass-card:focus { transform: translateY(-6px) scale(1.008); transition: transform 220ms ease; }
