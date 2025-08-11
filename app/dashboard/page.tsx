@@ -1,5 +1,7 @@
 "use client"
 
+import { CardDescription } from "@/components/ui/card"
+
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -7,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Plus, Search, Users, Crown, Settings, ArrowRight, Trash2 } from 'lucide-react'
+import { Plus, Search, Users, Crown, Settings, ArrowRight, Trash2 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 
@@ -69,9 +71,22 @@ export default function Dashboard() {
       if (guildsResponse.ok) {
         const guildsData = await guildsResponse.json()
         setAvailableGuilds(guildsData.guilds)
+      } else {
+        const errorData = await guildsResponse.json()
+        console.error("Failed to fetch Discord guilds:", errorData)
+
+        // If token expired, redirect to login
+        if (guildsResponse.status === 401) {
+          router.push("/login")
+          return
+        }
+
+        // Show user-friendly error message
+        alert(`Failed to load Discord servers: ${errorData.details || errorData.error}`)
       }
     } catch (error) {
       console.error("Error fetching data:", error)
+      alert("Failed to load dashboard data. Please try refreshing the page.")
     } finally {
       setLoading(false)
     }
@@ -111,7 +126,7 @@ export default function Dashboard() {
       })
 
       if (response.ok) {
-        setUserServers(userServers.filter(server => server.serverId !== serverId))
+        setUserServers(userServers.filter((server) => server.serverId !== serverId))
       } else {
         console.error("Failed to delete server")
       }
@@ -190,12 +205,12 @@ export default function Dashboard() {
                     <div
                       className="absolute inset-0"
                       style={{
-                        backgroundColor: server.color || '#3b82f6',
+                        backgroundColor: server.color || "#3b82f6",
                         backgroundImage: server.serverIcon
                           ? `url(https://cdn.discordapp.com/icons/${server.serverId}/${server.serverIcon}.png?size=128)`
-                          : 'none',
-                        backgroundSize: '10000%',
-                        backgroundPosition: `${Math.random() * 100}% ${Math.random() * 100}%`
+                          : "none",
+                        backgroundSize: "10000%",
+                        backgroundPosition: `${Math.random() * 100}% ${Math.random() * 100}%`,
                       }}
                     ></div>
                   </div>
@@ -236,7 +251,12 @@ export default function Dashboard() {
                             <Button
                               size="sm"
                               className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
-                              onClick={() => window.open("https://discord.com/oauth2/authorize?client_id=1319362022286295123&permissions=1478210153510&integration_type=0&scope=bot", "_blank")}
+                              onClick={() =>
+                                window.open(
+                                  "https://discord.com/oauth2/authorize?client_id=1319362022286295123&permissions=1478210153510&integration_type=0&scope=bot",
+                                  "_blank",
+                                )
+                              }
                             >
                               <ArrowRight className="h-4 w-4 mr-2" />
                               Invite Bot
