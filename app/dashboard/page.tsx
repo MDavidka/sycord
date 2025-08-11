@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Plus, Search, Users, Crown, Settings } from 'lucide-react'
+import { Plus, Search, Users, Crown, Settings, Bot as BotIcon } from 'lucide-react'
 import Image from "next/image"
 import Link from "next/link"
 
@@ -35,7 +35,6 @@ export default function Dashboard() {
   const [availableGuilds, setAvailableGuilds] = useState<DiscordGuild[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  // Add state for the add server modal
   const [showAddServerModal, setShowAddServerModal] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
 
@@ -59,14 +58,12 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      // Fetch user's configured servers
       const userServersResponse = await fetch("/api/user-servers")
       if (userServersResponse.ok) {
         const userServersData = await userServersResponse.json()
         setUserServers(userServersData.servers)
       }
 
-      // Fetch available Discord guilds
       const guildsResponse = await fetch("/api/discord/guilds")
       if (guildsResponse.ok) {
         const guildsData = await guildsResponse.json()
@@ -94,8 +91,6 @@ export default function Dashboard() {
       })
 
       if (response.ok) {
-        // Show success message and redirect to server config
-        // The server config page will handle the "waiting for bot" state
         await fetchData()
         router.push(`/dashboard/server/${guild.id}`)
       }
@@ -127,7 +122,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Header */}
       <header className="glass-card border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center space-x-4">
@@ -157,7 +151,6 @@ export default function Dashboard() {
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Configured Servers */}
         {userServers.length > 0 && (
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-white mb-4">Your Configured Servers</h2>
@@ -179,22 +172,16 @@ export default function Dashboard() {
                           className="rounded-xl"
                         />
                       </div>
-
                       <div className="flex-1 min-w-0">
                         <h3 className="text-lg font-semibold text-white truncate">{server.serverName}</h3>
                         <div className="flex items-center space-x-2 mt-2">
                           <Badge
                             variant={server.isBotAdded ? "default" : "secondary"}
-                            className={
-                              server.isBotAdded
-                                ? "bg-gray-500/20 text-gray-400 border-gray-500/30"
-                                : "bg-gray-500/20 text-gray-400 border-gray-500/30"
-                            }
+                            className="bg-gray-500/20 text-gray-400 border-gray-500/30"
                           >
                             {server.isBotAdded ? "Bot Added" : "Waiting for Bot"}
                           </Badge>
                         </div>
-
                         <div className="flex items-center space-x-2 mt-4">
                           {server.isBotAdded ? (
                             <Link href={`/dashboard/server/${server.serverId}`}>
@@ -204,7 +191,14 @@ export default function Dashboard() {
                               </Button>
                             </Link>
                           ) : (
-                            <div className="text-sm text-gray-400">Add the bot to this server to start configuring</div>
+                            <Button
+                              size="sm"
+                              className="bg-white text-black hover:bg-gray-200"
+                              onClick={() => window.open("https://discord.com/oauth2/authorize?client_id=1319362022286295123&permissions=1478210153510&integration_type=0&scope=bot", "_blank")}
+                            >
+                              <BotIcon className="h-4 w-4 mr-2" />
+                              Invite Bot
+                            </Button>
                           )}
                         </div>
                       </div>
@@ -216,7 +210,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Add Server Button */}
         <div className="flex justify-center">
           <Button
             onClick={() => setShowAddServerModal(true)}
@@ -227,7 +220,6 @@ export default function Dashboard() {
           </Button>
         </div>
 
-        {/* Add Server Modal */}
         {showAddServerModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <Card className="glass-card max-w-2xl w-full max-h-[80vh] overflow-y-auto">
@@ -329,31 +321,6 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </div>
-        )}
-
-        {/* Invite Bot Section */}
-        {userServers.some((server) => !server.isBotAdded) && (
-          <Card className="glass-card mt-8">
-            <CardHeader>
-              <CardTitle className="text-white text-lg">Add Bot to Server</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4 text-sm text-gray-300">
-                <p>
-                  You've selected your servers and configurations have been created. Now add the Sycord bot to start configuring your server settings.
-                </p>
-                <div className="flex justify-center">
-                  <Button
-                    onClick={() => window.open("https://discord.com/oauth2/authorize?client_id=1319362022286295123&permissions=1478210153510&integration_type=0&scope=bot", "_blank")}
-                    className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 hover-glow"
-                  >
-                    <Plus className="h-5 w-5 mr-2" />
-                    Invite Sycord Bot
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         )}
       </div>
     </div>
