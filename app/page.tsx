@@ -192,7 +192,7 @@ export default function LandingPage() {
           <div className="flex items-center space-x-2">
             <Image src="/new-blue-logo.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
             <span className="text-2xl font-bold">
-              <span className="sparkle-text">Sycord</span>
+              <span className="text-white">Sycord</span>
             </span>
           </div>
           <div className="flex items-center space-x-4">
@@ -218,8 +218,8 @@ export default function LandingPage() {
       <section className="container mx-auto px-4 py-20 text-center relative">
         <div className="max-w-4xl mx-auto animate-fade-in">
           <div className="flex items-center justify-center gap-6">
-            <h1 className="text-5xl md:text-7xl font-bold mb-6">
-              Meet <span className="sparkle-text">Sycord</span>
+            <h1 className="text-5xl md:text-6xl font-bold mb-6">
+              Meet Sycord
             </h1>
           </div>
 
@@ -245,7 +245,6 @@ export default function LandingPage() {
               maxLength={ADMIN_CODE.length}
               className={`admin-input ${shake ? "animate-shake" : ""} ${glowSuccess ? "glow-success" : ""}`}
             />
-            <p className="text-xs text-gray-500 mt-2">Hint: ask your admin for the code — or paste it here.</p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
@@ -412,9 +411,9 @@ export default function LandingPage() {
         }
 
         .admin-input {
-          background: rgba(255,255,255,0.03);
+          background: rgba(255, 255, 255, 0.03);
           color: #fff;
-          border: 1px solid #1e3a8a;
+          border: 1px solid #808080; /* Grey border */
           padding: 10px 12px;
           border-radius: 8px;
           text-align: center;
@@ -425,7 +424,7 @@ export default function LandingPage() {
           transition: box-shadow 180ms ease, transform 180ms ease, border-color 180ms ease;
         }
 
-        .admin-input::placeholder { color: rgba(255,255,255,0.5); }
+        .admin-input::placeholder { color: rgba(255, 255, 255, 0.5); }
 
         .admin-input:focus {
           outline: none;
@@ -466,21 +465,6 @@ export default function LandingPage() {
 
         .typing-cursor { opacity: 0.9; margin-left: 6px; display: inline-block; animation: blink 900ms steps(1,end) infinite; }
         @keyframes blink { 50% { opacity: 0 } }
-
-        .sparkle-text {
-          position: relative;
-          display: inline-block;
-          background: linear-gradient(90deg, #ffffff, #93c5fd, #ffffff);
-          background-size: 200% 200%;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          animation: sparkle 4.5s linear infinite;
-        }
-        @keyframes sparkle {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
 
         .typing-text {
           color: #1e3a8a;
