@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Plus, Search, Users, Crown, Settings, ArrowRight, Trash2 } from 'lucide-react'
@@ -120,12 +120,12 @@ export default function Dashboard() {
   }
 
   const getRandomColor = () => {
-    const letters = '0123456789ABCDEF';
-    let color = '#';
+    const letters = '0123456789ABCDEF'
+    let color = '#'
     for (let i = 0; i < 6; i++) {
-      color += letters[Math.floor(Math.random() * 16)];
+      color += letters[Math.floor(Math.random() * 16)]
     }
-    return color;
+    return color
   }
 
   const filteredGuilds = availableGuilds.filter((guild) => {
@@ -194,18 +194,22 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {userServers.map((server) => {
                 const randomColor = getRandomColor()
+
                 return (
-                  <Card key={server.serverId} className="hover-glow animate-fade-in group relative">
-                    <div className="h-16 rounded-t-lg overflow-hidden relative" style={{ backgroundColor: randomColor }}>
+                  <Card key={server.serverId} className="hover-glow animate-fade-in group">
+                    <div className="h-16 rounded-t-lg relative overflow-hidden" style={{ backgroundColor: randomColor }}>
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="relative w-20 h-20">
-                          <Image
-                            src={server.serverIcon ? `https://cdn.discordapp.com/icons/${server.serverId}/${server.serverIcon}.png?size=128` : "/placeholder.svg?height=64&width=64"}
-                            alt={server.serverName}
-                            fill
-                            className="object-cover rounded-xl"
-                          />
-                        </div>
+                        <Image
+                          src={
+                            server.serverIcon
+                              ? `https://cdn.discordapp.com/icons/${server.serverId}/${server.serverIcon}.png?size=128`
+                              : "/placeholder.svg?height=64&width=64"
+                          }
+                          alt={server.serverName}
+                          width={64}
+                          height={64}
+                          className="rounded-xl"
+                        />
                       </div>
                     </div>
                     <CardContent className="p-6">
