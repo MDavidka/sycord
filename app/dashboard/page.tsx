@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Plus, Search, Users, Crown, Settings, Bot as BotIcon } from 'lucide-react'
+import { Plus, Search, Users, Crown, Settings, ArrowRight, Trash2 } from 'lucide-react'
 import Image from "next/image"
 import Link from "next/link"
 
@@ -96,6 +96,26 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error("Error selecting server:", error)
+    }
+  }
+
+  const handleDeleteServer = async (serverId: string) => {
+    try {
+      const response = await fetch("/api/delete-server", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          serverId: serverId,
+        }),
+      })
+
+      if (response.ok) {
+        await fetchData()
+      }
+    } catch (error) {
+      console.error("Error deleting server:", error)
     }
   }
 
@@ -193,13 +213,21 @@ export default function Dashboard() {
                           ) : (
                             <Button
                               size="sm"
-                              className="bg-white text-black hover:bg-gray-200"
+                              className="bg-gray-700 text-white hover:bg-gray-600 opacity-80"
                               onClick={() => window.open("https://discord.com/oauth2/authorize?client_id=1319362022286295123&permissions=1478210153510&integration_type=0&scope=bot", "_blank")}
                             >
-                              <BotIcon className="h-4 w-4 mr-2" />
+                              <ArrowRight className="h-4 w-4 mr-2" />
                               Invite Bot
                             </Button>
                           )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-red-500 hover:bg-red-500/10 hover:text-red-500/80 opacity-80"
+                            onClick={() => handleDeleteServer(server.serverId)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     </div>
