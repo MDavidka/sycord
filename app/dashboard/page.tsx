@@ -26,6 +26,7 @@ interface UserServer {
   serverIcon?: string
   isBotAdded: boolean
   lastConfigUpdate?: string
+  color?: string
 }
 
 export default function Dashboard() {
@@ -184,7 +185,8 @@ export default function Dashboard() {
             <h2 className="text-xl font-semibold text-white mb-4">Your Configured Servers</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {userServers.map((server) => (
-                <Card key={server.serverId} className="glass-card hover-glow animate-fade-in group">
+                <Card key={server.serverId} className="hover-glow animate-fade-in group">
+                  <div className="h-16 rounded-t-lg" style={{ backgroundColor: server.color || '#3b82f6' }}></div>
                   <CardContent className="p-6">
                     <div className="flex items-start space-x-4">
                       <div className="relative">
@@ -230,7 +232,7 @@ export default function Dashboard() {
                           )}
                           <Button
                             size="sm"
-                            className="bg-gray-800/50 hover:bg-gray-700/50 text-red-500 hover:text-red-400"
+                            className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
                             onClick={() => handleDeleteServer(server.serverId)}
                           >
                             <Trash2 className="h-4 w-4" />
