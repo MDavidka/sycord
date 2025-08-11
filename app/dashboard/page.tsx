@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useSession } from "next-auth/react"
@@ -111,7 +110,6 @@ export default function Dashboard() {
       })
 
       if (response.ok) {
-        // Remove the server from the local state
         setUserServers(userServers.filter(server => server.serverId !== serverId))
       } else {
         console.error("Failed to delete server")
@@ -146,28 +144,36 @@ export default function Dashboard() {
     <div className="min-h-screen bg-black text-white">
       <header className="glass-card border-b border-white/10">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center space-x-4">
-            <Image src="/new-blue-logo.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
-            <div>
-              <h1 className="text-2xl font-bold text-white">
-                <span className="text-white">Sycord</span> Dashboard
-              </h1>
-              {isAdmin && (
-                <div className="mt-2">
-                  <Link href="/admin/plugins">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-gray-500/50 text-gray-400 hover:bg-gray-500/10 bg-transparent"
-                    >
-                      <Settings className="h-4 w-4 mr-2" />
-                      Admin Panel
-                    </Button>
-                  </Link>
-                </div>
-              )}
-              <p className="text-sm text-gray-400">Manage your Discord servers</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Image src="/new-blue-logo.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
+              <div>
+                <h1 className="text-2xl font-bold text-white">
+                  <span className="text-white">Sycord</span> Dashboard
+                </h1>
+                {isAdmin && (
+                  <div className="mt-2">
+                    <Link href="/admin/plugins">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-gray-500/50 text-gray-400 hover:bg-gray-500/10 bg-transparent"
+                      >
+                        <Settings className="h-4 w-4 mr-2" />
+                        Admin Panel
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+                <p className="text-sm text-gray-400">Manage your Discord servers</p>
+              </div>
             </div>
+            <Button
+              onClick={() => setShowAddServerModal(true)}
+              className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
+            >
+              <Plus className="h-5 w-5" />
+            </Button>
           </div>
         </div>
       </header>
@@ -207,7 +213,7 @@ export default function Dashboard() {
                         <div className="flex items-center space-x-2 mt-4">
                           {server.isBotAdded ? (
                             <Link href={`/dashboard/server/${server.serverId}`}>
-                              <Button size="sm" className="bg-white text-black hover:bg-gray-200">
+                              <Button size="sm" className="bg-gray-800/50 hover:bg-gray-700/50 text-white">
                                 <Settings className="h-4 w-4 mr-2" />
                                 Configure
                               </Button>
@@ -215,7 +221,7 @@ export default function Dashboard() {
                           ) : (
                             <Button
                               size="sm"
-                              className="bg-gray-700 text-white hover:bg-gray-600 opacity-80"
+                              className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
                               onClick={() => window.open("https://discord.com/oauth2/authorize?client_id=1319362022286295123&permissions=1478210153510&integration_type=0&scope=bot", "_blank")}
                             >
                               <ArrowRight className="h-4 w-4 mr-2" />
@@ -224,8 +230,7 @@ export default function Dashboard() {
                           )}
                           <Button
                             size="sm"
-                            variant="destructive"
-                            className="bg-red-900/50 hover:bg-red-900/80 text-white"
+                            className="bg-gray-800/50 hover:bg-gray-700/50 text-red-500 hover:text-red-400"
                             onClick={() => handleDeleteServer(server.serverId)}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -239,16 +244,6 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-
-        <div className="flex justify-center">
-          <Button
-            onClick={() => setShowAddServerModal(true)}
-            className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 hover-glow"
-          >
-            <Plus className="h-5 w-5 mr-2" />
-            Add Server to Dashboard
-          </Button>
-        </div>
 
         {showAddServerModal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -338,7 +333,7 @@ export default function Dashboard() {
                                 )}
                               </div>
                             </div>
-                            <Button size="sm" className="bg-white text-black hover:bg-gray-200">
+                            <Button size="sm" className="bg-gray-800/50 hover:bg-gray-700/50 text-white">
                               <Plus className="h-4 w-4 mr-1" />
                               Add
                             </Button>
