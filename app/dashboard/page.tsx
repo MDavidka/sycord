@@ -120,6 +120,15 @@ export default function Dashboard() {
     }
   }
 
+  const getRandomColor = () => {
+    const letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) {
+      color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+  }
+
   const filteredGuilds = availableGuilds.filter((guild) => {
     const isAlreadyAdded = userServers.some((server) => server.serverId === guild.id)
     const matchesSearch = guild.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -184,12 +193,14 @@ export default function Dashboard() {
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-white mb-4">Your Configured Servers</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {userServers.map((server) => (
-                <Card key={server.serverId} className="hover-glow animate-fade-in group">
-                  <div className="h-16 rounded-t-lg" style={{ backgroundColor: server.color || '#3b82f6' }}></div>
-                  <CardContent className="p-6">
-                    <div className="flex items-start space-x-4">
-                      <div className="relative">
+              {userServers.map((server) => {
+                const randomColor = getRandomColor()
+                const randomZoom = Math.random() * 10000 + 100
+
+                return (
+                  <Card key={server.serverId} className="hover-glow animate-fade-in group">
+                    <div className="h-16 rounded-t-lg overflow-hidden relative" style={{ backgroundColor: randomColor }}>
+                      <div className="absolute inset-0 flex items-center justify-center">
                         <Image
                           src={
                             server.serverIcon
@@ -200,49 +211,54 @@ export default function Dashboard() {
                           width={64}
                           height={64}
                           className="rounded-xl"
+                          style={{ transform: `scale(${randomZoom})`, transformOrigin: `${Math.random() * 100}% ${Math.random() * 100}%` }}
                         />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold text-white truncate">{server.serverName}</h3>
-                        <div className="flex items-center space-x-2 mt-2">
-                          <Badge
-                            variant={server.isBotAdded ? "default" : "secondary"}
-                            className="bg-gray-500/20 text-gray-400 border-gray-500/30"
-                          >
-                            {server.isBotAdded ? "Bot Added" : "Waiting for Bot"}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center space-x-2 mt-4">
-                          {server.isBotAdded ? (
-                            <Link href={`/dashboard/server/${server.serverId}`}>
-                              <Button size="sm" className="bg-gray-800/50 hover:bg-gray-700/50 text-white">
-                                <Settings className="h-4 w-4 mr-2" />
-                                Configure
+                    </div>
+                    <CardContent className="p-6">
+                      <div className="flex items-start space-x-4">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-semibold text-white truncate">{server.serverName}</h3>
+                          <div className="flex items-center space-x-2 mt-2">
+                            <Badge
+                              variant={server.isBotAdded ? "default" : "secondary"}
+                              className="bg-gray-500/20 text-gray-400 border-gray-500/30"
+                            >
+                              {server.isBotAdded ? "Bot Added" : "Waiting for Bot"}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center space-x-2 mt-4">
+                            {server.isBotAdded ? (
+                              <Link href={`/dashboard/server/${server.serverId}`}>
+                                <Button size="sm" className="bg-gray-800/50 hover:bg-gray-700/50 text-white">
+                                  <Settings className="h-4 w-4 mr-2" />
+                                  Configure
+                                </Button>
+                              </Link>
+                            ) : (
+                              <Button
+                                size="sm"
+                                className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
+                                onClick={() => window.open("https://discord.com/oauth2/authorize?client_id=1319362022286295123&permissions=1478210153510&integration_type=0&scope=bot", "_blank")}
+                              >
+                                <ArrowRight className="h-4 w-4 mr-2" />
+                                Invite Bot
                               </Button>
-                            </Link>
-                          ) : (
+                            )}
                             <Button
                               size="sm"
                               className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
-                              onClick={() => window.open("https://discord.com/oauth2/authorize?client_id=1319362022286295123&permissions=1478210153510&integration_type=0&scope=bot", "_blank")}
+                              onClick={() => handleDeleteServer(server.serverId)}
                             >
-                              <ArrowRight className="h-4 w-4 mr-2" />
-                              Invite Bot
+                              <Trash2 className="h-4 w-4" />
                             </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
-                            onClick={() => handleDeleteServer(server.serverId)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                )
+              })}
             </div>
           </div>
         )}
