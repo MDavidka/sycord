@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Plus, Search, Users, Crown, Settings, ArrowRight, Trash2 } from 'lucide-react'
@@ -26,6 +26,7 @@ interface UserServer {
   serverIcon?: string
   isBotAdded: boolean
   lastConfigUpdate?: string
+  color?: string
 }
 
 export default function Dashboard() {
@@ -120,12 +121,12 @@ export default function Dashboard() {
   }
 
   const getRandomColor = () => {
-    const letters = '0123456789ABCDEF'
-    let color = '#'
+    const letters = '0123456789ABCDEF';
+    let color = '#';
     for (let i = 0; i < 6; i++) {
-      color += letters[Math.floor(Math.random() * 16)]
+      color += letters[Math.floor(Math.random() * 16)];
     }
-    return color
+    return color;
   }
 
   const filteredGuilds = availableGuilds.filter((guild) => {
