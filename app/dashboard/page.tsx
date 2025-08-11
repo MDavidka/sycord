@@ -206,7 +206,7 @@ export default function Dashboard() {
                         backgroundImage: server.serverIcon
                           ? `url(https://cdn.discordapp.com/icons/${server.serverId}/${server.serverIcon}.png?size=128)`
                           : "none",
-                        backgroundSize: "cover",
+                        backgroundSize: "200%",
                         backgroundPosition: "center",
                       }}
                     ></div>
