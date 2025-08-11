@@ -26,7 +26,6 @@ interface UserServer {
   serverIcon?: string
   isBotAdded: boolean
   lastConfigUpdate?: string
-  color?: string
 }
 
 export default function Dashboard() {
@@ -195,24 +194,18 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {userServers.map((server) => {
                 const randomColor = getRandomColor()
-                const randomZoom = Math.random() * 10000 + 100
-
                 return (
-                  <Card key={server.serverId} className="hover-glow animate-fade-in group">
+                  <Card key={server.serverId} className="hover-glow animate-fade-in group relative">
                     <div className="h-16 rounded-t-lg overflow-hidden relative" style={{ backgroundColor: randomColor }}>
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <Image
-                          src={
-                            server.serverIcon
-                              ? `https://cdn.discordapp.com/icons/${server.serverId}/${server.serverIcon}.png?size=128`
-                              : "/placeholder.svg?height=64&width=64"
-                          }
-                          alt={server.serverName}
-                          width={64}
-                          height={64}
-                          className="rounded-xl"
-                          style={{ transform: `scale(${randomZoom})`, transformOrigin: `${Math.random() * 100}% ${Math.random() * 100}%` }}
-                        />
+                        <div className="relative w-20 h-20">
+                          <Image
+                            src={server.serverIcon ? `https://cdn.discordapp.com/icons/${server.serverId}/${server.serverIcon}.png?size=128` : "/placeholder.svg?height=64&width=64"}
+                            alt={server.serverName}
+                            fill
+                            className="object-cover rounded-xl"
+                          />
+                        </div>
                       </div>
                     </div>
                     <CardContent className="p-6">
