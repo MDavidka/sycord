@@ -1,13 +1,4 @@
-To address the issues with the delete button, we need to ensure that the button's background is visible and that the function to delete a server is correctly implemented and called. Let's make sure the button styling is correct and that the `handleDeleteServer` function is properly set up to remove the server from the list.
 
-Here's how you can update the code to ensure the delete button works correctly:
-
-1. **Ensure the Delete Button Background is Visible**: Adjust the button's styling to ensure the background is visible.
-2. **Implement the Delete Functionality**: Ensure the `handleDeleteServer` function correctly removes the server from the list.
-
-Here's the updated code:
-
-```jsx
 "use client"
 
 import { useSession } from "next-auth/react"
@@ -365,10 +356,3 @@ export default function Dashboard() {
     </div>
   )
 }
-```
-
-### Key Changes:
-- **Delete Button Styling**: Adjusted the delete button to use a red background with appropriate opacity to ensure it's visible.
-- **Delete Functionality**: The `handleDeleteServer` function now updates the local state to remove the server from the list immediately after a successful deletion request.
-
-These changes should ensure that the delete button is visible and functional, allowing users to remove servers from their dashboard as needed.
