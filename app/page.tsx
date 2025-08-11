@@ -1,10 +1,10 @@
-// app/page.tsx  (or pages/index.tsx)
 "use client"
 
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardDescription, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Bot, Shield, MessageSquare, Clock, Users, Zap, ArrowRight, Github, Twitter } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
@@ -24,7 +24,6 @@ export default function LandingPage() {
   const [adminCode, setAdminCode] = useState("")
   const [shake, setShake] = useState(false)
   const [glowSuccess, setGlowSuccess] = useState(false)
-  const [isAuthorized, setIsAuthorized] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
   // Typing effect
@@ -131,24 +130,24 @@ export default function LandingPage() {
     return () => observer.disconnect()
   }, [])
 
-  // handle paste (authorize if exact)
+  // handle paste (immediate redirect if exact)
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const pasted = e.clipboardData.getData("text").trim()
     if (pasted === ADMIN_CODE) {
       e.preventDefault()
-      authorize()
+      triggerSuccessThenRedirect()
     }
     // otherwise allow normal paste
   }
 
-  // input change: authorize immediately if matches
+  // input change: redirect immediately if exact-length and matches
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setAdminCode(value)
 
     if (value.trim().length === ADMIN_CODE.length) {
       if (value.trim() === ADMIN_CODE) {
-        authorize()
+        triggerSuccessThenRedirect()
       } else {
         setShake(true)
         setTimeout(() => setShake(false), 520)
@@ -156,12 +155,10 @@ export default function LandingPage() {
     }
   }
 
-  // authorize -> glow, confetti, mark authorized and redirect
-  const authorize = () => {
+  // confetti + glow then redirect
+  const triggerSuccessThenRedirect = () => {
     setGlowSuccess(true)
-    setIsAuthorized(true)
     spawnConfetti()
-    // short delay so user sees confetti/glow
     setTimeout(() => {
       router.push("/login")
     }, 700)
@@ -170,7 +167,7 @@ export default function LandingPage() {
   // small confetti impl (lightweight DOM + CSS)
   const spawnConfetti = () => {
     const parent = document.body
-    const colors = ["#3b82f6", "#60a5fa", "#93c5fd", "#bfdbfe"]
+    const colors = ["#FFB86B", "#FF8A80", "#8BE9FD", "#C3FF88", "#FFD580"]
     for (let i = 0; i < 22; i++) {
       const el = document.createElement("span")
       el.className = "sy-confetti"
@@ -181,22 +178,9 @@ export default function LandingPage() {
       el.style.background = colors[Math.floor(Math.random() * colors.length)]
       el.style.transform = `rotate(${Math.random() * 360}deg)`
       parent.appendChild(el)
-      // remove after animation
       setTimeout(() => {
         el.remove()
       }, 1200)
-    }
-  }
-
-  // helper to block navigation unless authorized
-  const protectedNavigate = (path: string) => {
-    if (isAuthorized) {
-      router.push(path)
-    } else {
-      // small feedback if blocked
-      setShake(true)
-      setTimeout(() => setShake(false), 520)
-      inputRef.current?.focus()
     }
   }
 
@@ -214,22 +198,22 @@ export default function LandingPage() {
           <div className="flex items-center space-x-2">
             <Image src="/new-blue-logo.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
             <span className="text-2xl font-bold">
-              <span className="sparkle-text">Sycord</span>
+              <span className="text-white">Sycord</span>
             </span>
           </div>
           <div className="flex items-center space-x-4">
             <Button
               variant="outline"
-              className={`border-white/20 text-white hover:bg-white/10 bg-transparent ${!isAuthorized ? "opacity-60 cursor-not-allowed" : ""}`}
-              onClick={() => protectedNavigate("/login")}
-              disabled={!isAuthorized}
+              className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+              onClick={() => router.push("/login")}
+              disabled={!adminCode || adminCode !== ADMIN_CODE}
             >
               Login
             </Button>
             <Button
-              className={`bg-white text-black hover:bg-gray-200 ${!isAuthorized ? "opacity-60 cursor-not-allowed" : ""}`}
-              onClick={() => protectedNavigate("/login")}
-              disabled={!isAuthorized}
+              className="bg-white text-black hover:bg-gray-200"
+              onClick={() => router.push("/login")}
+              disabled={!adminCode || adminCode !== ADMIN_CODE}
             >
               Get Started
             </Button>
@@ -240,10 +224,25 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-20 text-center relative">
         <div className="max-w-4xl mx-auto animate-fade-in">
+          <Badge variant="secondary" className="mb-4 bg-orange-500/20 text-orange-300 border-orange-500/30">
+            Beta Project - Admin Access Required
+          </Badge>
+
           <div className="flex items-center justify-center gap-6">
             <h1 className="text-5xl md:text-7xl font-bold mb-6">
-              Meet <span className="sparkle-text">Sycord</span>
+              Meet <span className="text-white">Sycord</span>
             </h1>
+
+            {/* Mascot - small bot SVG that waves on hover */}
+            <div className="mascot" title="Sycord">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <rect x="2" y="4" width="20" height="16" rx="3" fill="rgba(255,255,255,0.06)"/>
+                <circle cx="8.5" cy="11.5" r="1.4" fill="#fff"/>
+                <circle cx="15.5" cy="11.5" r="1.4" fill="#fff"/>
+                <rect x="10" y="15" width="4" height="1.2" rx="0.6" fill="#fff" />
+                <path className="mascot-arm" d="M18 8c0 .55-.45 1-1 1s-1-.45-1-1 .45-1 1-1 1 .45 1 1z" fill="#fff"/>
+              </svg>
+            </div>
           </div>
 
           <p className="text-xl md:text-2xl text-gray-300 mb-2 leading-relaxed">
@@ -251,8 +250,8 @@ export default function LandingPage() {
             with smart automation.
           </p>
 
-          {/* typing microheadline (dark blue) */}
-          <p className="text-sm mb-6 h-6 typing-text">
+          {/* typing microheadline */}
+          <p className="text-sm text-blue-700 mb-6 h-6">
             {typedText}
             <span className="typing-cursor">|</span>
           </p>
@@ -268,9 +267,9 @@ export default function LandingPage() {
               onPaste={handlePaste}
               aria-label="Admin code"
               maxLength={ADMIN_CODE.length}
-              className={`admin-input ${shake ? "animate-shake" : ""} ${glowSuccess ? "glow-success" : ""}`}
+              className={`admin-input-modern ${shake ? "animate-shake" : ""} ${glowSuccess ? "glow-success" : ""}`}
+              autoComplete="off"
             />
-            <p className="text-xs text-gray-500 mt-2">Hint: ask your admin for the code — or paste it here.</p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
@@ -291,7 +290,6 @@ export default function LandingPage() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {/** If appSettings is null show skeleton cards else show real cards */}
           {(appSettings === null ? Array.from({ length: 6 }) : [
             {
               Icon: MessageSquare,
@@ -331,7 +329,6 @@ export default function LandingPage() {
             }
           ]).map((c, idx) => {
             if (appSettings === null) {
-              // skeleton card
               return (
                 <div key={idx} className="glass-card p-6 animate-fade-in skeleton-card" ref={el => (cardRefs.current[idx] = el as HTMLElement)}>
                   <div className="h-6 bg-white/6 rounded mb-4 w-24 animate-pulse" />
@@ -384,9 +381,9 @@ export default function LandingPage() {
           ) : (
             <Button
               size="lg"
-              className={`bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 ${!isAuthorized ? "opacity-60 cursor-not-allowed" : ""}`}
-              onClick={() => protectedNavigate("/login")}
-              disabled={!isAuthorized}
+              className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3"
+              onClick={() => router.push("/login")}
+              disabled={!adminCode || adminCode !== ADMIN_CODE}
             >
               Get Started Now
               <ArrowRight className="ml-2 h-5 w-5" />
@@ -418,7 +415,7 @@ export default function LandingPage() {
         </div>
       </footer>
 
-      {/* Local styles kept here so you don't need to hunt for them */}
+      {/* Local styles kept here */}
       <style jsx>{`
         .animate-fade-in {
           animation: fadeIn 1s ease forwards;
@@ -426,7 +423,6 @@ export default function LandingPage() {
         }
         @keyframes fadeIn { to { opacity: 1; } }
 
-        /* hero gradient */
         .hero-gradient {
           position: fixed;
           top: 0;
@@ -436,98 +432,108 @@ export default function LandingPage() {
           pointer-events: none;
           background: linear-gradient(120deg, rgba(255,138,96,0.04), rgba(139,92,246,0.03), rgba(59,130,246,0.025));
           animation: gradientShift 12s ease-in-out infinite;
-          z-index: 0;
+          z-index: -1;
         }
         @keyframes gradientShift {
-          0% { filter: hue-rotate(0deg); }
-          50% { filter: hue-rotate(25deg); }
-          100% { filter: hue-rotate(0deg); }
+          0%, 100% { background-position: 0% 50%;}
+          50% { background-position: 100% 50%;}
         }
 
-        /* admin input styling (compact) */
-        .admin-input {
-          background: rgba(255,255,255,0.03);
-          color: #fff;
-          border: 1px solid #1e3a8a; /* dark blue border */
-          padding: 10px 12px;
-          border-radius: 8px;
-          text-align: center;
+        .admin-input-modern {
           width: 100%;
-          max-width: 240px;
-          display: block;
-          margin: 0 auto;
-          transition: box-shadow 180ms ease, transform 180ms ease, border-color 180ms ease;
+          padding: 0.5rem 1rem;
+          font-size: 1.125rem;
+          border-radius: 0.5rem;
+          border: 2px solid #d1d5db; /* Tailwind gray-300 */
+          background-color: #f3f4f6; /* Tailwind gray-100 */
+          color: #111827; /* Tailwind gray-900 */
+          transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .admin-input-modern:focus {
+          outline: none;
+          border-color: #3b82f6; /* Tailwind blue-500 */
+          box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
         }
 
-        .admin-input::placeholder { color: rgba(255,255,255,0.5); }
-
-        .admin-input:focus {
-          outline: none;
-          box-shadow: 0 6px 24px rgba(30, 58, 138, 0.18);
-          border-color: #1e3a8a;
+        .animate-shake {
+          animation: shake 0.52s cubic-bezier(.36,.07,.19,.97) both;
+          transform-origin: center;
+        }
+        @keyframes shake {
+          10%, 90% { transform: translateX(-2px); }
+          20%, 80% { transform: translateX(4px); }
+          30%, 50%, 70% { transform: translateX(-8px); }
+          40%, 60% { transform: translateX(8px); }
         }
 
         .glow-success {
-          box-shadow: 0 10px 30px rgba(96, 165, 250, 0.28);
-          border-color: rgba(96, 165, 250, 0.95);
+          border-color: #34d399 !important; /* Tailwind green-400 */
+          box-shadow: 0 0 8px #34d399;
+          animation: glowPulse 1.2s ease-in-out infinite alternate;
+        }
+        @keyframes glowPulse {
+          0% { box-shadow: 0 0 4px #34d399; }
+          100% { box-shadow: 0 0 12px #34d399; }
         }
 
-        /* shake animation */
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          20%, 60% { transform: translateX(-8px); }
-          40%, 80% { transform: translateX(8px); }
+        .typing-cursor {
+          animation: blink 1.2s steps(2) infinite;
+          color: #3b82f6;
+          font-weight: 700;
         }
-        .animate-shake { animation: shake 0.52s ease-in-out; }
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
 
-        /* small confetti element */
+        .glass-card {
+          background: rgba(17, 24, 39, 0.6);
+          backdrop-filter: saturate(180%) blur(20px);
+          border-radius: 1rem;
+          padding: 2rem;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+          color: #ddd;
+          transition: box-shadow 0.3s ease;
+        }
+        .glass-card:hover {
+          box-shadow: 0 0 35px #3b82f6;
+        }
+
+        .card-reveal {
+          opacity: 0;
+          transform: translateY(15px);
+          transition: all 0.5s ease;
+        }
+        .card-reveal.in-view {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        .skeleton-card > div {
+          border-radius: 0.375rem;
+          background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.12) 37%, rgba(255,255,255,0.05) 63%);
+          background-size: 400% 100%;
+          animation: skeleton-loading 1.4s ease infinite;
+        }
+        @keyframes skeleton-loading {
+          0% { background-position: 100% 50%; }
+          100% { background-position: 0 50%; }
+        }
+
+        /* confetti style */
         .sy-confetti {
           position: fixed;
-          top: 12vh;
           z-index: 9999;
-          border-radius: 2px;
-          opacity: 0.95;
-          animation: confettiFall 1.05s linear forwards;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+          border-radius: 50%;
+          pointer-events: none;
+          animation: confetti-fall 1.2s forwards ease-out;
+          opacity: 1;
         }
-        @keyframes confettiFall {
+        @keyframes confetti-fall {
           0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-          100% { transform: translateY(420px) rotate(360deg); opacity: 0; }
+          100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
         }
-
-        /* card reveal animation when scrolled into view */
-        .card-reveal { opacity: 0; transform: translateY(16px); transition: all 560ms cubic-bezier(.2,.9,.2,1); }
-        .card-reveal.in-view { opacity: 1; transform: translateY(0); }
-
-        .skeleton-card { border-radius: 12px; padding: 20px; }
-
-        /* typing cursor */
-        .typing-cursor { opacity: 0.9; margin-left: 6px; display: inline-block; animation: blink 900ms steps(1,end) infinite; }
-        @keyframes blink { 50% { opacity: 0 } }
-
-        /* sparkle on title - subtle, minimal */
-        .sparkle-text {
-          position: relative;
-          display: inline-block;
-          background: linear-gradient(90deg, #ffffff, #93c5fd, #ffffff);
-          background-size: 200% 200%;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          animation: sparkle 4.5s linear infinite;
-        }
-        @keyframes sparkle {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-
-        /* typing text dark blue */
-        .typing-text {
-          color: #1e3a8a;
-        }
-
-        /* keep previous hover-glow but add slight scale for micro-interaction */
-        .glass-card:hover, .glass-card:focus { transform: translateY(-6px) scale(1.008); transition: transform 220ms ease; }
       `}</style>
     </div>
   )
