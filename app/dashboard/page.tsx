@@ -1,3 +1,13 @@
+To address the issues with the delete button, we need to ensure that the button's background is visible and that the function to delete a server is correctly implemented and called. Let's make sure the button styling is correct and that the `handleDeleteServer` function is properly set up to remove the server from the list.
+
+Here's how you can update the code to ensure the delete button works correctly:
+
+1. **Ensure the Delete Button Background is Visible**: Adjust the button's styling to ensure the background is visible.
+2. **Implement the Delete Functionality**: Ensure the `handleDeleteServer` function correctly removes the server from the list.
+
+Here's the updated code:
+
+```jsx
 "use client"
 
 import { useSession } from "next-auth/react"
@@ -106,13 +116,14 @@ export default function Dashboard() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          serverId: serverId,
-        }),
+        body: JSON.stringify({ serverId }),
       })
 
       if (response.ok) {
-        await fetchData()
+        // Remove the server from the local state
+        setUserServers(userServers.filter(server => server.serverId !== serverId))
+      } else {
+        console.error("Failed to delete server")
       }
     } catch (error) {
       console.error("Error deleting server:", error)
@@ -222,8 +233,8 @@ export default function Dashboard() {
                           )}
                           <Button
                             size="sm"
-                            variant="ghost"
-                            className="text-red-500 hover:bg-red-500/10 hover:text-red-500/80 opacity-80"
+                            variant="destructive"
+                            className="bg-red-900/50 hover:bg-red-900/80 text-white"
                             onClick={() => handleDeleteServer(server.serverId)}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -354,3 +365,10 @@ export default function Dashboard() {
     </div>
   )
 }
+```
+
+### Key Changes:
+- **Delete Button Styling**: Adjusted the delete button to use a red background with appropriate opacity to ensure it's visible.
+- **Delete Functionality**: The `handleDeleteServer` function now updates the local state to remove the server from the list immediately after a successful deletion request.
+
+These changes should ensure that the delete button is visible and functional, allowing users to remove servers from their dashboard as needed.
