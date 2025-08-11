@@ -1,7 +1,6 @@
 "use client"
 
 import { CardDescription } from "@/components/ui/card"
-
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -75,13 +74,11 @@ export default function Dashboard() {
         const errorData = await guildsResponse.json()
         console.error("Failed to fetch Discord guilds:", errorData)
 
-        // If token expired, redirect to login
         if (guildsResponse.status === 401) {
           router.push("/login")
           return
         }
 
-        // Show user-friendly error message
         alert(`Failed to load Discord servers: ${errorData.details || errorData.error}`)
       }
     } catch (error) {
@@ -209,8 +206,8 @@ export default function Dashboard() {
                         backgroundImage: server.serverIcon
                           ? `url(https://cdn.discordapp.com/icons/${server.serverId}/${server.serverIcon}.png?size=128)`
                           : "none",
-                        backgroundSize: "10000%",
-                        backgroundPosition: `${Math.random() * 100}% ${Math.random() * 100}%`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
                       }}
                     ></div>
                   </div>
@@ -234,9 +231,19 @@ export default function Dashboard() {
                         <div className="flex items-center space-x-2 mt-2">
                           <Badge
                             variant={server.isBotAdded ? "default" : "secondary"}
-                            className="bg-gray-500/20 text-gray-400 border-gray-500/30"
+                            className="bg-gray-500/20 text-gray-400 border-gray-500/30 flex items-center"
                           >
-                            {server.isBotAdded ? "Bot Added" : "Waiting for Bot"}
+                            {server.isBotAdded ? (
+                              <>
+                                <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>
+                                Bot Added
+                              </>
+                            ) : (
+                              <>
+                                <span className="inline-block w-2 h-2 rounded-full bg-yellow-500 mr-1"></span>
+                                Waiting for Bot
+                              </>
+                            )}
                           </Badge>
                         </div>
                         <div className="flex items-center space-x-2 mt-4">
