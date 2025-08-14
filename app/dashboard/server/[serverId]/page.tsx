@@ -8,14 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Shield,
   MessageSquare,
@@ -23,26 +16,26 @@ import {
   LinkIcon,
   Home,
   Plus,
+  Copy,
+  Check,
   ArrowLeft,
-  AlertTriangle,
-  Info,
+  Clock,
   Bot,
-  Zap,
+  FileText,
   Users,
-  Crown,
-  Package,
   Settings,
+  Lock,
   Megaphone,
-  LifeBuoy,
   Ticket,
   BarChart3,
   CheckCircle,
   AlertCircle,
 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import PluginsTab from "@/components/plugins-tab"
+import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
+import { Textarea } from "@/components/ui/textarea"
 
 // Define UserData interface
 interface UserData {
@@ -243,7 +236,7 @@ export default function ServerConfigPage() {
   const [showFlagStaffWarning, setShowFlagStaffWarning] = useState(false)
   const [staffToFlag, setStaffToFlag] = useState<string | null>(null)
 
-  const [activeSupportSection, setActiveSupportSection] = useState<"staff" | "tickets" | null>(null)
+  const [activeSupportSection, setActiveSupportSection] = useState<"staff" | "tickets" | "invite-track" | null>(null)
 
   const [userData, setUserData] = useState<UserData | null>(null)
   const [serverConfig, setServerConfig] = useState<ServerConfig | null>(null)
@@ -923,42 +916,39 @@ export default function ServerConfigPage() {
       default:
         return (
           <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-white mb-2">Sycord is here to help</h2>
-              <p className="text-gray-400">Manage your support system and help your community</p>
-            </div>
-
             <div className="grid grid-cols-1 gap-6">
-              <Card className="glass-card cursor-pointer hover:bg-white/5 transition-colors">
+              {" "}
+              {/* Changed to grid-cols-1 for vertical stacking */}
+              <Card
+                className="glass-card cursor-pointer hover:bg-white/5 transition-colors"
+                onClick={() => setActiveSupportSection("staff")}
+              >
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-4 mb-4">
-                    <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center">
-                      <LinkIcon className="h-6 w-6 text-white" />
+                    <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                      <Users className="h-6 w-6 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-white">Invite Track & Log</h3>
-                      <p className="text-sm text-gray-400">Track member invites and log activities</p>
+                      <h3 className="text-lg font-semibold text-white">Staff Insights</h3>
+                      <p className="text-sm text-gray-400">Monitor staff performance and reputation</p>
                     </div>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-400">Status:</span>
-                      <span className={`${serverConfig.invite_tracking?.enabled ? "text-green-400" : "text-gray-400"}`}>
-                        {serverConfig.invite_tracking?.enabled ? "Enabled" : "Disabled"}
+                      <span
+                        className={`${serverConfig.support?.reputation_enabled ? "text-green-400" : "text-gray-400"}`}
+                      >
+                        {serverConfig.support?.reputation_enabled ? "Enabled" : "Disabled"}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Channel:</span>
-                      <span className="text-white">
-                        {serverConfig.invite_tracking?.channel_id
-                          ? getChannelName(serverConfig.invite_tracking.channel_id)
-                          : "Not set"}
-                      </span>
+                      <span className="text-gray-400">Active Staff:</span>
+                      <span className="text-white">{serverConfig.support?.staff?.length || 0}</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-
               <Card
                 className="glass-card cursor-pointer hover:bg-white/5 transition-colors"
                 onClick={() => setActiveSupportSection("tickets")}
@@ -1000,520 +990,1353 @@ export default function ServerConfigPage() {
   }
 
   const renderEventContent = () => {
-    return (
-      <div className="space-y-6">
-        <Card className="glass-card">
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-4 mb-4">
-              <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                <BarChart3 className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white">Automatic Tasks</h3>
-                <p className="text-sm text-gray-400">Manage automated tasks and scheduled jobs</p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Status:</span>
-                <span className={`${serverConfig.automatic_tasks?.enabled ? "text-green-400" : "text-gray-400"}`}>
-                  {serverConfig.automatic_tasks?.enabled ? "Enabled" : "Disabled"}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Tasks:</span>
-                <span className="text-white">{serverConfig.automatic_tasks?.tasks.length || 0}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card">
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-4 mb-4">
-              <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center">
-                <Gift className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white">Giveaway</h3>
-                <p className="text-sm text-gray-400">Configure giveaways and promotions</p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Status:</span>
-                <span className={`${serverConfig.giveaway?.enabled ? "text-green-400" : "text-gray-400"}`}>
-                  {serverConfig.giveaway?.enabled ? "Enabled" : "Disabled"}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Channel:</span>
-                <span className="text-white">
-                  {serverConfig.giveaway?.default_channel_id
-                    ? getChannelName(serverConfig.giveaway.default_channel_id)
-                    : "Not set"}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card">
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-4 mb-4">
-              <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                <Megaphone className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white">Logger</h3>
-                <p className="text-sm text-gray-400">Log server activities and events</p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Status:</span>
-                <span className={`${serverConfig.logs?.enabled ? "text-green-400" : "text-gray-400"}`}>
-                  {serverConfig.logs?.enabled ? "Enabled" : "Disabled"}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Log Channel:</span>
-                <span className="text-white">
-                  {serverConfig.logs?.channel_id ? getChannelName(serverConfig.logs.channel_id) : "Not set"}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="glass-card">
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-4 mb-4">
-              <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                <Users className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white">Invite Track</h3>
-                <p className="text-sm text-gray-400">Track member invites and log activities</p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Status:</span>
-                <span className={`${serverConfig.invite_tracking?.enabled ? "text-green-400" : "text-gray-400"}`}>
-                  {serverConfig.invite_tracking?.enabled ? "Enabled" : "Disabled"}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Track Joins:</span>
-                <span className="text-white">{serverConfig.invite_tracking?.track_joins ? "Yes" : "No"}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Track Leaves:</span>
-                <span className="text-white">{serverConfig.invite_tracking?.track_leaves ? "Yes" : "No"}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  // Navigation Tabs
-  const renderTabs = () => {
-    return (
-      <div className="flex flex-wrap gap-2 mb-8 overflow-x-auto">
-        <Button
-          variant={activeTab === "home" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setActiveTab("home")}
-          className={`${
-            activeTab === "home" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-          } transition-colors flex-shrink-0 text-sm px-4 h-9`}
-        >
-          <Home className="h-4 w-4 mr-2" />
-          Home
-        </Button>
-        <Button
-          variant={activeTab === "sentinel" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setActiveTab("sentinel")}
-          className={`${
-            activeTab === "sentinel" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-          } transition-colors flex-shrink-0 text-sm px-4 h-9`}
-        >
-          <Shield className="h-4 w-4 mr-2" />
-          Sentinel
-        </Button>
-        <Button
-          variant={activeTab === "support" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setActiveTab("support")}
-          className={`${
-            activeTab === "support" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-          } transition-colors flex-shrink-0 text-sm px-4 h-9`}
-        >
-          <LifeBuoy className="h-4 w-4 mr-2" />
-          Support
-        </Button>
-        <Button
-          variant={activeTab === "events" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setActiveTab("events")}
-          className={`${
-            activeTab === "events" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-          } transition-colors flex-shrink-0 text-sm px-4 h-9`}
-        >
-          <Zap className="h-4 w-4 mr-2" />
-          Functions
-        </Button>
-        <Button
-          variant={activeTab === "integrations" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setActiveTab("integrations")}
-          className={`${
-            activeTab === "integrations" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-          } transition-colors flex-shrink-0 text-sm px-4 h-9`}
-        >
-          <Package className="h-4 w-4 mr-2" />
-          Plugins
-        </Button>
-        <Button
-          variant={activeTab === "settings" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setActiveTab("settings")}
-          className={`${
-            activeTab === "settings" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-          } transition-colors flex-shrink-0 text-sm px-4 h-9`}
-        >
-          <Settings className="h-4 w-4 mr-2" />
-          Settings
-        </Button>
-      </div>
-    )
-  }
-
-  // Sentinel Tab
-  const renderSentinelTab = () => {
-    return (
-      <div className="space-y-6">
-        <Card className="glass-card">
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-4 mb-4">
-              <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                <BarChart3 className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-white">Staff Insights</h3>
-                <p className="text-sm text-gray-400">Monitor staff performance and reputation</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowReputationInfo(true)}
-                className="border-gray-500/50 text-gray-400 hover:bg-gray-100 hover:text-gray-900"
-              >
-                <Info className="h-4 w-4 mr-2" />
-                How to use
-              </Button>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Status:</span>
-                <span className={`${serverConfig.support?.reputation_enabled ? "text-green-400" : "text-gray-400"}`}>
-                  {serverConfig.support?.reputation_enabled ? "Enabled" : "Disabled"}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Active Staff:</span>
-                <span className="text-white">{serverConfig.support?.staff?.length || 0}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Moderation Level Selector - Smaller buttons */}
-        <Card className="glass-card">
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-              <div>
-                <CardTitle className="text-white flex items-center text-xl">
-                  <Shield className="h-6 w-6 mr-3" />
-                  Moderation Level
-                </CardTitle>
-                <CardDescription className="text-gray-400">Choose your server's security level</CardDescription>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowInfoModal(true)}
-                className="border-gray-500/50 text-gray-400 hover:bg-gray-100 hover:text-gray-900 w-full sm:w-auto"
-              >
-                <Info className="h-4 w-4 mr-2" />
-                How we trained our bot
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {/* Smaller buttons side by side */}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant={serverConfig.moderation_level === "off" ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleModerationLevelChange("off")}
-                className={`${
-                  serverConfig.moderation_level === "off"
-                    ? "bg-white text-black"
-                    : "border-white/20 text-white hover:bg-gray-100 hover:text-gray-900"
-                }`}
-              >
-                <Shield className="h-3 w-3 mr-1" />
-                Off
-              </Button>
-
-              <Button
-                variant={serverConfig.moderation_level === "on" ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleModerationLevelChange("on")}
-                className={`${
-                  serverConfig.moderation_level === "on"
-                    ? "bg-white text-black"
-                    : "border-white/20 text-white hover:bg-gray-100 hover:text-gray-900"
-                }`}
-              >
-                <Shield className="h-3 w-3 mr-1" />
-                On
-              </Button>
-
-              <Button
-                variant={serverConfig.moderation_level === "lockdown" ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleModerationLevelChange("lockdown")}
-                className={`${
-                  serverConfig.moderation_level === "lockdown"
-                    ? "bg-white text-black"
-                    : "border-white/20 text-white hover:bg-gray-100 hover:text-gray-900"
-                }`}
-              >
-                <AlertTriangle className="h-3 w-3 mr-1" />
-                Lockdown
-              </Button>
-            </div>
-
-            {serverConfig.moderation_level === "lockdown" && (
-              <Alert className="mt-4 border-gray-500/30 bg-gray-500/10">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription className="text-gray-400">
-                  Lockdown mode enables all security features. Your server will have maximum protection but some
-                  legitimate activities may be restricted.
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  // Support Tab
-  const renderSupportTab = () => {
-    return <div className="space-y-6">{renderSupportContent()}</div>
-  }
-
-  // Functions Tab (formerly Events)
-  const renderFunctionsTab = () => {
-    return (
-      <div className="space-y-6">
-        <Card
-          className="glass-card cursor-pointer hover:bg-white/5 transition-colors border-2 border-dashed border-white/20"
-          onClick={() => setActiveTab("integrations")}
-        >
-          <CardContent className="p-6 text-center">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="w-16 h-16 rounded-lg bg-gray-500/20 flex items-center justify-center">
-                <Plus className="h-8 w-8 text-gray-400" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-white">Add a new function</h3>
-                <p className="text-sm text-gray-400">Click to browse available plugins and functions</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {renderEventContent()}
-      </div>
-    )
-  }
-
-  // Settings Tab
-  const renderSettingsTab = () => {
-    return (
-      <div className="space-y-6">
-        <Card className="glass-card">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center text-xl">
-              <Bot className="h-6 w-6 mr-3" />
-              Bot Settings
-            </CardTitle>
-            <CardDescription className="text-gray-400">Configure your custom bot settings</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="bot-name" className="text-white">
-                Bot Name
-              </Label>
-              <Input
-                id="bot-name"
-                placeholder="Enter bot name"
-                value={customBotName}
-                onChange={(e) => setCustomBotName(e.target.value)}
-                className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="bot-token" className="text-white">
-                Bot Token
-              </Label>
-              <Input
-                id="bot-token"
-                placeholder="Enter bot token"
-                value={showToken ? botToken : ""}
-                onChange={(e) => setBotToken(e.target.value)}
-                type={showToken ? "text" : "password"}
-                className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowToken(!showToken)}
-                className="border-gray-500/50 text-gray-400 hover:bg-gray-100 hover:text-gray-900"
-              >
-                {showToken ? "Hide Token" : "Show Token"}
-              </Button>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="bot-profile-picture" className="text-white">
-                Bot Profile Picture URL
-              </Label>
-              <Input
-                id="bot-profile-picture"
-                placeholder="Enter profile picture URL"
-                value={profilePictureUrl}
-                onChange={(e) => setProfilePictureUrl(e.target.value)}
-                className="bg-black/60 border-white/20 text-white placeholder-gray-400"
-              />
-            </div>
-
-            <Button onClick={handleSaveBotSettings} className="bg-white text-black hover:bg-gray-200">
-              Save Bot Settings
+    switch (activeEventSection) {
+      case "automatic-task":
+        return (
+          <div className="space-y-6">
+            <Button
+              variant="ghost"
+              onClick={() => setActiveEventSection("overview")}
+              className="text-white hover:bg-gray-100 hover:text-gray-900"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2 text-white" /> Back to Overview
             </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center text-xl">
+                  <Clock className="h-6 w-6 text-white mr-3" /> Automatic Tasks
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  Automate actions and schedule tasks for your server.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="auto-tasks" className="text-white">
+                      Enable Automatic Tasks
+                    </Label>
+                    <p className="text-sm text-gray-400">Enable scheduled tasks and automated actions.</p>
+                  </div>
+                  <Switch
+                    id="auto-tasks"
+                    checked={serverConfig.automatic_tasks?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateServerConfig({
+                        automatic_tasks: { ...serverConfig.automatic_tasks, enabled: checked },
+                      })
+                    }
+                  />
+                </div>
+                <Separator className="bg-white/20" />
+                {serverConfig.automatic_tasks?.enabled && (
+                  <div className="space-y-4">
+                    <h4 className="text-white font-medium">Scheduled Tasks</h4>
+                    {serverConfig.automatic_tasks.tasks?.length > 0 ? (
+                      <div className="space-y-2">
+                        {serverConfig.automatic_tasks.tasks.map((task) => (
+                          <div
+                            key={task.id}
+                            className="flex items-center justify-between p-3 rounded-md bg-black/20 border border-white/10"
+                          >
+                            <span className="text-white">{task.name}</span>
+                            <Badge variant="secondary" className="bg-gray-100 text-gray-900">
+                              {task.status}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-400 text-sm">No automatic tasks configured yet.</p>
+                    )}
+                    <Button
+                      variant="outline"
+                      className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                    >
+                      <Plus className="h-4 w-4 mr-2 text-white" /> Add New Task
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )
+      case "giveaway":
+        return (
+          <div className="space-y-6">
+            <Button
+              variant="ghost"
+              onClick={() => setActiveEventSection("overview")}
+              className="text-white hover:bg-gray-100 hover:text-gray-900"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2 text-white" /> Back to Overview
+            </Button>
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center text-xl">
+                  <Gift className="h-6 w-6 text-white mr-3" /> Giveaway System
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  Configure and manage giveaways for your server
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {giveawayStep === 1 && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white">Step 1: Select Giveaway Method</h3>
+                    <p className="text-gray-400">Choose how you want to create the giveaway</p>
+                    <div className="flex space-x-4">
+                      <Button
+                        onClick={() => handleMethodSelect("server")}
+                        className="bg-white text-black hover:bg-gray-100"
+                      >
+                        Create on Server
+                      </Button>
+                      <Button
+                        onClick={() => handleMethodSelect("link")}
+                        className="bg-white text-black hover:bg-gray-100"
+                      >
+                        Create with Link
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
-  // Integrations Tab
-  const renderIntegrationsTab = () => {
-    return (
-      <div className="space-y-6">
-        <PluginsTab />
-      </div>
-    )
-  }
+                {giveawayStep === 2 && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white">Step 2: Configure Giveaway</h3>
+                    <p className="text-gray-400">Enter the details for your giveaway</p>
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-white text-sm mb-2 block">Title</Label>
+                        <Input
+                          placeholder="Summer Giveaway"
+                          value={giveawayData.title}
+                          onChange={(e) => setGiveawayData({ ...giveawayData, title: e.target.value })}
+                          className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-white text-sm mb-2 block">Prize</Label>
+                        <Input
+                          placeholder="Gaming PC"
+                          value={giveawayData.prize}
+                          onChange={(e) => setGiveawayData({ ...giveawayData, prize: e.target.value })}
+                          className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-white text-sm mb-2 block">Description</Label>
+                        <Textarea
+                          placeholder="Enter the description for the giveaway"
+                          value={giveawayData.description}
+                          onChange={(e) => setGiveawayData({ ...giveawayData, description: e.target.value })}
+                          className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[80px]"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-white text-sm mb-2 block">End Date</Label>
+                        <Input
+                          type="datetime-local"
+                          value={giveawayData.endDate}
+                          onChange={(e) => setGiveawayData({ ...giveawayData, endDate: e.target.value })}
+                          className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-white text-sm mb-2 block">Number of Winners</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={giveawayData.winners}
+                          onChange={(e) =>
+                            setGiveawayData({ ...giveawayData, winners: Number.parseInt(e.target.value) })
+                          }
+                          className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                        />
+                      </div>
+                      {giveawayData.method === "server" && (
+                        <div>
+                          <Label className="text-white text-sm mb-2 block">Channel</Label>
+                          <Select
+                            value={giveawayData.channel}
+                            onValueChange={(value) => setGiveawayData({ ...giveawayData, channel: value })}
+                          >
+                            <SelectTrigger className="bg-black/60 border-white/20 h-8">
+                              <SelectValue placeholder="Select a channel" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {serverConfig.channels &&
+                                Object.entries(serverConfig.channels).map(([channelId, channelName]) => (
+                                  <SelectItem key={channelId} value={channelId}>
+                                    {channelName}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      {giveawayData.method === "link" && (
+                        <div>
+                          <Label className="text-white text-sm mb-2 block">Custom URL (Optional)</Label>
+                          <Input
+                            placeholder="custom-giveaway-url"
+                            value={giveawayData.customUrl}
+                            onChange={(e) => setGiveawayData({ ...giveawayData, customUrl: e.target.value })}
+                            className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex justify-between">
+                      <Button
+                        variant="outline"
+                        onClick={handlePrevStep}
+                        className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                      >
+                        <ArrowLeft className="h-4 w-4 mr-2 text-white" />
+                        Previous
+                      </Button>
+                      <Button onClick={handleNextStep} className="bg-white text-black hover:bg-gray-100">
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
-  // Main Content Renderer
-  const renderContent = () => {
-    switch (activeTab) {
-      case "home":
-        return <div>Home Content</div>
-      case "sentinel":
-        return renderSentinelTab()
-      case "support":
-        return renderSupportTab()
-      case "events":
-        return renderFunctionsTab()
-      case "integrations":
-        return renderIntegrationsTab()
-      case "settings":
-        return renderSettingsTab()
+                {giveawayStep === 3 && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white">Step 3: Set Requirements</h3>
+                    <p className="text-gray-400">Set the requirements for users to enter the giveaway</p>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-white text-sm">Require Server Membership</Label>
+                          <p className="text-xs text-gray-400">Users must be a member of the server</p>
+                        </div>
+                        <Switch
+                          checked={giveawayData.requireMembership}
+                          onCheckedChange={(checked) =>
+                            setGiveawayData({ ...giveawayData, requireMembership: checked })
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-white text-sm">Require Specific Role</Label>
+                          <p className="text-xs text-gray-400">Users must have a specific role</p>
+                        </div>
+                        <Switch
+                          checked={giveawayData.requireRole}
+                          onCheckedChange={(checked) => setGiveawayData({ ...giveawayData, requireRole: checked })}
+                        />
+                      </div>
+                      {giveawayData.requireRole && (
+                        <div>
+                          <Label className="text-white text-sm mb-2 block">Select Role</Label>
+                          <Select
+                            value={giveawayData.selectedRole}
+                            onValueChange={(value) => setGiveawayData({ ...giveawayData, selectedRole: value })}
+                          >
+                            <SelectTrigger className="bg-black/60 border-white/20 h-8">
+                              <SelectValue placeholder="Select a role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {serverConfig.roles_and_names &&
+                                Object.entries(serverConfig.roles_and_names).map(([roleId, roleName]) => (
+                                  <SelectItem key={roleId} value={roleId}>
+                                    {roleName}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-white text-sm">Require Account Age</Label>
+                          <p className="text-xs text-gray-400">Users must have an account older than a certain age</p>
+                        </div>
+                        <Switch
+                          checked={giveawayData.requireAccountAge}
+                          onCheckedChange={(checked) =>
+                            setGiveawayData({ ...giveawayData, requireAccountAge: checked })
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-white text-sm">Require Login</Label>
+                          <p className="text-xs text-gray-400">Users must login to enter</p>
+                        </div>
+                        <Switch
+                          checked={giveawayData.requireLogin}
+                          onCheckedChange={(checked) => setGiveawayData({ ...giveawayData, requireLogin: checked })}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-between">
+                      <Button
+                        variant="outline"
+                        onClick={handlePrevStep}
+                        className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                      >
+                        <ArrowLeft className="h-4 w-4 mr-2 text-white" />
+                        Previous
+                      </Button>
+                      <Button onClick={handleCreateGiveaway} className="bg-white text-black hover:bg-gray-100">
+                        Create Giveaway
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {giveawayCreated && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-white">Giveaway Created!</h3>
+                    {giveawayData.method === "link" && (
+                      <div className="space-y-2">
+                        <p className="text-gray-400">Share this link with your community:</p>
+                        <div className="flex items-center justify-between bg-black/60 border-white/20 rounded-md p-2">
+                          <Input readOnly value={generatedLink} className="bg-transparent border-none text-white" />
+                          <Button onClick={copyLink} className="bg-white text-black hover:bg-gray-100">
+                            {linkCopied ? (
+                              <Check className="h-4 w-4 text-white" />
+                            ) : (
+                              <Copy className="h-4 w-4 text-white" />
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    <Button onClick={resetGiveaway} className="bg-gray-100 text-gray-900 hover:bg-gray-200">
+                      Create Another Giveaway
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )
+      case "logger":
+        return (
+          <div className="space-y-6">
+            <Button
+              variant="ghost"
+              onClick={() => setActiveEventSection("overview")}
+              className="text-white hover:bg-gray-100 hover:text-gray-900"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2 text-white" /> Back to Overview
+            </Button>
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center text-xl">
+                  <FileText className="h-6 w-6 text-white mr-3" /> Logger
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  Configure logging for server events and actions.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="logger-enabled" className="text-white">
+                      Enable Logger
+                    </Label>
+                    <p className="text-sm text-gray-400">Log various server events to a designated channel.</p>
+                  </div>
+                  <Switch
+                    id="logger-enabled"
+                    checked={serverConfig.logs?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateServerConfig({
+                        logs: { ...serverConfig.logs, enabled: checked },
+                      })
+                    }
+                  />
+                </div>
+                <Separator className="bg-white/20" />
+                {serverConfig.logs?.enabled && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-white text-sm mb-2 block">Log Channel</Label>
+                      <Select
+                        value={serverConfig.logs?.channel_id || ""}
+                        onValueChange={(value) =>
+                          updateServerConfig({
+                            logs: { ...serverConfig.logs, channel_id: value },
+                          })
+                        }
+                      >
+                        <SelectTrigger className="bg-black/60 border-white/20 h-8">
+                          <SelectValue placeholder="Select a channel" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {serverConfig.channels &&
+                            Object.entries(serverConfig.channels).map(([channelId, channelName]) => (
+                              <SelectItem key={channelId} value={channelId}>
+                                {channelName}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-white font-medium">Events to Log</h4>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="log-message-edits" className="text-white text-sm">
+                          Message Edits
+                        </Label>
+                        <Switch
+                          id="log-message-edits"
+                          checked={serverConfig.logs?.message_edits || false}
+                          onCheckedChange={(checked) =>
+                            updateServerConfig({
+                              logs: { ...serverConfig.logs, message_edits: checked },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="log-mod-actions" className="text-white text-sm">
+                          Moderation Actions
+                        </Label>
+                        <Switch
+                          id="log-mod-actions"
+                          checked={serverConfig.logs?.mod_actions || false}
+                          onCheckedChange={(checked) =>
+                            updateServerConfig({
+                              logs: { ...serverConfig.logs, mod_actions: checked },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="log-member-joins" className="text-white text-sm">
+                          Member Joins
+                        </Label>
+                        <Switch
+                          id="log-member-joins"
+                          checked={serverConfig.logs?.member_joins || false}
+                          onCheckedChange={(checked) =>
+                            updateServerConfig({
+                              logs: { ...serverConfig.logs, member_joins: checked },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="log-member-leaves" className="text-white text-sm">
+                          Member Leaves
+                        </Label>
+                        <Switch
+                          id="log-member-leaves"
+                          checked={serverConfig.logs?.member_leaves || false}
+                          onCheckedChange={(checked) =>
+                            updateServerConfig({
+                              logs: { ...serverConfig.logs, member_leaves: checked },
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )
+      case "invite-track":
+        return (
+          <div className="space-y-6">
+            <Button
+              variant="ghost"
+              onClick={() => setActiveEventSection("overview")}
+              className="text-white hover:bg-gray-100 hover:text-gray-900"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2 text-white" /> Back to Overview
+            </Button>
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center text-xl">
+                  <LinkIcon className="h-6 w-6 text-white mr-3" /> Invite Tracker
+                </CardTitle>
+                <CardDescription className="text-gray-400">Track invites and monitor server growth.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="invite-track-enabled" className="text-white">
+                      Enable Invite Tracker
+                    </Label>
+                    <p className="text-sm text-gray-400">Track which invites members use to join your server.</p>
+                  </div>
+                  <Switch
+                    id="invite-track-enabled"
+                    checked={serverConfig.invite_tracking?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateServerConfig({
+                        invite_tracking: { ...serverConfig.invite_tracking, enabled: checked },
+                      })
+                    }
+                  />
+                </div>
+                <Separator className="bg-white/20" />
+                {serverConfig.invite_tracking?.enabled && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-white text-sm mb-2 block">Invite Log Channel</Label>
+                      <Select
+                        value={serverConfig.invite_tracking?.channel_id || ""}
+                        onValueChange={(value) =>
+                          updateServerConfig({
+                            invite_tracking: { ...serverConfig.invite_tracking, channel_id: value },
+                          })
+                        }
+                      >
+                        <SelectTrigger className="bg-black/60 border-white/20 h-8">
+                          <SelectValue placeholder="Select a channel" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {serverConfig.channels &&
+                            Object.entries(serverConfig.channels).map(([channelId, channelName]) => (
+                              <SelectItem key={channelId} value={channelId}>
+                                {channelName}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-white font-medium">Events to Track</h4>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="track-joins" className="text-white text-sm">
+                          Track Joins
+                        </Label>
+                        <Switch
+                          id="track-joins"
+                          checked={serverConfig.invite_tracking?.track_joins || false}
+                          onCheckedChange={(checked) =>
+                            updateServerConfig({
+                              invite_tracking: { ...serverConfig.invite_tracking, track_joins: checked },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="track-leaves" className="text-white text-sm">
+                          Track Leaves
+                        </Label>
+                        <Switch
+                          id="track-leaves"
+                          checked={serverConfig.invite_tracking?.track_leaves || false}
+                          onCheckedChange={(checked) =>
+                            updateServerConfig({
+                              invite_tracking: { ...serverConfig.invite_tracking, track_leaves: checked },
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )
       default:
-        return <div>Default Content</div>
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Automatic Task Card */}
+              <Card
+                className="glass-card cursor-pointer hover:bg-white/5 transition-colors"
+                onClick={() => setActiveEventSection("automatic-task")}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
+                      <Clock className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Automatic Tasks</h3>
+                      <p className="text-sm text-gray-400">Automate actions and schedule tasks</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Status:</span>
+                      <span className={`${serverConfig.automatic_tasks?.enabled ? "text-green-400" : "text-gray-400"}`}>
+                        {serverConfig.automatic_tasks?.enabled ? "Enabled" : "Disabled"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Active Tasks:</span>
+                      <span className="text-white">{serverConfig.automatic_tasks?.tasks?.length || 0}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Giveaway Card */}
+              <Card
+                className="glass-card cursor-pointer hover:bg-white/5 transition-colors"
+                onClick={() => setActiveEventSection("giveaway")}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
+                      <Gift className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Giveaway System</h3>
+                      <p className="text-sm text-gray-400">Configure and manage giveaways</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Status:</span>
+                      <span className={`${serverConfig.giveaway?.enabled ? "text-green-400" : "text-gray-400"}`}>
+                        {serverConfig.giveaway?.enabled ? "Enabled" : "Disabled"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Ongoing Giveaways:</span>
+                      <span className="text-white">3</span> {/* Placeholder */}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Logger Card */}
+              <Card
+                className="glass-card cursor-pointer hover:bg-white/5 transition-colors"
+                onClick={() => setActiveEventSection("logger")}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
+                      <FileText className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Logger</h3>
+                      <p className="text-sm text-gray-400">Log server events and actions</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Status:</span>
+                      <span className={`${serverConfig.logs?.enabled ? "text-green-400" : "text-gray-400"}`}>
+                        {serverConfig.logs?.enabled ? "Enabled" : "Disabled"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Log Entries Today:</span>
+                      <span className="text-white">124</span> {/* Placeholder */}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Invite Tracker Card */}
+              <Card
+                className="glass-card cursor-pointer hover:bg-white/5 transition-colors"
+                onClick={() => setActiveEventSection("invite-track")}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
+                      <LinkIcon className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">Invite Tracker</h3>
+                      <p className="text-sm text-gray-400">Track invites and monitor server growth</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Status:</span>
+                      <span className={`${serverConfig.invite_tracking?.enabled ? "text-green-400" : "text-gray-400"}`}>
+                        {serverConfig.invite_tracking?.enabled ? "Enabled" : "Disabled"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-400">Active Invites:</span>
+                      <span className="text-white">7</span> {/* Placeholder */}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )
     }
   }
 
+  if (status === "loading" || loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-400 mx-auto mb-4"></div>
+          <p className="text-white">Loading server configuration...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!session) {
+    return <div>Not logged in</div>
+  }
+
+  if (!serverId) {
+    return <div>No server ID</div>
+  }
+
   return (
-    <div className="bg-black min-h-screen">
-      <div className="container mx-auto px-4 py-8">
-        {renderTabs()}
-        {renderContent()}
+    <div className="min-h-screen bg-black text-white">
+      <div className="container mx-auto py-6">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-semibold">Server Configuration: {serverConfig?.server_name || "Loading..."}</h1>
+          <div className="flex items-center space-x-4">
+            <Button variant="outline" onClick={downloadUserData}>
+              Download User Data
+            </Button>
+            <Button variant="primary" onClick={saveConfig} disabled={saving}>
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        </div>
 
-        <Dialog open={showReputationInfo} onOpenChange={setShowReputationInfo}>
-          <DialogContent className="glass-card border-white/20 max-w-4xl">
-            <DialogHeader>
-              <DialogTitle className="text-white text-xl">How Staff Insights & Reputation Works</DialogTitle>
-              <DialogDescription className="text-gray-400">
-                Understanding our staff monitoring and reputation system
-              </DialogDescription>
-            </DialogHeader>
+        {/* Announcement Section */}
+        {appSettings?.maintenanceMode?.enabled && (
+          <Alert variant="destructive">
+            <AlertDescription>
+              The app is currently in maintenance mode. Estimated time:{" "}
+              {appSettings.maintenanceMode.estimatedTime || "Unknown"}
+            </AlertDescription>
+          </Alert>
+        )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-              <Card className="glass-card">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                      <BarChart3 className="h-5 w-5 text-blue-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-white">Performance Tracking</h3>
-                  </div>
-                  <p className="text-sm text-gray-400">
-                    Monitor response times, ticket resolution rates, and overall staff activity to identify top
-                    performers and areas for improvement.
-                  </p>
-                </CardContent>
-              </Card>
+        {announcements
+          .filter((announcement) => !dismissedAnnouncements.includes(announcement._id))
+          .map((announcement) => (
+            <Alert key={announcement._id} className="mb-4">
+              <AlertDescription>
+                {announcement.message}
+                <Button variant="link" onClick={() => handleDismissAnnouncement(announcement._id)} className="ml-2">
+                  Dismiss
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ))}
 
-              <Card className="glass-card">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
-                      <Users className="h-5 w-5 text-green-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-white">Reputation System</h3>
-                  </div>
-                  <p className="text-sm text-gray-400">
-                    Staff members earn reputation points based on positive user feedback, quick response times, and
-                    successful ticket resolutions.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="glass-card">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                      <Crown className="h-5 w-5 text-purple-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-white">Automated Rewards</h3>
-                  </div>
-                  <p className="text-sm text-gray-400">
-                    High-performing staff automatically receive recognition, special roles, and can unlock additional
-                    permissions based on their reputation score.
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            <DialogFooter className="mt-6">
-              <Button onClick={() => setShowReputationInfo(false)} className="bg-white text-black hover:bg-gray-200">
-                Got it!
+        {/* Tabs */}
+        <div className="border-b border-gray-700 mb-6">
+          <nav className="flex space-x-4">
+            <Button
+              variant={activeTab === "home" ? "secondary" : "ghost"}
+              onClick={() => setActiveTab("home")}
+              className="text-white hover:bg-gray-100 hover:text-gray-900"
+            >
+              Home
+            </Button>
+            <Button
+              variant={activeTab === "moderation" ? "secondary" : "ghost"}
+              onClick={() => setActiveTab("moderation")}
+              className="text-white hover:bg-gray-100 hover:text-gray-900"
+            >
+              Moderation
+            </Button>
+            <Button
+              variant={activeTab === "support" ? "secondary" : "ghost"}
+              onClick={() => setActiveTab("support")}
+              className="text-white hover:bg-gray-100 hover:text-gray-900"
+            >
+              Support
+            </Button>
+            <Button
+              variant={activeTab === "events" ? "secondary" : "ghost"}
+              onClick={() => setActiveTab("events")}
+              className="text-white hover:bg-gray-100 hover:text-gray-900"
+            >
+              Events
+            </Button>
+            <Button
+              variant={activeTab === "settings" ? "secondary" : "ghost"}
+              onClick={() => setActiveTab("settings")}
+              className="text-white hover:bg-gray-100 hover:text-gray-900"
+            >
+              Settings
+            </Button>
+            {session.user?.email === "admin@admin.com" && (
+              <Button
+                variant={activeTab === "admin" ? "secondary" : "ghost"}
+                onClick={() => setActiveTab("admin")}
+                className="text-white hover:bg-gray-100 hover:text-gray-900"
+              >
+                Admin
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            )}
+          </nav>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === "home" && (
+          <div className="space-y-6">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Home className="h-5 w-5" />
+                  Server Overview
+                </CardTitle>
+                <CardDescription className="text-gray-400">View key server statistics and information</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Card className="glass-card">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-400">Total Members</p>
+                          <p className="text-2xl font-bold text-white">
+                            {serverConfig?.server_stats?.total_members || "Loading..."}
+                          </p>
+                        </div>
+                        <Users className="h-8 w-8 text-gray-400" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="glass-card">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-400">Total Bots</p>
+                          <p className="text-2xl font-bold text-white">
+                            {serverConfig?.server_stats?.total_bots || "Loading..."}
+                          </p>
+                        </div>
+                        <Bot className="h-8 w-8 text-gray-400" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="glass-card">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-400">Total Admins</p>
+                          <p className="text-2xl font-bold text-white">
+                            {serverConfig?.server_stats?.total_admins || "Loading..."}
+                          </p>
+                        </div>
+                        <Shield className="h-8 w-8 text-gray-400" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Settings className="h-5 w-5" />
+                  Quick Actions
+                </CardTitle>
+                <CardDescription className="text-gray-400">Quickly manage key server settings</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="moderation-level" className="text-white">
+                      Moderation Level
+                    </Label>
+                    <p className="text-sm text-gray-400">Set the overall moderation level for the server</p>
+                  </div>
+                  <Select
+                    value={serverConfig?.moderation_level || "off"}
+                    onValueChange={(value) => handleModerationLevelChange(value as "off" | "on" | "lockdown")}
+                  >
+                    <SelectTrigger className="bg-black/60 border-white/20 h-8">
+                      <SelectValue placeholder="Select Level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="off">Off</SelectItem>
+                      <SelectItem value="on">On</SelectItem>
+                      <SelectItem value="lockdown">Lockdown</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Separator className="bg-white/20" />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="welcome-message" className="text-white">
+                      Welcome Message
+                    </Label>
+                    <p className="text-sm text-gray-400">Enable or disable the welcome message</p>
+                  </div>
+                  <Switch
+                    id="welcome-message"
+                    checked={serverConfig?.welcome?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateServerConfig({
+                        welcome: { ...serverConfig.welcome, enabled: checked },
+                      })
+                    }
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === "moderation" && (
+          <div className="space-y-6">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Shield className="h-5 w-5" />
+                  Moderation Settings
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  Configure various moderation settings for your server
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Link Filter */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="link-filter" className="text-white">
+                      Link Filter
+                    </Label>
+                    <p className="text-sm text-gray-400">Automatically filter and block suspicious links</p>
+                  </div>
+                  <Switch
+                    id="link-filter"
+                    checked={serverConfig?.moderation?.link_filter?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateServerConfig({
+                        moderation: {
+                          ...serverConfig.moderation,
+                          link_filter: { ...serverConfig.moderation.link_filter, enabled: checked },
+                        },
+                      })
+                    }
+                  />
+                </div>
+                {serverConfig?.moderation?.link_filter?.enabled && (
+                  <div className="ml-6 mt-2">
+                    <Select
+                      value={serverConfig?.moderation?.link_filter?.config || "all_links"}
+                      onValueChange={(value) =>
+                        updateServerConfig({
+                          moderation: {
+                            ...serverConfig.moderation,
+                            link_filter: {
+                              ...serverConfig.moderation.link_filter,
+                              config: value as "all_links" | "whitelist_only" | "phishing_only",
+                            },
+                          },
+                        })
+                      }
+                    >
+                      <SelectTrigger className="bg-black/60 border-white/20 h-8">
+                        <SelectValue placeholder="Select Filter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all_links">All Links</SelectItem>
+                        <SelectItem value="whitelist_only">Whitelist Only</SelectItem>
+                        <SelectItem value="phishing_only">Phishing Only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <Separator className="bg-white/20" />
+
+                {/* Bad Word Filter */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="bad-word-filter" className="text-white">
+                      Bad Word Filter
+                    </Label>
+                    <p className="text-sm text-gray-400">Automatically filter and block inappropriate words</p>
+                  </div>
+                  <Switch
+                    id="bad-word-filter"
+                    checked={serverConfig?.moderation?.bad_word_filter?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateServerConfig({
+                        moderation: {
+                          ...serverConfig.moderation,
+                          bad_word_filter: { ...serverConfig.moderation.bad_word_filter, enabled: checked },
+                        },
+                      })
+                    }
+                  />
+                </div>
+
+                <Separator className="bg-white/20" />
+
+                {/* Raid Protection */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="raid-protection" className="text-white">
+                      Raid Protection
+                    </Label>
+                    <p className="text-sm text-gray-400">Automatically protect the server from raids</p>
+                  </div>
+                  <Switch
+                    id="raid-protection"
+                    checked={serverConfig?.moderation?.raid_protection?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateServerConfig({
+                        moderation: {
+                          ...serverConfig.moderation,
+                          raid_protection: { ...serverConfig.moderation.raid_protection, enabled: checked },
+                        },
+                      })
+                    }
+                  />
+                </div>
+
+                <Separator className="bg-white/20" />
+
+                {/* Suspicious Accounts */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="suspicious-accounts" className="text-white">
+                      Suspicious Accounts
+                    </Label>
+                    <p className="text-sm text-gray-400">Filter accounts based on age</p>
+                  </div>
+                  <Switch
+                    id="suspicious-accounts"
+                    checked={serverConfig?.moderation?.suspicious_accounts?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateServerConfig({
+                        moderation: {
+                          ...serverConfig.moderation,
+                          suspicious_accounts: { ...serverConfig.moderation.suspicious_accounts, enabled: checked },
+                        },
+                      })
+                    }
+                  />
+                </div>
+
+                <Separator className="bg-white/20" />
+
+                {/* Auto Role */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="auto-role" className="text-white">
+                      Auto Role
+                    </Label>
+                    <p className="text-sm text-gray-400">Automatically assign a role to new members</p>
+                  </div>
+                  <Switch
+                    id="auto-role"
+                    checked={serverConfig?.moderation?.auto_role?.enabled || false}
+                    onCheckedChange={(checked) =>
+                      updateServerConfig({
+                        moderation: {
+                          ...serverConfig.moderation,
+                          auto_role: { ...serverConfig.moderation.auto_role, enabled: checked },
+                        },
+                      })
+                    }
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === "support" && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-semibold">Support Configuration</h2>
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant={supportView === "overview" ? "secondary" : "ghost"}
+                  onClick={() => setSupportView("overview")}
+                  className="text-white hover:bg-gray-100 hover:text-gray-900"
+                >
+                  Overview
+                </Button>
+                <Button
+                  variant={supportView === "staff-insights" ? "secondary" : "ghost"}
+                  onClick={() => setSupportView("staff-insights")}
+                  className="text-white hover:bg-gray-100 hover:text-gray-900"
+                >
+                  Staff Insights
+                </Button>
+                <Button
+                  variant={supportView === "tickets" ? "secondary" : "ghost"}
+                  onClick={() => setSupportView("tickets")}
+                  className="text-white hover:bg-gray-100 hover:text-gray-900"
+                >
+                  Tickets
+                </Button>
+              </div>
+            </div>
+            {renderSupportContent()}
+          </div>
+        )}
+
+        {activeTab === "events" && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-semibold">Event Configuration</h2>
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant={activeEventSection === "overview" ? "secondary" : "ghost"}
+                  onClick={() => setActiveEventSection("overview")}
+                  className="text-white hover:bg-gray-100 hover:text-gray-900"
+                >
+                  Overview
+                </Button>
+                <Button
+                  variant={activeEventSection === "automatic-task" ? "secondary" : "ghost"}
+                  onClick={() => setActiveEventSection("automatic-task")}
+                  className="text-white hover:bg-gray-100 hover:text-gray-900"
+                >
+                  Automatic Tasks
+                </Button>
+                <Button
+                  variant={activeEventSection === "giveaway" ? "secondary" : "ghost"}
+                  onClick={() => setActiveEventSection("giveaway")}
+                  className="text-white hover:bg-gray-100 hover:text-gray-900"
+                >
+                  Giveaway
+                </Button>
+                <Button
+                  variant={activeEventSection === "logger" ? "secondary" : "ghost"}
+                  onClick={() => setActiveEventSection("logger")}
+                  className="text-white hover:bg-gray-100 hover:text-gray-900"
+                >
+                  Logger
+                </Button>
+                <Button
+                  variant={activeEventSection === "invite-track" ? "secondary" : "ghost"}
+                  onClick={() => setActiveEventSection("invite-track")}
+                  className="text-white hover:bg-gray-100 hover:text-gray-900"
+                >
+                  Invite Track
+                </Button>
+              </div>
+            </div>
+            {renderEventContent()}
+          </div>
+        )}
+
+        {activeTab === "settings" && (
+          <div className="space-y-6">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Settings className="h-5 w-5" />
+                  Bot Settings
+                </CardTitle>
+                <CardDescription className="text-gray-400">Customize your bot's profile and settings</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="profile-picture" className="text-white">
+                    Profile Picture URL
+                  </Label>
+                  <Input
+                    id="profile-picture"
+                    placeholder="Enter URL"
+                    value={profilePictureUrl}
+                    onChange={(e) => setProfilePictureUrl(e.target.value)}
+                    className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="custom-bot-name" className="text-white">
+                    Custom Bot Name
+                  </Label>
+                  <Input
+                    id="custom-bot-name"
+                    placeholder="Enter bot name"
+                    value={customBotName}
+                    onChange={(e) => setCustomBotName(e.target.value)}
+                    className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bot-token" className="text-white">
+                    Bot Token
+                  </Label>
+                  <div className="flex items-center">
+                    <Input
+                      id="bot-token"
+                      type={showToken ? "text" : "password"}
+                      placeholder="Enter bot token"
+                      value={botToken}
+                      onChange={(e) => setBotToken(e.target.value)}
+                      className="bg-black/60 border-white/20 text-white placeholder-gray-400 mr-2"
+                    />
+                    <Button variant="outline" size="sm" onClick={() => setShowToken(!showToken)}>
+                      {showToken ? "Hide" : "Show"}
+                    </Button>
+                  </div>
+                </div>
+                <Button onClick={handleSaveBotSettings}>Save Bot Settings</Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {activeTab === "admin" && session.user?.email === "admin@admin.com" && (
+          <div className="space-y-6">
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Lock className="h-5 w-5" />
+                  Admin Settings
+                </CardTitle>
+                <CardDescription className="text-gray-400">Manage application-wide settings</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="maintenance-mode" className="text-white">
+                      Maintenance Mode
+                    </Label>
+                    <p className="text-sm text-gray-400">
+                      Enable or disable maintenance mode for the entire application
+                    </p>
+                  </div>
+                  <Switch
+                    id="maintenance-mode"
+                    checked={appSettings?.maintenanceMode?.enabled || false}
+                    onCheckedChange={handleMaintenanceToggle}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="glass-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-white">
+                  <Megaphone className="h-5 w-5" />
+                  Announcements
+                </CardTitle>
+                <CardDescription className="text-gray-400">Send announcements to all users</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Textarea
+                  placeholder="Enter announcement message"
+                  value={newAnnouncement}
+                  onChange={(e) => setNewAnnouncement(e.target.value)}
+                  className="bg-black/60 border-white/20 text-white placeholder-gray-400"
+                />
+                <Button onClick={handleSendAnnouncement}>Send Announcement</Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Modals */}
+        {showInfoModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+            <Card className="glass-card w-96">
+              <CardHeader>
+                <CardTitle className="text-white">Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-white">This is a sample information modal.</p>
+                <Button onClick={() => setShowInfoModal(false)}>Close</Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {showReputationInfo && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+            <Card className="glass-card w-96">
+              <CardHeader>
+                <CardTitle className="text-white">Reputation System Info</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-white">Information about the reputation system.</p>
+                <Button onClick={() => setShowReputationInfo(false)}>Close</Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {showEmbedSettings && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+            <Card className="glass-card w-96">
+              <CardHeader>
+                <CardTitle className="text-white">Ticket Embed Settings</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-white">Settings for the ticket embed.</p>
+                <Button onClick={() => setShowEmbedSettings(false)}>Close</Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {showTicketSettings && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+            <Card className="glass-card w-96">
+              <CardHeader>
+                <CardTitle className="text-white">Ticket Settings</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-white">Settings for the ticket system.</p>
+                <Button onClick={() => setShowTicketSettings(false)}>Close</Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {showLockdownWarning && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+            <Card className="glass-card w-96">
+              <CardHeader>
+                <CardTitle className="text-white">Lockdown Warning</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-white">
+                  Lockdown mode will enable all security features and may disrupt normal server activity. Are you sure
+                  you want to proceed?
+                </p>
+                <div className="flex justify-end space-x-2">
+                  <Button variant="ghost" onClick={() => setShowLockdownWarning(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={confirmLockdown}>Confirm Lockdown</Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {showFlagStaffWarning && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+            <Card className="glass-card w-96">
+              <CardHeader>
+                <CardTitle className="text-white">Flag Staff Member</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-white">
+                  Are you sure you want to flag this staff member? This will reduce their reputation score.
+                </p>
+                <div className="flex justify-end space-x-2">
+                  <Button variant="ghost" onClick={() => setShowFlagStaffWarning(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={confirmFlagStaff}>Confirm Flag</Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   )
