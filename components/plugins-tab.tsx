@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -32,9 +32,20 @@ import {
   ArrowLeft,
   Power,
   Code,
+  Send,
+  Copy,
+  User,
 } from "lucide-react"
 import Image from "next/image"
 import type { Plugin, UserPlugin } from "@/lib/types"
+
+interface ChatMessage {
+  id: string
+  role: "user" | "ai"
+  content: string
+  code?: string
+  timestamp: Date
+}
 
 export default function PluginsTab() {
   const { data: session } = useSession()
@@ -68,6 +79,11 @@ export default function PluginsTab() {
   const [editPluginIconUrl, setEditPluginIconUrl] = useState("")
   const [editPluginThumbnailUrl, setEditPluginThumbnailUrl] = useState("")
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [currentInput, setCurrentInput] = useState("")
+  const [selectedMessageForEdit, setSelectedMessageForEdit] = useState<string | null>(null)
+  const chatEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchPlugins()
@@ -129,6 +145,100 @@ export default function PluginsTab() {
       console.error("Error creating plugin:", error)
     }
   }
+
+  const handleSendMessage = async () => {
+    if (!currentInput.trim()) return
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: "user",
+      content: currentInput,
+      timestamp: new Date(),
+    }
+
+    setChatMessages((prev) => [...prev, userMessage])
+    setCurrentInput("")
+    setIsGenerating(true)
+
+    try {
+      // Build context from previous messages
+      const context = chatMessages.map((msg) => ({
+        role: msg.role === "user" ? "user" : "assistant",
+        content: msg.code ? `${msg.content}\n\nCode:\n${msg.code}` : msg.content,
+      }))
+
+      const response = await fetch("/api/ai/generate-plugin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: currentInput,
+          context: context,
+          isModification: selectedMessageForEdit !== null,
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const aiMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: "ai",
+          content: data.explanation || "Here's your generated plugin code:",
+          code: data.code,
+          timestamp: new Date(),
+        }
+
+        setChatMessages((prev) => [...prev, aiMessage])
+        setGeneratedCode(data.code)
+
+        // Auto-generate plugin name if it's the first generation
+        if (chatMessages.length === 0) {
+          const words = currentInput.split(" ").slice(0, 3).join(" ")
+          setPluginName(words.charAt(0).toUpperCase() + words.slice(1) + " Plugin")
+          setPluginDescription(currentInput.length > 100 ? currentInput.substring(0, 100) + "..." : currentInput)
+        }
+      } else {
+        const errorData = await response.json()
+        const errorMessage: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: "ai",
+          content: `Error: ${errorData.error || "Failed to generate plugin code. Please try again."}`,
+          timestamp: new Date(),
+        }
+        setChatMessages((prev) => [...prev, errorMessage])
+      }
+    } catch (error) {
+      console.error("Error generating plugin:", error)
+      const errorMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: "ai",
+        content: "Error: Failed to connect to AI service. Please try again.",
+        timestamp: new Date(),
+      }
+      setChatMessages((prev) => [...prev, errorMessage])
+    } finally {
+      setIsGenerating(false)
+      setSelectedMessageForEdit(null)
+    }
+  }
+
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code)
+  }
+
+  const handleEditMessage = (messageId: string) => {
+    const message = chatMessages.find((m) => m.id === messageId)
+    if (message && message.code) {
+      setSelectedMessageForEdit(messageId)
+      setCurrentInput(`Modify this code: ${message.content}`)
+      setGeneratedCode(message.code)
+    }
+  }
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [chatMessages])
 
   const handleGeneratePlugin = async () => {
     if (!aiPrompt.trim()) return
@@ -355,7 +465,13 @@ export default function PluginsTab() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setShowAiCreator(false)}
+                  onClick={() => {
+                    setShowAiCreator(false)
+                    setChatMessages([])
+                    setCurrentInput("")
+                    setGeneratedCode("")
+                    setSelectedMessageForEdit(null)
+                  }}
                   className="text-white hover:bg-white/10 mr-4"
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" />
@@ -372,93 +488,220 @@ export default function PluginsTab() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 h-[calc(100vh-300px)]">
-              {/* Chat Panel */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 h-[calc(100vh-280px)]">
               <Card className="glass-card flex flex-col h-full">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-white flex items-center text-lg">
                     <Bot className="h-5 w-5 mr-2" />
-                    Describe Your Plugin
+                    Plugin Assistant
                   </CardTitle>
                   <CardDescription className="text-gray-400">
-                    Tell the AI what functionality you want your Discord bot plugin to have.
+                    Chat with AI to create and modify your Discord bot plugins.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col">
-                  <Textarea
-                    placeholder="Example: Create a moderation plugin that can ban, kick, and mute users with logging to a specific channel. Include slash commands and permission checks..."
-                    value={aiPrompt}
-                    onChange={(e) => setAiPrompt(e.target.value)}
-                    className="bg-black/60 border-white/20 text-white placeholder-gray-400 flex-1 resize-none text-base leading-relaxed"
-                    disabled={isGenerating}
-                  />
-                  <Button
-                    onClick={handleGeneratePlugin}
-                    disabled={isGenerating || !aiPrompt.trim()}
-                    className="w-full bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90 py-4 mt-4 text-lg"
-                  >
-                    <Image src="/sycord-logo.png" alt="Sycord" width={24} height={24} className="mr-3" />
-                    {isGenerating ? "Generating Plugin..." : "Generate Plugin"}
-                  </Button>
+                  {/* Chat Messages */}
+                  <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2">
+                    {chatMessages.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
+                        <Bot className="h-12 w-12 text-gray-400 opacity-50" />
+                        <div>
+                          <p className="text-gray-400 text-lg mb-2">Ready to create</p>
+                          <p className="text-gray-500 text-sm">Start by describing what you want your plugin to do</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {chatMessages.map((message) => (
+                          <div
+                            key={message.id}
+                            className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                          >
+                            <div
+                              className={`flex gap-3 max-w-[85%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}
+                            >
+                              <div
+                                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                  message.role === "user"
+                                    ? "bg-blue-600"
+                                    : "bg-gradient-to-r from-[#0D2C54] to-[#4A90E2]"
+                                }`}
+                              >
+                                {message.role === "user" ? (
+                                  <User className="h-4 w-4 text-white" />
+                                ) : (
+                                  <Bot className="h-4 w-4 text-white" />
+                                )}
+                              </div>
+                              <div
+                                className={`rounded-lg p-3 ${
+                                  message.role === "user"
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-gray-800 text-gray-100 border border-white/10"
+                                }`}
+                              >
+                                <p className="text-sm leading-relaxed">{message.content}</p>
+                                {message.code && (
+                                  <div className="mt-3 bg-gray-900 rounded-lg overflow-hidden">
+                                    <div className="flex items-center justify-between p-2 bg-gray-800 border-b border-gray-700">
+                                      <span className="text-xs text-gray-400 font-mono">Python</span>
+                                      <div className="flex gap-1">
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleCopyCode(message.code!)}
+                                          className="h-6 w-6 p-0 text-gray-400 hover:text-white hover:bg-gray-700"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleEditMessage(message.id)}
+                                          className="h-6 w-6 p-0 text-gray-400 hover:text-white hover:bg-gray-700"
+                                        >
+                                          <Edit className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                    <pre className="p-3 text-xs text-gray-300 overflow-x-auto">
+                                      <code>{message.code}</code>
+                                    </pre>
+                                  </div>
+                                )}
+                                <p className="text-xs opacity-70 mt-2">{message.timestamp.toLocaleTimeString()}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {isGenerating && (
+                          <div className="flex gap-3 justify-start">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] flex items-center justify-center">
+                              <Bot className="h-4 w-4 text-white" />
+                            </div>
+                            <div className="bg-gray-800 text-gray-100 border border-white/10 rounded-lg p-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                                <div
+                                  className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"
+                                  style={{ animationDelay: "0.2s" }}
+                                ></div>
+                                <div
+                                  className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"
+                                  style={{ animationDelay: "0.4s" }}
+                                ></div>
+                                <span className="text-sm text-gray-400 ml-2">Sycord is working...</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        <div ref={chatEndRef} />
+                      </>
+                    )}
+                  </div>
+
+                  {/* Input Area */}
+                  <div className="border-t border-white/10 pt-4">
+                    {selectedMessageForEdit && (
+                      <div className="mb-3 p-2 bg-blue-600/20 border border-blue-500/30 rounded-lg">
+                        <p className="text-xs text-blue-400 mb-1">Editing mode</p>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setSelectedMessageForEdit(null)
+                            setCurrentInput("")
+                          }}
+                          className="text-blue-400 hover:text-white h-6 p-1"
+                        >
+                          <X className="h-3 w-3 mr-1" />
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Textarea
+                        placeholder={
+                          selectedMessageForEdit
+                            ? "Describe your modifications..."
+                            : "Describe what you want your plugin to do..."
+                        }
+                        value={currentInput}
+                        onChange={(e) => setCurrentInput(e.target.value)}
+                        className="bg-black/60 border-white/20 text-white placeholder-gray-400 resize-none text-sm"
+                        rows={2}
+                        disabled={isGenerating}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault()
+                            handleSendMessage()
+                          }
+                        }}
+                      />
+                      <Button
+                        onClick={handleSendMessage}
+                        disabled={isGenerating || !currentInput.trim()}
+                        className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90 px-4 self-end"
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">Press Enter to send, Shift+Enter for new line</p>
+                  </div>
                 </CardContent>
               </Card>
 
-              {/* Code Editor Panel */}
               <Card className="glass-card flex flex-col h-full">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-white text-lg flex items-center">
                     <Code className="h-5 w-5 mr-2" />
-                    Generated Code
+                    Code Editor
                   </CardTitle>
                   <CardDescription className="text-gray-400">
-                    Review your generated plugin code and save it to your collection.
+                    Review, test, and save your generated plugin code.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col">
-                  {isGenerating ? (
-                    <div className="flex-1 flex flex-col items-center justify-center space-y-6">
-                      <div className="w-20 h-20 relative">
-                        <Image
-                          src="/sycord-logo.png"
-                          alt="Sycord Bot"
-                          width={80}
-                          height={80}
-                          className="animate-pulse"
-                        />
-                      </div>
-                      <div className="text-center">
-                        <p className="text-white font-medium text-xl animate-pulse">sycord is working</p>
-                        <p className="text-gray-400 mt-2">Generating your plugin code...</p>
-                      </div>
-                    </div>
-                  ) : generatedCode ? (
+                  {generatedCode ? (
                     <div className="flex-1 flex flex-col space-y-4">
                       <div className="bg-gray-900 border border-white/20 rounded-lg overflow-hidden flex-1 flex flex-col">
-                        <div className="p-4 border-b border-white/20 bg-gray-800 flex justify-between items-center">
-                          <p className="text-white font-medium">Plugin Code</p>
-                          <div className="flex gap-3">
+                        <div className="p-3 border-b border-white/20 bg-gray-800 flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <p className="text-white font-medium text-sm">Plugin Code</p>
+                            <span className="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">Python</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => handleCopyCode(generatedCode)}
+                              variant="outline"
+                              size="sm"
+                              className="border-white/20 text-white hover:bg-white/10 bg-transparent h-8 px-3"
+                            >
+                              <Copy className="h-3 w-3 mr-1" />
+                              Copy
+                            </Button>
                             <Button
                               onClick={handleDownloadCode}
                               variant="outline"
                               size="sm"
-                              className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+                              className="border-white/20 text-white hover:bg-white/10 bg-transparent h-8 px-3"
                             >
-                              <Download className="h-4 w-4 mr-2" />
+                              <Download className="h-3 w-3 mr-1" />
                               Download
                             </Button>
                             <Button
                               onClick={() => setShowSaveDialog(true)}
                               disabled={!pluginName.trim()}
                               size="sm"
-                              className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90"
+                              className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90 h-8 px-3"
                             >
-                              <Save className="h-4 w-4 mr-2" />
-                              Save Plugin
+                              <Save className="h-3 w-3 mr-1" />
+                              Save
                             </Button>
                           </div>
                         </div>
                         <div className="flex-1 overflow-auto">
-                          <pre className="p-6 text-sm text-gray-300 h-full">
+                          <pre className="p-4 text-sm text-gray-300 h-full font-mono leading-relaxed">
                             <code>{generatedCode}</code>
                           </pre>
                         </div>
@@ -466,10 +709,10 @@ export default function PluginsTab() {
                     </div>
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4">
-                      <Bot className="h-16 w-16 text-gray-400 opacity-50" />
+                      <Code className="h-16 w-16 text-gray-400 opacity-50" />
                       <div>
-                        <p className="text-gray-400 text-xl mb-2">Ready to create</p>
-                        <p className="text-gray-500">Describe your plugin to get started with AI generation</p>
+                        <p className="text-gray-400 text-xl mb-2">No code generated yet</p>
+                        <p className="text-gray-500">Start a conversation to generate your plugin code</p>
                       </div>
                     </div>
                   )}
