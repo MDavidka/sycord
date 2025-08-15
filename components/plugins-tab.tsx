@@ -114,21 +114,16 @@ export default function PluginsTab() {
 
   const handleGeneratePlugin = async () => {
     if (!aiPrompt.trim()) return
-
     setIsGenerating(true)
     setGeneratedCode("")
-
     try {
       const response = await fetch("/api/ai/generate-plugin", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          message: aiPrompt,
-        }),
+        body: JSON.stringify({ message: aiPrompt }),
       })
-
       if (response.ok) {
         const data = await response.json()
         setGeneratedCode(data.code)
@@ -137,12 +132,10 @@ export default function PluginsTab() {
         setPluginDescription(aiPrompt.length > 100 ? aiPrompt.substring(0, 100) + "..." : aiPrompt)
       } else {
         const errorData = await response.json()
-        console.error("Failed to generate plugin code:", errorData.error)
-        setGeneratedCode(`// Error: ${errorData.error || "Failed to generate plugin code. Please try again."}`)
+        setGeneratedCode(`// Error: ${errorData.error || "Failed to generate plugin code."}`)
       }
     } catch (error) {
-      console.error("Error generating plugin:", error)
-      setGeneratedCode("// Error: Failed to connect to AI service. Please try again.")
+      setGeneratedCode("// Error: Failed to connect to AI service.")
     } finally {
       setIsGenerating(false)
     }
@@ -150,7 +143,6 @@ export default function PluginsTab() {
 
   const handleSavePlugin = async () => {
     if (!generatedCode || !pluginName.trim()) return
-
     setIsSaving(true)
     try {
       const createResponse = await fetch("/api/plugins", {
@@ -167,10 +159,8 @@ export default function PluginsTab() {
           aiGenerated: true,
         }),
       })
-
       if (createResponse.ok) {
         const newPlugin = await createResponse.json()
-
         const installResponse = await fetch("/api/user-plugins", {
           method: "POST",
           headers: {
@@ -181,7 +171,6 @@ export default function PluginsTab() {
             action: "install",
           }),
         })
-
         if (installResponse.ok) {
           await fetchPlugins()
           await fetchUserPlugins()
@@ -223,8 +212,6 @@ export default function PluginsTab() {
       if (response.ok) {
         fetchUserPlugins()
         fetchPlugins()
-      } else {
-        console.error("Failed to install plugin")
       }
     } catch (error) {
       console.error("Error installing plugin:", error)
@@ -243,8 +230,6 @@ export default function PluginsTab() {
       if (response.ok) {
         fetchUserPlugins()
         fetchPlugins()
-      } else {
-        console.error("Failed to uninstall plugin")
       }
     } catch (error) {
       console.error("Error uninstalling plugin:", error)
@@ -281,8 +266,6 @@ export default function PluginsTab() {
       if (response.ok) {
         setIsEditDialogOpen(false)
         fetchPlugins()
-      } else {
-        console.error("Failed to update plugin")
       }
     } catch (error) {
       console.error("Error updating plugin:", error)
@@ -299,19 +282,13 @@ export default function PluginsTab() {
         },
         body: JSON.stringify({ _id: pluginId }),
       })
-      if (response.ok) {
-        fetchPlugins()
-      } else {
-        console.error("Failed to delete plugin")
-      }
+      if (response.ok) fetchPlugins()
     } catch (error) {
       console.error("Error deleting plugin:", error)
     }
   }
 
-  const isPluginInstalled = (pluginId: string) => {
-    return userPlugins.some((p) => p.pluginId === pluginId)
-  }
+  const isPluginInstalled = (pluginId: string) => userPlugins.some((p) => p.pluginId === pluginId)
 
   if (loading) {
     return (
@@ -326,61 +303,56 @@ export default function PluginsTab() {
     return (
       <div className="fixed inset-0 bg-black z-50 flex flex-col">
         <div className="flex items-center justify-between p-4 border-b border-white/20">
-          <div className="flex items-center space-x-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setIsAICreatorOpen(false)
+              setAiPrompt("")
+              setGeneratedCode("")
+              setPluginName("")
+              setPluginDescription("")
+            }}
+            className="text-white hover:bg-white/10"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Plugins
+          </Button>
+          <h1 className="text-xl font-semibold text-white flex items-center">
+            <Bot className="h-5 w-5 mr-2" />
+            AI Plugin Lab
+          </h1>
+          <div className="flex items-center space-x-2">
             <Button
-              variant="ghost"
+              onClick={handleDownloadCode}
+              variant="outline"
               size="sm"
-              onClick={() => {
-                setIsAICreatorOpen(false)
-                setAiPrompt("")
-                setGeneratedCode("")
-                setPluginName("")
-                setPluginDescription("")
-              }}
-              className="text-white hover:bg-white/10"
+              className="border-white/20 text-white hover:bg-white/10"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Plugins
+              <Download className="h-4 w-4 mr-2" />
+              Download
             </Button>
-            <div className="h-6 w-px bg-white/20" />
-            <h1 className="text-xl font-semibold text-white flex items-center">
-              <Bot className="h-5 w-5 mr-2" />
-              AI Plugin Creator
-            </h1>
+            <Button
+              onClick={handleSavePlugin}
+              disabled={isSaving || !pluginName.trim()}
+              className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {isSaving ? "Saving..." : "Save Plugin"}
+            </Button>
           </div>
-          {generatedCode && (
-            <div className="flex items-center space-x-2">
-              <Button
-                onClick={handleDownloadCode}
-                variant="outline"
-                size="sm"
-                className="border-white/20 text-white hover:bg-white/10 bg-transparent"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download
-              </Button>
-              <Button
-                onClick={handleSavePlugin}
-                disabled={isSaving || !pluginName.trim()}
-                className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {isSaving ? "Saving..." : "Save to Plugins"}
-              </Button>
-            </div>
-          )}
         </div>
-        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-          <div className="w-full lg:w-1/3 border-r border-white/20 flex flex-col">
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+          <div className="w-full md:w-1/3 border-r border-white/20 flex flex-col">
             <div className="p-4 border-b border-white/20">
               <h2 className="text-lg font-medium text-white mb-2">Describe Your Plugin</h2>
               <p className="text-sm text-gray-400">
-                Tell the AI what functionality you want your Discord bot plugin to have.
+                Tell the AI what you want. Example: "Create a moderation plugin that bans users and logs to a channel."
               </p>
             </div>
             <div className="flex-1 p-4 flex flex-col">
               <Textarea
-                placeholder="Example: Create a moderation plugin that can ban, kick, and mute users with logging to a specific channel..."
+                placeholder="Describe your plugin..."
                 value={aiPrompt}
                 onChange={(e) => setAiPrompt(e.target.value)}
                 className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[200px] flex-1 resize-none"
@@ -389,78 +361,63 @@ export default function PluginsTab() {
               <Button
                 onClick={handleGeneratePlugin}
                 disabled={isGenerating || !aiPrompt.trim()}
-                className="mt-4 bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90 w-full"
+                className="mt-4 bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90"
               >
-                <Image
-                  src="/generic-robot-icon.png"
-                  alt="Sycord"
-                  width={20}
-                  height={20}
-                  className="mr-2 rounded-full"
-                />
-                {isGenerating ? "Generating..." : "Generate Plugin"}
+                {isGenerating ? "Generating..." : "Generate Code"}
               </Button>
             </div>
           </div>
           <div className="flex-1 flex flex-col">
             {isGenerating ? (
-              <div className="flex-1 flex flex-col items-center justify-center space-y-6">
-                <div className="w-20 h-20 relative">
-                  <Image
-                    src="/generic-robot-icon.png"
-                    alt="Sycord Bot"
-                    width={80}
-                    height={80}
-                    className="rounded-full animate-pulse"
-                  />
+              <div className="flex-1 flex flex-col items-center justify-center">
+                <div className="w-20 h-20 relative animate-pulse">
+                  <Image src="/generic-robot-icon.png" alt="AI" width={80} height={80} className="rounded-full" />
                 </div>
-                <div className="text-center">
-                  <p className="text-white font-medium text-xl animate-pulse">sycord is working</p>
-                  <p className="text-gray-400 mt-2">Generating your plugin code...</p>
-                </div>
+                <p className="text-white font-medium text-xl mt-4">Generating your plugin...</p>
               </div>
             ) : generatedCode ? (
               <div className="flex-1 flex flex-col">
                 <div className="p-4 border-b border-white/20">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-white text-sm">Plugin Name</Label>
-                      <Input
-                        value={pluginName}
-                        onChange={(e) => setPluginName(e.target.value)}
-                        className="mt-1 bg-black/60 border-white/20 text-white"
-                        placeholder="Enter plugin name"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-white text-sm">Description</Label>
-                      <Input
-                        value={pluginDescription}
-                        onChange={(e) => setPluginDescription(e.target.value)}
-                        className="mt-1 bg-black/60 border-white/20 text-white"
-                        placeholder="Enter plugin description"
-                      />
-                    </div>
+                    <Input
+                      value={pluginName}
+                      onChange={(e) => setPluginName(e.target.value)}
+                      placeholder="Plugin Name"
+                      className="bg-black/60 border-white/20 text-white"
+                    />
+                    <Input
+                      value={pluginDescription}
+                      onChange={(e) => setPluginDescription(e.target.value)}
+                      placeholder="Description"
+                      className="bg-black/60 border-white/20 text-white"
+                    />
                   </div>
                 </div>
                 <div className="flex-1 p-4">
                   <div className="h-full bg-gray-900 border border-white/20 rounded-lg overflow-hidden">
-                    <div className="p-3 border-b border-white/20 bg-gray-800">
-                      <p className="text-sm text-gray-300">Generated Plugin Code</p>
+                    <div className="p-3 border-b border-white/20 bg-gray-800 flex justify-between items-center">
+                      <p className="text-sm text-gray-300">Generated Code (editable)</p>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-gray-300 hover:text-white"
+                        onClick={() => setGeneratedCode("")}
+                      >
+                        Clear
+                      </Button>
                     </div>
-                    <pre className="p-4 text-sm text-gray-300 overflow-auto h-full">
-                      <code>{generatedCode}</code>
-                    </pre>
+                    <textarea
+                      value={generatedCode}
+                      onChange={(e) => setGeneratedCode(e.target.value)}
+                      className="p-4 text-sm text-gray-300 bg-gray-900 w-full h-full resize-none outline-none"
+                    />
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center text-gray-400">
-                  <Bot className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg">Describe your plugin to get started</p>
-                  <p className="text-sm mt-2">AI will generate the complete Python code for your Discord bot plugin</p>
-                </div>
+              <div className="flex-1 flex items-center justify-center text-gray-400">
+                <Bot className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                <p>Describe your plugin to get started.</p>
               </div>
             )}
           </div>
@@ -470,8 +427,8 @@ export default function PluginsTab() {
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="glass-card">
+    <div className="h-[calc(100vh-4rem)] p-4 space-y-4 overflow-hidden">
+      <Card className="h-full glass-card">
         <CardHeader>
           <CardTitle className="text-white flex items-center text-xl">
             <Package className="h-6 w-6 mr-3" />
@@ -481,23 +438,17 @@ export default function PluginsTab() {
             Browse, install, and manage plugins for your server.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="store" className="w-full">
+        <CardContent className="h-[calc(100%-3.5rem)] overflow-hidden">
+          <Tabs defaultValue="store" className="h-full flex flex-col">
             <TabsList className="grid w-full grid-cols-2 bg-gray-800/50">
-              <TabsTrigger
-                value="store"
-                className="text-white data-[state=active]:bg-white data-[state=active]:text-black"
-              >
+              <TabsTrigger value="store" className="text-white data-[state=active]:bg-white data-[state=active]:text-black">
                 Plugin Store
               </TabsTrigger>
-              <TabsTrigger
-                value="installed"
-                className="text-white data-[state=active]:bg-white data-[state=active]:text-black"
-              >
+              <TabsTrigger value="installed" className="text-white data-[state=active]:bg-white data-[state=active]:text-black">
                 Installed Plugins
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="store" className="mt-6">
+            <TabsContent value="store" className="flex-1 overflow-auto mt-4">
               <div className="flex flex-col sm:flex-row gap-3 mb-6">
                 {isAdmin && (
                   <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -572,25 +523,19 @@ export default function PluginsTab() {
                 )}
                 <Button
                   onClick={() => setIsAICreatorOpen(true)}
-                  className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90 transition-opacity"
+                  className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90"
                 >
-                  <Image
-                    src="/generic-robot-icon.png"
-                    alt="Sycord"
-                    width={16}
-                    height={16}
-                    className="mr-2 rounded-full"
-                  />
+                  <Bot className="h-4 w-4 mr-2" />
                   Create Plugin Using AI
                 </Button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {plugins.map((plugin) => (
                   <Card key={plugin._id} className="glass-card flex flex-col">
-                    {plugin.thumbnailUrl && plugin.thumbnailUrl !== "" ? (
+                    {plugin.thumbnailUrl ? (
                       <div className="relative w-full h-32 rounded-t-lg overflow-hidden">
                         <Image
-                          src={plugin.thumbnailUrl || "/placeholder.svg"}
+                          src={plugin.thumbnailUrl}
                           alt={`${plugin.name} thumbnail`}
                           layout="fill"
                           objectFit="cover"
@@ -603,9 +548,9 @@ export default function PluginsTab() {
                       </div>
                     )}
                     <CardHeader className="flex-row items-center space-x-4 pb-2">
-                      {plugin.iconUrl && plugin.iconUrl !== "" ? (
+                      {plugin.iconUrl ? (
                         <Image
-                          src={plugin.iconUrl || "/placeholder.svg"}
+                          src={plugin.iconUrl}
                           alt={`${plugin.name} icon`}
                           width={40}
                           height={40}
@@ -671,17 +616,17 @@ export default function PluginsTab() {
                 ))}
               </div>
             </TabsContent>
-            <TabsContent value="installed" className="mt-6">
+            <TabsContent value="installed" className="flex-1 overflow-auto mt-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {userPlugins.length === 0 ? (
                   <p className="text-gray-400 col-span-full text-center">No plugins installed yet.</p>
                 ) : (
                   userPlugins.map((plugin) => (
                     <Card key={plugin.pluginId} className="glass-card flex flex-col">
-                      {plugin.thumbnailUrl && plugin.thumbnailUrl !== "" ? (
+                      {plugin.thumbnailUrl ? (
                         <div className="relative w-full h-32 rounded-t-lg overflow-hidden">
                           <Image
-                            src={plugin.thumbnailUrl || "/placeholder.svg"}
+                            src={plugin.thumbnailUrl}
                             alt={`${plugin.name} thumbnail`}
                             layout="fill"
                             objectFit="cover"
@@ -694,9 +639,9 @@ export default function PluginsTab() {
                         </div>
                       )}
                       <CardHeader className="flex-row items-center space-x-4 pb-2">
-                        {plugin.iconUrl && plugin.iconUrl !== "" ? (
+                        {plugin.iconUrl ? (
                           <Image
-                            src={plugin.iconUrl || "/placeholder.svg"}
+                            src={plugin.iconUrl}
                             alt={`${plugin.name} icon`}
                             width={40}
                             height={40}
@@ -716,7 +661,20 @@ export default function PluginsTab() {
                       </CardHeader>
                       <CardContent className="flex-1 flex flex-col justify-between">
                         <p className="text-gray-300 text-sm mb-4">{plugin.description}</p>
-                        <div className="flex justify-end">
+                        <div className="flex justify-end space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-white/20 text-white hover:bg-white/10"
+                            onClick={() => {
+                              setEditPluginId(plugin.pluginId)
+                              setIsAICreatorOpen(true)
+                              setAiPrompt(`Edit this plugin: ${plugin.description}`)
+                            }}
+                          >
+                            <Bot className="h-4 w-4 mr-2" />
+                            AI Lab
+                          </Button>
                           <Button
                             variant="destructive"
                             size="sm"
@@ -737,7 +695,9 @@ export default function PluginsTab() {
             <DialogContent className="sm:max-w-[425px] bg-black border-white/20 text-white">
               <DialogHeader>
                 <DialogTitle className="text-white">Edit Plugin</DialogTitle>
-                <DialogDescription className="text-gray-400">Make changes to the plugin details.</DialogDescription>
+                <DialogDescription className="text-gray-400">
+                  Make changes to the plugin details.
+                </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
