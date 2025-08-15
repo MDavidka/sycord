@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -18,34 +18,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Package,
-  Plus,
-  Download,
-  Check,
-  X,
-  Edit,
-  Trash2,
-  ImageIcon,
-  Bot,
-  Save,
-  ArrowLeft,
-  Power,
-  Code,
-  Send,
-  Copy,
-  User,
-} from "lucide-react"
+import { Package, Plus, Download, Check, X, Edit, Trash2, ImageIcon, Bot, ArrowLeft, Save } from "lucide-react"
 import Image from "next/image"
 import type { Plugin, UserPlugin } from "@/lib/types"
-
-interface ChatMessage {
-  id: string
-  role: "user" | "ai"
-  content: string
-  code?: string
-  timestamp: Date
-}
 
 export default function PluginsTab() {
   const { data: session } = useSession()
@@ -60,17 +35,13 @@ export default function PluginsTab() {
   const [newPluginThumbnailUrl, setNewPluginThumbnailUrl] = useState("")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 
-  const [activeTab, setActiveTab] = useState("store")
-  const [showAiCreator, setShowAiCreator] = useState(false)
+  const [isAICreatorOpen, setIsAICreatorOpen] = useState(false)
   const [aiPrompt, setAiPrompt] = useState("")
   const [generatedCode, setGeneratedCode] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [pluginName, setPluginName] = useState("")
   const [pluginDescription, setPluginDescription] = useState("")
-  const [pluginProfileImage, setPluginProfileImage] = useState("")
-  const [pluginHeaderImage, setPluginHeaderImage] = useState("")
   const [isSaving, setIsSaving] = useState(false)
-  const [showSaveDialog, setShowSaveDialog] = useState(false)
 
   const [editPluginId, setEditPluginId] = useState<string | null>(null)
   const [editPluginName, setEditPluginName] = useState("")
@@ -79,11 +50,6 @@ export default function PluginsTab() {
   const [editPluginIconUrl, setEditPluginIconUrl] = useState("")
   const [editPluginThumbnailUrl, setEditPluginThumbnailUrl] = useState("")
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
-  const [currentInput, setCurrentInput] = useState("")
-  const [selectedMessageForEdit, setSelectedMessageForEdit] = useState<string | null>(null)
-  const chatEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     fetchPlugins()
@@ -146,100 +112,6 @@ export default function PluginsTab() {
     }
   }
 
-  const handleSendMessage = async () => {
-    if (!currentInput.trim()) return
-
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      role: "user",
-      content: currentInput,
-      timestamp: new Date(),
-    }
-
-    setChatMessages((prev) => [...prev, userMessage])
-    setCurrentInput("")
-    setIsGenerating(true)
-
-    try {
-      // Build context from previous messages
-      const context = chatMessages.map((msg) => ({
-        role: msg.role === "user" ? "user" : "assistant",
-        content: msg.code ? `${msg.content}\n\nCode:\n${msg.code}` : msg.content,
-      }))
-
-      const response = await fetch("/api/ai/generate-plugin", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: currentInput,
-          context: context,
-          isModification: selectedMessageForEdit !== null,
-        }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        const aiMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          role: "ai",
-          content: data.explanation || "Here's your generated plugin code:",
-          code: data.code,
-          timestamp: new Date(),
-        }
-
-        setChatMessages((prev) => [...prev, aiMessage])
-        setGeneratedCode(data.code)
-
-        // Auto-generate plugin name if it's the first generation
-        if (chatMessages.length === 0) {
-          const words = currentInput.split(" ").slice(0, 3).join(" ")
-          setPluginName(words.charAt(0).toUpperCase() + words.slice(1) + " Plugin")
-          setPluginDescription(currentInput.length > 100 ? currentInput.substring(0, 100) + "..." : currentInput)
-        }
-      } else {
-        const errorData = await response.json()
-        const errorMessage: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          role: "ai",
-          content: `Error: ${errorData.error || "Failed to generate plugin code. Please try again."}`,
-          timestamp: new Date(),
-        }
-        setChatMessages((prev) => [...prev, errorMessage])
-      }
-    } catch (error) {
-      console.error("Error generating plugin:", error)
-      const errorMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: "ai",
-        content: "Error: Failed to connect to AI service. Please try again.",
-        timestamp: new Date(),
-      }
-      setChatMessages((prev) => [...prev, errorMessage])
-    } finally {
-      setIsGenerating(false)
-      setSelectedMessageForEdit(null)
-    }
-  }
-
-  const handleCopyCode = (code: string) => {
-    navigator.clipboard.writeText(code)
-  }
-
-  const handleEditMessage = (messageId: string) => {
-    const message = chatMessages.find((m) => m.id === messageId)
-    if (message && message.code) {
-      setSelectedMessageForEdit(messageId)
-      setCurrentInput(`Modify this code: ${message.content}`)
-      setGeneratedCode(message.code)
-    }
-  }
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [chatMessages])
-
   const handleGeneratePlugin = async () => {
     if (!aiPrompt.trim()) return
 
@@ -289,11 +161,10 @@ export default function PluginsTab() {
         body: JSON.stringify({
           name: pluginName,
           description: pluginDescription,
-          iconUrl: pluginProfileImage || "/sycord-logo.png",
-          thumbnailUrl: pluginHeaderImage || "",
+          iconUrl: "/generic-robot-icon.png",
+          thumbnailUrl: "",
           code: generatedCode,
           aiGenerated: true,
-          userCreated: true,
         }),
       })
 
@@ -314,15 +185,11 @@ export default function PluginsTab() {
         if (installResponse.ok) {
           await fetchPlugins()
           await fetchUserPlugins()
-          setShowSaveDialog(false)
-          setShowAiCreator(false)
-          setActiveTab("installed")
+          setIsAICreatorOpen(false)
           setAiPrompt("")
           setGeneratedCode("")
           setPluginName("")
           setPluginDescription("")
-          setPluginProfileImage("")
-          setPluginHeaderImage("")
         }
       }
     } catch (error) {
@@ -455,280 +322,157 @@ export default function PluginsTab() {
     )
   }
 
-  if (showAiCreator) {
+  if (isAICreatorOpen) {
     return (
-      <div className="fixed inset-0 bg-black/95 backdrop-blur-sm z-50 flex flex-col">
-        <Card className="glass-card m-4 flex-1 flex flex-col">
-          <CardHeader className="flex-shrink-0">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setShowAiCreator(false)
-                    setChatMessages([])
-                    setCurrentInput("")
-                    setGeneratedCode("")
-                    setSelectedMessageForEdit(null)
-                  }}
-                  className="text-white hover:bg-white/10 mr-4"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Plugins
-                </Button>
-                <CardTitle className="text-white flex items-center text-xl">
-                  <Image src="/sycord-logo.png" alt="Sycord" width={28} height={28} className="mr-3" />
-                  AI Plugin Creator
-                </CardTitle>
-              </div>
-              {generatedCode && (
-                <Button
-                  onClick={() => setShowSaveDialog(true)}
-                  className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Plugin
-                </Button>
-              )}
+      <div className="fixed inset-0 bg-black z-50 flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-white/20">
+          <div className="flex items-center space-x-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setIsAICreatorOpen(false)
+                setAiPrompt("")
+                setGeneratedCode("")
+                setPluginName("")
+                setPluginDescription("")
+              }}
+              className="text-white hover:bg-white/10"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Plugins
+            </Button>
+            <div className="h-6 w-px bg-white/20" />
+            <h1 className="text-xl font-semibold text-white flex items-center">
+              <Bot className="h-5 w-5 mr-2" />
+              AI Plugin Creator
+            </h1>
+          </div>
+          {generatedCode && (
+            <div className="flex items-center space-x-2">
+              <Button
+                onClick={handleDownloadCode}
+                variant="outline"
+                size="sm"
+                className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download
+              </Button>
+              <Button
+                onClick={handleSavePlugin}
+                disabled={isSaving || !pluginName.trim()}
+                className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isSaving ? "Saving..." : "Save to Plugins"}
+              </Button>
             </div>
-            <CardDescription className="text-gray-400">
-              Create custom Discord bot plugins using AI. Describe what you want and let Sycord generate the code.
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-1 flex gap-6 overflow-hidden">
-              {/* Chat Section */}
-              <div className="w-1/2 flex flex-col">
-                <Card className="glass-card flex-1 flex flex-col">
-                  <CardHeader className="pb-4 flex-shrink-0">
-                    <CardTitle className="text-white flex items-center text-lg">
-                      <Bot className="h-5 w-5 mr-2" />
-                      Plugin Assistant
-                    </CardTitle>
-                    <CardDescription className="text-gray-400">
-                      Chat with AI to create and modify your Discord bot plugins.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col overflow-hidden">
-                    {/* Chat Messages */}
-                    <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2">
-                      {chatMessages.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
-                          <Bot className="h-12 w-12 text-gray-400 opacity-50" />
-                          <div>
-                            <p className="text-gray-400 text-lg mb-2">Ready to create</p>
-                            <p className="text-gray-500 text-sm">Start by describing what you want your plugin to do</p>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          {chatMessages.map((message) => (
-                            <div
-                              key={message.id}
-                              className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                            >
-                              <div
-                                className={`flex gap-3 max-w-[85%] ${message.role === "user" ? "flex-row-reverse" : "flex-row"}`}
-                              >
-                                <div
-                                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                    message.role === "user"
-                                      ? "bg-blue-600"
-                                      : "bg-gradient-to-r from-[#0D2C54] to-[#4A90E2]"
-                                  }`}
-                                >
-                                  {message.role === "user" ? (
-                                    <User className="h-4 w-4 text-white" />
-                                  ) : (
-                                    <Bot className="h-4 w-4 text-white" />
-                                  )}
-                                </div>
-                                <div
-                                  className={`rounded-lg p-3 ${
-                                    message.role === "user"
-                                      ? "bg-blue-600 text-white"
-                                      : "bg-gray-800 text-gray-100 border border-white/10"
-                                  }`}
-                                >
-                                  <p className="text-sm leading-relaxed">{message.content}</p>
-                                  {message.code && (
-                                    <div className="mt-3 bg-gray-900 rounded-lg overflow-hidden">
-                                      <div className="flex items-center justify-between p-2 bg-gray-800 border-b border-gray-700">
-                                        <span className="text-xs text-gray-400 font-mono">Python</span>
-                                        <div className="flex gap-1">
-                                          <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={() => handleCopyCode(message.code!)}
-                                            className="h-6 w-6 p-0 text-gray-400 hover:text-white hover:bg-gray-700"
-                                          >
-                                            <Copy className="h-3 w-3" />
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={() => handleEditMessage(message.id)}
-                                            className="h-6 w-6 p-0 text-gray-400 hover:text-white hover:bg-gray-700"
-                                          >
-                                            <Edit className="h-3 w-3" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                      <pre className="p-3 text-xs text-gray-300 overflow-x-auto max-h-40 overflow-y-auto">
-                                        <code>{message.code}</code>
-                                      </pre>
-                                    </div>
-                                  )}
-                                  <p className="text-xs opacity-70 mt-2">{message.timestamp.toLocaleTimeString()}</p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                          {isGenerating && (
-                            <div className="flex gap-3 justify-start">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] flex items-center justify-center">
-                                <Bot className="h-4 w-4 text-white" />
-                              </div>
-                              <div className="bg-gray-800 text-gray-100 border border-white/10 rounded-lg p-3">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                                  <div
-                                    className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"
-                                    style={{ animationDelay: "0.2s" }}
-                                  ></div>
-                                  <div
-                                    className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"
-                                    style={{ animationDelay: "0.4s" }}
-                                  ></div>
-                                  <span className="text-sm text-gray-400 ml-2">Sycord is working...</span>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          <div ref={chatEndRef} />
-                        </>
-                      )}
-                    </div>
-
-                    {/* Input Area */}
-                    <div className="border-t border-white/10 pt-4 flex-shrink-0">
-                      {selectedMessageForEdit && (
-                        <div className="mb-3 p-2 bg-blue-600/20 border border-blue-500/30 rounded-lg">
-                          <p className="text-xs text-blue-400 mb-1">Editing mode</p>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setSelectedMessageForEdit(null)
-                              setCurrentInput("")
-                            }}
-                            className="text-blue-400 hover:text-white h-6 p-1"
-                          >
-                            <X className="h-3 w-3 mr-1" />
-                            Cancel
-                          </Button>
-                        </div>
-                      )}
-                      <div className="flex gap-2">
-                        <Textarea
-                          placeholder={
-                            selectedMessageForEdit
-                              ? "Describe your modifications..."
-                              : "Describe what you want your plugin to do..."
-                          }
-                          value={currentInput}
-                          onChange={(e) => setCurrentInput(e.target.value)}
-                          className="bg-black/60 border-white/20 text-white placeholder-gray-400 resize-none text-sm"
-                          rows={2}
-                          disabled={isGenerating}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                              e.preventDefault()
-                              handleSendMessage()
-                            }
-                          }}
-                        />
-                        <Button
-                          onClick={handleSendMessage}
-                          disabled={isGenerating || !currentInput.trim()}
-                          className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90 px-4 self-end"
-                        >
-                          <Send className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-2">Press Enter to send, Shift+Enter for new line</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Code Editor Section */}
-              <div className="w-1/2 flex flex-col">
-                <Card className="glass-card flex-1 flex flex-col">
-                  <CardHeader className="pb-4 flex-shrink-0">
-                    <CardTitle className="text-white text-lg flex items-center">
-                      <Code className="h-5 w-5 mr-2" />
-                      Code Editor
-                    </CardTitle>
-                    <CardDescription className="text-gray-400">
-                      Review, test, and save your generated plugin code.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col overflow-hidden">
-                    {generatedCode ? (
-                      <div className="flex-1 flex flex-col space-y-4">
-                        <div className="bg-gray-900 border border-white/20 rounded-lg overflow-hidden flex-1 flex flex-col">
-                          <div className="p-3 border-b border-white/20 bg-gray-800 flex justify-between items-center flex-shrink-0">
-                            <div className="flex items-center gap-2">
-                              <p className="text-white font-medium text-sm">Plugin Code</p>
-                              <span className="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">Python</span>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                onClick={() => handleCopyCode(generatedCode)}
-                                variant="outline"
-                                size="sm"
-                                className="border-white/20 text-white hover:bg-white/10 bg-transparent h-8 px-3"
-                              >
-                                <Copy className="h-3 w-3 mr-1" />
-                                Copy
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="flex-1 overflow-auto">
-                            <pre className="p-4 text-sm text-gray-300 h-full">
-                              <code>{generatedCode}</code>
-                            </pre>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex-1 flex items-center justify-center">
-                        <div className="text-center space-y-4">
-                          <Code className="h-16 w-16 text-gray-400 opacity-50 mx-auto" />
-                          <div>
-                            <p className="text-gray-400 text-lg mb-2">No code generated yet</p>
-                            <p className="text-gray-500 text-sm">Start a conversation to generate plugin code</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+          )}
+        </div>
+        <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+          <div className="w-full lg:w-1/3 border-r border-white/20 flex flex-col">
+            <div className="p-4 border-b border-white/20">
+              <h2 className="text-lg font-medium text-white mb-2">Describe Your Plugin</h2>
+              <p className="text-sm text-gray-400">
+                Tell the AI what functionality you want your Discord bot plugin to have.
+              </p>
             </div>
-          </CardContent>
-        </Card>
+            <div className="flex-1 p-4 flex flex-col">
+              <Textarea
+                placeholder="Example: Create a moderation plugin that can ban, kick, and mute users with logging to a specific channel..."
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[200px] flex-1 resize-none"
+                disabled={isGenerating}
+              />
+              <Button
+                onClick={handleGeneratePlugin}
+                disabled={isGenerating || !aiPrompt.trim()}
+                className="mt-4 bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90 w-full"
+              >
+                <Image
+                  src="/generic-robot-icon.png"
+                  alt="Sycord"
+                  width={20}
+                  height={20}
+                  className="mr-2 rounded-full"
+                />
+                {isGenerating ? "Generating..." : "Generate Plugin"}
+              </Button>
+            </div>
+          </div>
+          <div className="flex-1 flex flex-col">
+            {isGenerating ? (
+              <div className="flex-1 flex flex-col items-center justify-center space-y-6">
+                <div className="w-20 h-20 relative">
+                  <Image
+                    src="/generic-robot-icon.png"
+                    alt="Sycord Bot"
+                    width={80}
+                    height={80}
+                    className="rounded-full animate-pulse"
+                  />
+                </div>
+                <div className="text-center">
+                  <p className="text-white font-medium text-xl animate-pulse">sycord is working</p>
+                  <p className="text-gray-400 mt-2">Generating your plugin code...</p>
+                </div>
+              </div>
+            ) : generatedCode ? (
+              <div className="flex-1 flex flex-col">
+                <div className="p-4 border-b border-white/20">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-white text-sm">Plugin Name</Label>
+                      <Input
+                        value={pluginName}
+                        onChange={(e) => setPluginName(e.target.value)}
+                        className="mt-1 bg-black/60 border-white/20 text-white"
+                        placeholder="Enter plugin name"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-white text-sm">Description</Label>
+                      <Input
+                        value={pluginDescription}
+                        onChange={(e) => setPluginDescription(e.target.value)}
+                        className="mt-1 bg-black/60 border-white/20 text-white"
+                        placeholder="Enter plugin description"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex-1 p-4">
+                  <div className="h-full bg-gray-900 border border-white/20 rounded-lg overflow-hidden">
+                    <div className="p-3 border-b border-white/20 bg-gray-800">
+                      <p className="text-sm text-gray-300">Generated Plugin Code</p>
+                    </div>
+                    <pre className="p-4 text-sm text-gray-300 overflow-auto h-full">
+                      <code>{generatedCode}</code>
+                    </pre>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center text-gray-400">
+                  <Bot className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg">Describe your plugin to get started</p>
+                  <p className="text-sm mt-2">AI will generate the complete Python code for your Discord bot plugin</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="h-[calc(100vh-120px)] flex flex-col">
-      <Card className="glass-card flex-1 flex flex-col">
-        <CardHeader className="flex-shrink-0">
+    <div className="space-y-6">
+      <Card className="glass-card">
+        <CardHeader>
           <CardTitle className="text-white flex items-center text-xl">
             <Package className="h-6 w-6 mr-3" />
             Plugin Management
@@ -737,9 +481,9 @@ export default function PluginsTab() {
             Browse, install, and manage plugins for your server.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex-1 flex flex-col overflow-hidden">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col">
-            <TabsList className="grid w-full grid-cols-2 bg-gray-800/50 mb-6 flex-shrink-0">
+        <CardContent>
+          <Tabs defaultValue="store" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 bg-gray-800/50">
               <TabsTrigger
                 value="store"
                 className="text-white data-[state=active]:bg-white data-[state=active]:text-black"
@@ -753,9 +497,8 @@ export default function PluginsTab() {
                 Installed Plugins
               </TabsTrigger>
             </TabsList>
-
-            <TabsContent value="store" className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex flex-col sm:flex-row gap-3 mb-6 flex-shrink-0">
+            <TabsContent value="store" className="mt-6">
+              <div className="flex flex-col sm:flex-row gap-3 mb-6">
                 {isAdmin && (
                   <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                     <DialogTrigger asChild>
@@ -827,12 +570,17 @@ export default function PluginsTab() {
                     </DialogContent>
                   </Dialog>
                 )}
-
                 <Button
-                  onClick={() => setShowAiCreator(true)}
-                  className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90 flex items-center gap-2"
+                  onClick={() => setIsAICreatorOpen(true)}
+                  className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90 transition-opacity"
                 >
-                  <Image src="/sycord-logo.png" alt="Sycord" width={20} height={20} />
+                  <Image
+                    src="/generic-robot-icon.png"
+                    alt="Sycord"
+                    width={16}
+                    height={16}
+                    className="mr-2 rounded-full"
+                  />
                   Create Plugin Using AI
                 </Button>
               </div>
@@ -923,189 +671,142 @@ export default function PluginsTab() {
                 ))}
               </div>
             </TabsContent>
-
-            <TabsContent value="installed" className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto">
-                <div className="grid gap-4">
-                  {userPlugins.length === 0 ? (
-                    <p className="text-gray-400 col-span-full text-center">No plugins installed yet.</p>
-                  ) : (
-                    userPlugins.map((plugin) => (
-                      <Card key={plugin.pluginId} className="glass-card flex flex-col">
-                        {plugin.thumbnailUrl && plugin.thumbnailUrl !== "" ? (
-                          <div className="relative w-full h-32 rounded-t-lg overflow-hidden">
-                            <Image
-                              src={plugin.thumbnailUrl || "/placeholder.svg"}
-                              alt={`${plugin.name} thumbnail`}
-                              layout="fill"
-                              objectFit="cover"
-                              className="rounded-t-lg"
-                            />
-                          </div>
+            <TabsContent value="installed" className="mt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {userPlugins.length === 0 ? (
+                  <p className="text-gray-400 col-span-full text-center">No plugins installed yet.</p>
+                ) : (
+                  userPlugins.map((plugin) => (
+                    <Card key={plugin.pluginId} className="glass-card flex flex-col">
+                      {plugin.thumbnailUrl && plugin.thumbnailUrl !== "" ? (
+                        <div className="relative w-full h-32 rounded-t-lg overflow-hidden">
+                          <Image
+                            src={plugin.thumbnailUrl || "/placeholder.svg"}
+                            alt={`${plugin.name} thumbnail`}
+                            layout="fill"
+                            objectFit="cover"
+                            className="rounded-t-lg"
+                          />
+                        </div>
+                      ) : (
+                        <div className="relative w-full h-32 rounded-t-lg overflow-hidden bg-gray-800 flex items-center justify-center">
+                          <ImageIcon className="h-12 w-12 text-gray-400" />
+                        </div>
+                      )}
+                      <CardHeader className="flex-row items-center space-x-4 pb-2">
+                        {plugin.iconUrl && plugin.iconUrl !== "" ? (
+                          <Image
+                            src={plugin.iconUrl || "/placeholder.svg"}
+                            alt={`${plugin.name} icon`}
+                            width={40}
+                            height={40}
+                            className="rounded-full object-cover"
+                          />
                         ) : (
-                          <div className="relative w-full h-32 rounded-t-lg overflow-hidden bg-gray-800 flex items-center justify-center">
-                            <ImageIcon className="h-12 w-12 text-gray-400" />
+                          <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center">
+                            <ImageIcon className="h-5 w-5 text-gray-400" />
                           </div>
                         )}
-                        <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-                          {plugin.iconUrl && plugin.iconUrl !== "" ? (
-                            <Image
-                              src={plugin.iconUrl || "/placeholder.svg"}
-                              alt={`${plugin.name} icon`}
-                              width={40}
-                              height={40}
-                              className="rounded-full object-cover mr-4"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center mr-4">
-                              <ImageIcon className="h-5 w-5 text-gray-400" />
-                            </div>
-                          )}
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <CardTitle className="text-white text-lg">{plugin.name}</CardTitle>
-                              {plugin.aiGenerated && (
-                                <div className="flex items-center bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] px-2 py-1 rounded-full">
-                                  <Bot className="h-3 w-3 text-white mr-1" />
-                                  <span className="text-xs text-white font-medium">AI</span>
-                                </div>
-                              )}
-                            </div>
-                            <CardDescription className="text-gray-400 text-sm">
-                              Installed on: {new Date(plugin.installed_at).toLocaleDateString()}
-                            </CardDescription>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="flex-1 flex flex-col justify-between">
-                          <p className="text-gray-300 text-sm mb-4">{plugin.description}</p>
-                          <div className="flex justify-between items-center">
-                            {plugin.aiGenerated ? (
-                              <div className="flex gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="border-green-500/50 text-green-400 hover:bg-green-500/10 bg-transparent"
-                                >
-                                  <Power className="h-3 w-3 mr-1" />
-                                  Active
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    // Load plugin code into AI creator for editing
-                                    setGeneratedCode(plugin.code || "")
-                                    setChatMessages([
-                                      {
-                                        id: Date.now().toString(),
-                                        role: "ai",
-                                        content: `Loaded plugin: ${plugin.name}. You can now modify this plugin using AI.`,
-                                        code: plugin.code,
-                                        timestamp: new Date(),
-                                      },
-                                    ])
-                                    setShowAiCreator(true)
-                                  }}
-                                  className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10 bg-transparent"
-                                >
-                                  <Bot className="h-3 w-3 mr-1" />
-                                  AI Lab
-                                </Button>
-                              </div>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-red-500/50 text-red-400 hover:bg-red-500/10 bg-transparent"
-                              >
-                                <Trash2 className="h-3 w-3 mr-1" />
-                                Uninstall
-                              </Button>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
+                        <div>
+                          <CardTitle className="text-white text-lg">{plugin.name}</CardTitle>
+                          <CardDescription className="text-gray-400 text-sm">
+                            Installed on: {new Date(plugin.installed_at).toLocaleDateString()}
+                          </CardDescription>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="flex-1 flex flex-col justify-between">
+                        <p className="text-gray-300 text-sm mb-4">{plugin.description}</p>
+                        <div className="flex justify-end">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleUninstallPlugin(plugin.pluginId)}
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Uninstall
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
               </div>
             </TabsContent>
           </Tabs>
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent className="sm:max-w-[425px] bg-black border-white/20 text-white">
+              <DialogHeader>
+                <DialogTitle className="text-white">Edit Plugin</DialogTitle>
+                <DialogDescription className="text-gray-400">Make changes to the plugin details.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-name" className="text-right text-white">
+                    Name
+                  </Label>
+                  <Input
+                    id="edit-name"
+                    value={editPluginName}
+                    onChange={(e) => setEditPluginName(e.target.value)}
+                    className="col-span-3 bg-black/60 border-white/20 text-white"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-description" className="text-right text-white">
+                    Description
+                  </Label>
+                  <Textarea
+                    id="edit-description"
+                    value={editPluginDescription}
+                    onChange={(e) => setEditPluginDescription(e.target.value)}
+                    className="col-span-3 bg-black/60 border-white/20 text-white min-h-[80px]"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-iconUrl" className="text-right text-white">
+                    Icon URL
+                  </Label>
+                  <Input
+                    id="edit-iconUrl"
+                    value={editPluginIconUrl}
+                    onChange={(e) => setEditPluginIconUrl(e.target.value)}
+                    placeholder="https://example.com/icon.png"
+                    className="col-span-3 bg-black/60 border-white/20 text-white"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-thumbnailUrl" className="text-right text-white">
+                    Thumbnail URL
+                  </Label>
+                  <Input
+                    id="edit-thumbnailUrl"
+                    value={editPluginThumbnailUrl}
+                    onChange={(e) => setEditPluginThumbnailUrl(e.target.value)}
+                    placeholder="https://example.com/thumbnail.png"
+                    className="col-span-3 bg-black/60 border-white/20 text-white"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="edit-active" className="text-right text-white">
+                    Active
+                  </Label>
+                  <Switch
+                    id="edit-active"
+                    checked={editPluginActive}
+                    onCheckedChange={setEditPluginActive}
+                    className="col-span-3"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleUpdatePlugin} className="bg-white text-black hover:bg-gray-200">
+                  Save changes
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </CardContent>
       </Card>
-
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-black border-white/20 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-white">Edit Plugin</DialogTitle>
-            <DialogDescription className="text-gray-400">Make changes to the plugin details.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-name" className="text-right text-white">
-                Name
-              </Label>
-              <Input
-                id="edit-name"
-                value={editPluginName}
-                onChange={(e) => setEditPluginName(e.target.value)}
-                className="col-span-3 bg-black/60 border-white/20 text-white"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-description" className="text-right text-white">
-                Description
-              </Label>
-              <Textarea
-                id="edit-description"
-                value={editPluginDescription}
-                onChange={(e) => setEditPluginDescription(e.target.value)}
-                className="col-span-3 bg-black/60 border-white/20 text-white min-h-[80px]"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-iconUrl" className="text-right text-white">
-                Icon URL
-              </Label>
-              <Input
-                id="edit-iconUrl"
-                value={editPluginIconUrl}
-                onChange={(e) => setEditPluginIconUrl(e.target.value)}
-                placeholder="https://example.com/icon.png"
-                className="col-span-3 bg-black/60 border-white/20 text-white"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-thumbnailUrl" className="text-right text-white">
-                Thumbnail URL
-              </Label>
-              <Input
-                id="edit-thumbnailUrl"
-                value={editPluginThumbnailUrl}
-                onChange={(e) => setEditPluginThumbnailUrl(e.target.value)}
-                placeholder="https://example.com/thumbnail.png"
-                className="col-span-3 bg-black/60 border-white/20 text-white"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-active" className="text-right text-white">
-                Active
-              </Label>
-              <Switch
-                id="edit-active"
-                checked={editPluginActive}
-                onCheckedChange={setEditPluginActive}
-                className="col-span-3"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleUpdatePlugin} className="bg-white text-black hover:bg-gray-200">
-              Save changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
