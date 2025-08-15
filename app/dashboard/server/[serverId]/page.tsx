@@ -25,7 +25,46 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { Shield, MessageSquare, Gift, LinkIcon, Filter, Hash, ChevronDown, Home, Plus, Copy, Check, LogIn, ArrowLeft, Clock, AlertTriangle, Info, Eye, Bot, Webhook, MessageCircle, FileText, Zap, UserCheck, Users, Crown, Package, Settings, Lock, Megaphone, Flag, LifeBuoy, Download, Ticket, BarChart3, CheckCircle, AlertCircle, Mail } from 'lucide-react'
+import {
+  Shield,
+  MessageSquare,
+  Gift,
+  LinkIcon,
+  Filter,
+  Hash,
+  ChevronDown,
+  Home,
+  Plus,
+  Copy,
+  Check,
+  LogIn,
+  ArrowLeft,
+  Clock,
+  AlertTriangle,
+  Info,
+  Eye,
+  Bot,
+  Webhook,
+  MessageCircle,
+  FileText,
+  Zap,
+  UserCheck,
+  Users,
+  Crown,
+  Package,
+  Settings,
+  Lock,
+  Megaphone,
+  Flag,
+  LifeBuoy,
+  Download,
+  Ticket,
+  BarChart3,
+  CheckCircle,
+  AlertCircle,
+  Mail,
+  EyeOff,
+} from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -235,6 +274,8 @@ export default function ServerConfigPage() {
   const [showLockdownWarning, setShowLockdownWarning] = useState(false)
   const [showFlagStaffWarning, setShowFlagStaffWarning] = useState(false)
   const [staffToFlag, setStaffToFlag] = useState<string | null>(null)
+
+  const [showStaffInsightsModal, setShowStaffInsightsModal] = useState(false)
 
   const [activeSupportSection, setActiveSupportSection] = useState<"staff" | "tickets" | null>(null)
 
@@ -1880,7 +1921,7 @@ export default function ServerConfigPage() {
                 activeTab === "events" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
               } transition-colors flex-shrink-0 text-sm px-4 h-9`}
             >
-              <Gift className="h-4 w-4 mr-2" />
+              <Zap className="h-4 w-4 mr-2" />
               Functions
             </Button>
             <Button
@@ -1893,7 +1934,7 @@ export default function ServerConfigPage() {
                   : "text-white hover:bg-gray-100 hover:text-gray-900"
               } transition-colors flex-shrink-0 text-sm px-4 h-9`}
             >
-              <LinkIcon className="h-4 w-4 mr-2" /> {/* Using LinkIcon for Integrations */}
+              <LinkIcon className="h-4 w-4 mr-2" />
               Integrations
             </Button>
             <Button
@@ -1918,21 +1959,6 @@ export default function ServerConfigPage() {
               <Settings className="h-4 w-4 mr-2" />
               Settings
             </Button>
-            {session?.user?.email === "dmarton336@gmail.com" && (
-              <Button
-                variant={activeTab === "access-plus" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("access-plus")}
-                className={`${
-                  activeTab === "access-plus"
-                    ? "bg-white text-black"
-                    : "text-white hover:bg-gray-100 hover:text-gray-900"
-                } transition-colors flex-shrink-0 text-sm px-4 h-9`}
-              >
-                <Lock className="h-4 w-4 mr-2" />
-                Access+
-              </Button>
-            )}
           </nav>
         </div>
       </div>
@@ -2475,8 +2501,41 @@ export default function ServerConfigPage() {
               </CardContent>
             </Card>
 
-            {/* Basic Filters - Side by side on desktop, stacked on mobile */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Staff Insights Miniblock */}
+              <Card className="glass-card">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-white flex items-center text-base">
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    Staff Insights
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white text-sm">Enable Insights</span>
+                    <Switch
+                      checked={serverConfig.support?.reputation_enabled || false}
+                      onCheckedChange={(checked) =>
+                        updateServerConfig({
+                          support: {
+                            ...serverConfig.support,
+                            reputation_enabled: checked,
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowStaffInsightsModal(true)}
+                    className="w-full border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent text-xs"
+                  >
+                    How to use
+                  </Button>
+                </CardContent>
+              </Card>
+
               {/* Bad Word Filter */}
               <Card className="glass-card">
                 <CardHeader className="pb-3">
@@ -2500,30 +2559,6 @@ export default function ServerConfigPage() {
                       }
                     />
                   </div>
-                  {serverConfig.moderation.bad_word_filter.enabled && (
-                    <div>
-                      <Label className="text-white text-xs mb-1 block">Custom Words</Label>
-                      <Textarea
-                        placeholder="word1, word2, word3"
-                        value={serverConfig.moderation.bad_word_filter.custom_words?.join(", ") || ""}
-                        onChange={(e) =>
-                          updateServerConfig({
-                            moderation: {
-                              ...serverConfig.moderation,
-                              bad_word_filter: {
-                                ...serverConfig.moderation.bad_word_filter,
-                                custom_words: e.target.value
-                                  .split(",")
-                                  .map((w) => w.trim())
-                                  .filter((w) => w),
-                              },
-                            },
-                          })
-                        }
-                        className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[60px] text-xs"
-                      />
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 
@@ -2550,31 +2585,6 @@ export default function ServerConfigPage() {
                       }
                     />
                   </div>
-                  {serverConfig.moderation.link_filter.enabled && (
-                    <div>
-                      <Label className="text-white text-xs mb-1 block">Scanning Mode</Label>
-                      <Select
-                        value={serverConfig.moderation.link_filter.config}
-                        onValueChange={(value: "all_links" | "whitelist_only" | "phishing_only") =>
-                          updateServerConfig({
-                            moderation: {
-                              ...serverConfig.moderation,
-                              link_filter: { ...serverConfig.moderation.link_filter, config: value },
-                            },
-                          })
-                        }
-                      >
-                        <SelectTrigger className="bg-black/60 border-white/20 h-8">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="phishing_only">Block fraud only</SelectItem>
-                          <SelectItem value="all_links">Block all links</SelectItem>
-                          <SelectItem value="whitelist_only">Whitelist only</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 
@@ -2604,30 +2614,6 @@ export default function ServerConfigPage() {
                       }
                     />
                   </div>
-                  {serverConfig.moderation.malicious_file_scanner.enabled && (
-                    <div>
-                      <Label className="text-white text-xs mb-1 block">Allowed Types</Label>
-                      <Input
-                        placeholder="jpg, png, pdf"
-                        value={serverConfig.moderation.malicious_file_scanner.allowed_file_types?.join(", ") || ""}
-                        onChange={(e) =>
-                          updateServerConfig({
-                            moderation: {
-                              ...serverConfig.moderation,
-                              malicious_file_scanner: {
-                                ...serverConfig.moderation.malicious_file_scanner,
-                                allowed_file_types: e.target.value
-                                  .split(",")
-                                  .map((t) => t.trim())
-                                  .filter((t) => t),
-                              },
-                            },
-                          })
-                        }
-                        className="bg-black/60 border-white/20 text-white placeholder-gray-400 h-8 text-xs"
-                      />
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             </div>
@@ -2947,37 +2933,121 @@ export default function ServerConfigPage() {
         {/* Support Tab */}
         {activeTab === "support" && (
           <div className="space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-white mb-2">Sycord is here to help</h2>
+              <p className="text-gray-400">Get assistance and manage your support systems</p>
+            </div>
+
             {/* Support Functions Overview */}
             {!activeSupportSection && (
               <div className="grid grid-cols-1 gap-6">
-                {/* Staff Insights Card */}
-                <Card
-                  className="glass-card cursor-pointer hover:bg-white/5 transition-colors"
-                  onClick={() => setActiveSupportSection("staff")}
-                >
+                <Card className="glass-card">
                   <CardContent className="p-6">
                     <div className="flex items-center space-x-4 mb-4">
-                      <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                        <Users className="h-6 w-6 text-white" />
+                      <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center">
+                        <LinkIcon className="h-6 w-6 text-white" />
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold text-white">Staff Insights</h3>
-                        <p className="text-sm text-gray-400">Monitor staff performance and reputation</p>
+                        <h3 className="text-lg font-semibold text-white">Invite Track & Log</h3>
+                        <p className="text-sm text-gray-400">Monitor server invites and track member growth</p>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Status:</span>
-                        <span
-                          className={`${serverConfig.support?.reputation_enabled ? "text-green-400" : "text-gray-400"}`}
-                        >
-                          {serverConfig.support?.reputation_enabled ? "Enabled" : "Disabled"}
-                        </span>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label htmlFor="invite-tracking" className="text-white">
+                            Enable Invite Tracking
+                          </Label>
+                          <p className="text-sm text-gray-400">Track who invited new members</p>
+                        </div>
+                        <Switch
+                          id="invite-tracking"
+                          checked={serverConfig.invite_tracking?.enabled || false}
+                          onCheckedChange={(checked) =>
+                            updateServerConfig({
+                              invite_tracking: {
+                                ...serverConfig.invite_tracking,
+                                enabled: checked,
+                              },
+                            })
+                          }
+                        />
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Active Staff:</span>
-                        <span className="text-white">{serverConfig.support?.staff?.length || 0}</span>
-                      </div>
+
+                      {serverConfig.invite_tracking?.enabled && (
+                        <div className="space-y-3 pt-2 border-t border-white/10">
+                          <div className="space-y-2">
+                            <Label htmlFor="invite-log-channel" className="text-white">
+                              Log Channel
+                            </Label>
+                            <Select
+                              value={serverConfig.invite_tracking?.channel_id || ""}
+                              onValueChange={(value) =>
+                                updateServerConfig({
+                                  invite_tracking: {
+                                    ...serverConfig.invite_tracking,
+                                    channel_id: value,
+                                  },
+                                })
+                              }
+                            >
+                              <SelectTrigger className="bg-black/60 border-white/20 h-8">
+                                <SelectValue placeholder="Select log channel" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {serverConfig.channels &&
+                                  Object.entries(serverConfig.channels).map(([channelId, channelName]) => (
+                                    <SelectItem key={channelId} value={channelId}>
+                                      {channelName}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label htmlFor="track-joins" className="text-white">
+                                Track Member Joins
+                              </Label>
+                              <p className="text-sm text-gray-400">Log when members join via invites</p>
+                            </div>
+                            <Switch
+                              id="track-joins"
+                              checked={serverConfig.invite_tracking?.track_joins || false}
+                              onCheckedChange={(checked) =>
+                                updateServerConfig({
+                                  invite_tracking: {
+                                    ...serverConfig.invite_tracking,
+                                    track_joins: checked,
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label htmlFor="track-leaves" className="text-white">
+                                Track Member Leaves
+                              </Label>
+                              <p className="text-sm text-gray-400">Log when members leave the server</p>
+                            </div>
+                            <Switch
+                              id="track-leaves"
+                              checked={serverConfig.invite_tracking?.track_leaves || false}
+                              onCheckedChange={(checked) =>
+                                updateServerConfig({
+                                  invite_tracking: {
+                                    ...serverConfig.invite_tracking,
+                                    track_leaves: checked,
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -3497,8 +3567,126 @@ export default function ServerConfigPage() {
           </div>
         )}
 
-        {/* Events Tab */}
-        {activeTab === "events" && <div className="space-y-6">{renderEventContent()}</div>}
+        {/* Functions Tab (Events) */}
+        {activeTab === "events" && (
+          <div className="space-y-6">
+            {activeEventSection === "overview" && (
+              <div className="grid grid-cols-1 gap-6">
+                <Card
+                  className="glass-card cursor-pointer hover:bg-white/5 transition-colors border-2 border-dashed border-white/20"
+                  onClick={() => setActiveTab("plugins")}
+                >
+                  <CardContent className="p-6 text-center">
+                    <div className="flex flex-col items-center space-y-4">
+                      <div className="w-12 h-12 rounded-lg bg-gray-500/20 flex items-center justify-center">
+                        <Plus className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">Add a new function</h3>
+                        <p className="text-sm text-gray-400">Explore and add new functionality to your server</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Automatic Tasks Card */}
+                <Card
+                  className="glass-card cursor-pointer hover:bg-white/5 transition-colors"
+                  onClick={() => setActiveEventSection("automatic-task")}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-4 mb-4">
+                      <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                        <Clock className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">Automatic Tasks</h3>
+                        <p className="text-sm text-gray-400">Schedule and automate server actions</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Status:</span>
+                        <span
+                          className={`${serverConfig.automatic_tasks?.enabled ? "text-green-400" : "text-gray-400"}`}
+                        >
+                          {serverConfig.automatic_tasks?.enabled ? "Enabled" : "Disabled"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Active Tasks:</span>
+                        <span className="text-white">{serverConfig.automatic_tasks?.tasks?.length || 0}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Giveaway Card */}
+                <Card
+                  className="glass-card cursor-pointer hover:bg-white/5 transition-colors"
+                  onClick={() => setActiveEventSection("giveaway")}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-4 mb-4">
+                      <div className="w-12 h-12 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+                        <Gift className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">Giveaways</h3>
+                        <p className="text-sm text-gray-400">Create and manage server giveaways</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Status:</span>
+                        <span className={`${serverConfig.giveaway?.enabled ? "text-green-400" : "text-gray-400"}`}>
+                          {serverConfig.giveaway?.enabled ? "Enabled" : "Disabled"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Ongoing Giveaways:</span>
+                        <span className="text-white">3</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Logger Card */}
+                <Card
+                  className="glass-card cursor-pointer hover:bg-white/5 transition-colors"
+                  onClick={() => setActiveEventSection("logger")}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-center space-x-4 mb-4">
+                      <div className="w-12 h-12 rounded-lg bg-gray-700/20 flex items-center justify-center">
+                        <FileText className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">Logger</h3>
+                        <p className="text-sm text-gray-400">Log server events and actions</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Status:</span>
+                        <span className={`${serverConfig.logs?.enabled ? "text-green-400" : "text-gray-400"}`}>
+                          {serverConfig.logs?.enabled ? "Enabled" : "Disabled"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Log Entries Today:</span>
+                        <span className="text-white">124</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Render other event sections */}
+            {renderEventContent()}
+          </div>
+        )}
 
         {/* Integrations Tab */}
         {activeTab === "integrations" && (
@@ -3600,7 +3788,7 @@ export default function ServerConfigPage() {
                       className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
                       onClick={() => setShowToken(!showToken)}
                     >
-                      {showToken ? <Eye className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {showToken ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
                     </Button>
                   </div>
                   <p className="text-xs text-gray-400 mt-1">Leave empty to use the default Sycord bot</p>
@@ -3743,6 +3931,76 @@ export default function ServerConfigPage() {
           </div>
         )}
       </div>
+
+      <Dialog open={showStaffInsightsModal} onOpenChange={setShowStaffInsightsModal}>
+        <DialogContent className="glass-card max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="text-white text-xl">How Staff Insights & Reputation Works</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Learn how to effectively use staff monitoring and reputation systems
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+            {/* Block 1: Overview */}
+            <Card className="glass-card">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                    <Eye className="h-5 w-5 text-white" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">Overview</h3>
+                </div>
+                <p className="text-gray-400 text-sm leading-relaxed">
+                  Staff Insights monitors your team's performance, response times, and activity patterns. It provides
+                  real-time analytics to help you understand how your staff is performing and identify areas for
+                  improvement.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Block 2: Reputation System */}
+            <Card className="glass-card">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="w-10 h-10 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+                    <Crown className="h-5 w-5 text-white" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">Reputation System</h3>
+                </div>
+                <p className="text-gray-400 text-sm leading-relaxed">
+                  The reputation system tracks staff performance with scores from 0-20. Higher scores indicate better
+                  performance, faster response times, and positive user feedback. Staff can earn reputation through
+                  helpful responses and lose it for poor performance.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Block 3: Getting Started */}
+            <Card className="glass-card">
+              <CardContent className="p-6">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+                    <CheckCircle className="h-5 w-5 text-white" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">Getting Started</h3>
+                </div>
+                <p className="text-gray-400 text-sm leading-relaxed">
+                  Enable Staff Insights in the Sentinel tab, then configure your staff roles. The system will
+                  automatically start tracking performance metrics. Use the analytics to identify top performers and
+                  provide targeted training where needed.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <DialogFooter className="mt-6">
+            <Button onClick={() => setShowStaffInsightsModal(false)} className="bg-white text-black hover:bg-gray-100">
+              Got it
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
