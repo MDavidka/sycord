@@ -219,6 +219,11 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
         if (installResponse.ok) {
           await fetchPlugins()
           await fetchUserPlugins()
+          setIsAICreatorOpen(false)
+          setAiPrompt("")
+          setPluginName("")
+          setPluginDescription("")
+          setMessages([])
         }
       }
     } catch (error) {
@@ -363,11 +368,6 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
             size="sm"
             onClick={async () => {
               await handleSavePlugin();
-              setIsAICreatorOpen(false);
-              setAiPrompt("");
-              setPluginName("");
-              setPluginDescription("");
-              setMessages([]);
             }}
             className="text-white hover:bg-white/10 p-2 min-w-[44px] min-h-[44px]"
           >
@@ -517,15 +517,6 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
               disabled={isGenerating || !aiPrompt.trim()}
             >
               <Send className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="flex justify-end mt-3 space-x-2">
-            <Button
-              size="sm"
-              className="bg-white text-black hover:bg-gray-200 h-10 px-4 text-sm sm:text-base"
-              onClick={handleDownloadCode}
-            >
-              Download Code
             </Button>
           </div>
         </div>
@@ -686,13 +677,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
               onClick={() => setIsAICreatorOpen(true)}
               className="bg-white text-black hover:bg-gray-200 h-11 px-4 sm:px-6 text-sm sm:text-base font-medium"
             >
-              <Image
-                src="https://i.ibb.co/RLVF1Rj/IMG-0362.png"
-                alt="AI"
-                width={18}
-                height={18}
-                className="sm:mr-2"
-              />
+              <Image src="https://i.ibb.co/RLVF1Rj/IMG-0362.png" alt="AI" width={18} height={18} className="sm:mr-2" />
               <span className="hidden sm:inline">AI Lab</span>
               <span className="sm:hidden ml-1">AI</span>
             </Button>
