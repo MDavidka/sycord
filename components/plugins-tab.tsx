@@ -110,41 +110,29 @@ export default function PluginsTab() {
   }
 
   const handleGeneratePlugin = async () => {
-    // Added AI plugin generation function
     if (!aiPrompt.trim()) return
 
     setIsGenerating(true)
     setGeneratedCode("")
 
     try {
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const response = await fetch("/api/ai/generate-plugin", {
         method: "POST",
         headers: {
-          Authorization: "Bearer YOUR_API_KEY_HERE", // Replace with actual API key
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "llama3-70b-8192",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are an expert Discord bot developer. Generate a Python Cog for discord.py 2.0 based on the user request. Include all imports.",
-            },
-            {
-              role: "user",
-              content: aiPrompt,
-            },
-          ],
+          message: aiPrompt,
         }),
       })
 
       if (response.ok) {
         const data = await response.json()
-        setGeneratedCode(data.choices[0].message.content)
+        setGeneratedCode(data.code)
       } else {
-        console.error("Failed to generate plugin code")
-        setGeneratedCode("// Error: Failed to generate plugin code. Please check your API key and try again.")
+        const errorData = await response.json()
+        console.error("Failed to generate plugin code:", errorData.error)
+        setGeneratedCode(`// Error: ${errorData.error || "Failed to generate plugin code. Please try again."}`)
       }
     } catch (error) {
       console.error("Error generating plugin:", error)
