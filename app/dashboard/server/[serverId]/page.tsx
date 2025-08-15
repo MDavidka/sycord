@@ -624,7 +624,9 @@ export default function ServerConfigPage() {
 
         {activeTab === "integrations" && <IntegrationsTab />}
 
-        {activeTab === "plugins" && <PluginsTab serverId={serverId} />}
+        {activeTab === "plugins" && (
+          <PluginsTab serverId={serverId} activeTab={activeTab} setActiveTab={setActiveTab} />
+        )}
 
         {activeTab === "settings" && (
           <SettingsTab
