@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
           {
             role: "system",
             content:
-              "You are an expert Discord bot developer. Generate a Python Cog for discord.py 2.0 based on the user request. Include all imports and make sure the code is complete and functional. Format the response as clean Python code without markdown formatting.",
+              “Create a Discord bot using the latest discord.py version with the appropriate intents, based on the user’s request. Return only the complete Python code, without any explanations, comments, or additional text.”,
           },
           {
             role: "user",
