@@ -32,12 +32,6 @@ import {
   Send,
   Copy,
   Trash,
-  Home,
-  Shield,
-  LifeBuoy,
-  Zap,
-  LinkIcon,
-  Settings,
 } from "lucide-react"
 import Image from "next/image"
 import type { Plugin, UserPlugin } from "@/lib/types"
@@ -348,13 +342,6 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
 
   const isPluginInstalled = (pluginId: string) => userPlugins.some((p) => p.pluginId === pluginId)
 
-  const handleBackClick = () => {
-    if (generatedCode) {
-      handleSavePlugin()
-    }
-    setIsAICreatorOpen(false)
-  }
-
   if (loading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-black">
@@ -373,7 +360,13 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleBackClick}
+            onClick={() => {
+              setIsAICreatorOpen(false)
+              setAiPrompt("")
+              setPluginName("")
+              setPluginDescription("")
+              setMessages([])
+            }}
             className="text-white hover:bg-white/10 p-2 min-w-[44px] min-h-[44px]"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -524,269 +517,300 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
               <Send className="h-4 w-4" />
             </Button>
           </div>
+          <div className="flex justify-end mt-3">
+            <Button
+              size="sm"
+              className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white h-10 px-4 text-sm sm:text-base"
+              onClick={handleSavePlugin}
+              disabled={!generatedCode || isSaving}
+            >
+              {isSaving ? "Saving..." : "Save Plugin"}
+            </Button>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {setActiveTab && (
-        <div className="glass-card border-b border-white/10">
-          <div className="px-4 py-2">
-            <nav className="flex space-x-1 overflow-x-auto">
-              <Button
-                variant={activeTab === "home" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("home")}
-                className={`${
-                  activeTab === "home" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
-              >
-                <Home className="h-4 w-4 mr-2" />
-                Home
-              </Button>
-              <Button
-                variant={activeTab === "sentinel" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("sentinel")}
-                className={`${
-                  activeTab === "sentinel" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
-              >
-                <Shield className="h-4 w-4 mr-2" />
-                Sentinel
-              </Button>
-              <Button
-                variant={activeTab === "support" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("support")}
-                className={`${
-                  activeTab === "support" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
-              >
-                <LifeBuoy className="h-4 w-4 mr-2" />
-                Support
-              </Button>
-              <Button
-                variant={activeTab === "events" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("events")}
-                className={`${
-                  activeTab === "events" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
-              >
-                <Zap className="h-4 w-4 mr-2" />
-                Functions
-              </Button>
-              <Button
-                variant={activeTab === "integrations" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("integrations")}
-                className={`${
-                  activeTab === "integrations"
-                    ? "bg-white text-black"
-                    : "text-white hover:bg-gray-100 hover:text-gray-900"
-                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
-              >
-                <LinkIcon className="h-4 w-4 mr-2" />
-                Integrations
-              </Button>
-              <Button
-                variant={activeTab === "plugins" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("plugins")}
-                className={`${
-                  activeTab === "plugins" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
+    <div className="bg-black text-white">
+      <div className="p-4 sm:p-6 border-b border-white/20 flex items-center justify-between">
+        <h1 className="text-xl sm:text-2xl font-semibold text-white flex items-center">
+          <Package className="h-6 w-6 sm:h-7 sm:w-7 mr-3" />
+          <span className="hidden sm:inline">Plugin Management</span>
+          <span className="sm:hidden">Plugins</span>
+        </h1>
+        <div className="flex space-x-3">
+          {isAdmin && (
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-white text-black hover:bg-gray-200 h-11 px-4 sm:px-6 text-sm sm:text-base font-medium">
+                  <Plus className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">New Plugin</span>
+                  <span className="sm:hidden ml-1">New</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="w-[95vw] max-w-[500px] bg-black border-white/20 text-white">
+                <DialogHeader>
+                  <DialogTitle className="text-white text-lg">Create New Plugin</DialogTitle>
+                  <DialogDescription className="text-gray-400">
+                    Fill in the details for your new plugin.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-6 py-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-3 sm:gap-4">
+                    <Label htmlFor="name" className="sm:text-right text-white font-medium">
+                      Name
+                    </Label>
+                    <Input
+                      id="name"
+                      value={newPluginName}
+                      onChange={(e) => setNewPluginName(e.target.value)}
+                      className="sm:col-span-3 bg-black/60 border-white/20 text-white h-11"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-3 sm:gap-4">
+                    <Label htmlFor="description" className="sm:text-right text-white font-medium">
+                      Description
+                    </Label>
+                    <Textarea
+                      id="description"
+                      value={newPluginDescription}
+                      onChange={(e) => setNewPluginDescription(e.target.value)}
+                      className="sm:col-span-3 bg-black/60 border-white/20 text-white min-h-[100px]"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    onClick={handleCreatePlugin}
+                    className="bg-white text-black hover:bg-gray-200 w-full sm:w-auto h-11 px-6 font-medium"
+                  >
+                    Create Plugin
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+          <Button
+            onClick={() => setIsAICreatorOpen(true)}
+            className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90 h-11 px-4 sm:px-6 text-sm sm:text-base font-medium"
+          >
+            <Image src="https://i.ibb.co/RLVF1Rj/IMG-0362.png" alt="AI" width={18} height={18} className="sm:mr-2" />
+            <span className="hidden sm:inline">AI Lab</span>
+            <span className="sm:hidden ml-1">AI</span>
+          </Button>
+        </div>
+
+        <Tabs defaultValue="store" className="flex-1 flex flex-col overflow-hidden">
+          <div className="px-4 sm:px-6 pt-4">
+            <TabsList className="grid w-full grid-cols-2 bg-gray-800/60 backdrop-blur-sm rounded-xl h-12">
+              <TabsTrigger
+                value="store"
+                className="text-white data-[state=active]:bg-white data-[state=active]:text-black py-3 text-sm sm:text-base font-medium rounded-lg transition-all"
               >
                 <Package className="h-4 w-4 mr-2" />
-                Plugins
-              </Button>
-              <Button
-                variant={activeTab === "settings" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("settings")}
-                className={`${
-                  activeTab === "settings" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
+                Plugin Store
+              </TabsTrigger>
+              <TabsTrigger
+                value="installed"
+                className="text-white data-[state=active]:bg-white data-[state=active]:text-black py-3 text-sm sm:text-base font-medium rounded-lg transition-all"
               >
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </Button>
-            </nav>
+                <Check className="h-4 w-4 mr-2" />
+                Installed
+              </TabsTrigger>
+            </TabsList>
           </div>
-        </div>
-      )}
 
-      <div className="bg-black text-white">
-        <div className="p-4 sm:p-6 border-b border-white/20 flex items-center justify-between">
-          <h1 className="text-xl sm:text-2xl font-semibold text-white flex items-center">
-            <Package className="h-6 w-6 sm:h-7 sm:w-7 mr-3" />
-            <span className="hidden sm:inline">Plugin Management</span>
-            <span className="sm:hidden">Plugins</span>
-          </h1>
-          <div className="flex space-x-3">
-            {isAdmin && (
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-white text-black hover:bg-gray-200 h-11 px-4 sm:px-6 text-sm sm:text-base font-medium">
-                    <Plus className="h-4 w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">New Plugin</span>
-                    <span className="sm:hidden ml-1">New</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="w-[95vw] max-w-[500px] bg-black border-white/20 text-white">
-                  <DialogHeader>
-                    <DialogTitle className="text-white text-lg">Create New Plugin</DialogTitle>
-                    <DialogDescription className="text-gray-400">
-                      Fill in the details for your new plugin.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-6 py-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-3 sm:gap-4">
-                      <Label htmlFor="name" className="sm:text-right text-white font-medium">
-                        Name
-                      </Label>
-                      <Input
-                        id="name"
-                        value={newPluginName}
-                        onChange={(e) => setNewPluginName(e.target.value)}
-                        className="sm:col-span-3 bg-black/60 border-white/20 text-white h-11"
+          <TabsContent value="store" className="flex-1 overflow-auto p-4 sm:p-6 mt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+              {plugins.map((plugin) => (
+                <Card key={plugin._id} className="glass-card flex flex-col h-full min-h-[280px] sm:min-h-[320px]">
+                  {plugin.thumbnailUrl ? (
+                    <div className="relative w-full h-32 sm:h-36 rounded-t-lg overflow-hidden">
+                      <Image
+                        src={plugin.thumbnailUrl || "/placeholder.svg"}
+                        alt={`${plugin.name} thumbnail`}
+                        layout="fill"
+                        objectFit="cover"
+                        className="rounded-t-lg"
                       />
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-3 sm:gap-4">
-                      <Label htmlFor="description" className="sm:text-right text-white font-medium">
-                        Description
-                      </Label>
-                      <Textarea
-                        id="description"
-                        value={newPluginDescription}
-                        onChange={(e) => setNewPluginDescription(e.target.value)}
-                        className="sm:col-span-3 bg-black/60 border-white/20 text-white min-h-[100px]"
-                      />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      onClick={handleCreatePlugin}
-                      className="bg-white text-black hover:bg-gray-200 w-full sm:w-auto h-11 px-6 font-medium"
-                    >
-                      Create Plugin
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
-            <Button
-              onClick={() => setIsAICreatorOpen(true)}
-              className="bg-white text-black hover:bg-gray-200 h-11 px-4 sm:px-6 text-sm sm:text-base font-medium"
-            >
-              <Image 
-                src="https://i.ibb.co/RLVF1Rj/IMG-0362.png" 
-                alt="AI" 
-                width={18} 
-                height={18} 
-                className="sm:mr-2 rounded"
-              />
-              <span className="hidden sm:inline">AI Lab</span>
-              <span className="sm:hidden ml-1">AI</span>
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 p-4 sm:p-6">
-          {plugins.map((plugin) => (
-            <Card key={plugin._id} className="glass-card flex flex-col h-full min-h-[280px] sm:min-h-[320px]">
-              {plugin.thumbnailUrl ? (
-                <div className="relative w-full h-32 sm:h-36 rounded-t-lg overflow-hidden">
-                  <Image
-                    src={plugin.thumbnailUrl || "/placeholder.svg"}
-                    alt={`${plugin.name} thumbnail`}
-                    layout="fill"
-                    objectFit="cover"
-                    className="rounded-t-lg"
-                  />
-                </div>
-              ) : (
-                <div className="relative w-full h-32 sm:h-36 rounded-t-lg overflow-hidden bg-gray-800 flex items-center justify-center">
-                  <ImageIcon className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />
-                </div>
-              )}
-              <CardHeader className="flex-row items-center space-x-3 pb-3 p-4 sm:p-5">
-                {plugin.iconUrl ? (
-                  <Image
-                    src={plugin.iconUrl || "/placeholder.svg"}
-                    alt={`${plugin.name} icon`}
-                    width={36}
-                    height={36}
-                    className="rounded-full object-cover flex-shrink-0"
-                  />
-                ) : (
-                  <div className="w-9 h-9 rounded-full bg-gray-600 flex items-center justify-center flex-shrink-0">
-                    <ImageIcon className="h-5 w-5 text-gray-400" />
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <CardTitle className="text-white text-base sm:text-lg truncate font-semibold">
-                    {plugin.name}
-                  </CardTitle>
-                  <CardDescription className="text-gray-400 text-sm truncate">
-                    {plugin.installs} installs
-                  </CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0 pb-4 px-4 sm:px-5 flex-1 flex flex-col">
-                <p className="text-gray-300 text-sm sm:text-base mb-4 line-clamp-3 flex-1 leading-relaxed">
-                  {plugin.description}
-                </p>
-                <div className="flex justify-end space-x-2">
-                  {isAdmin && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditPlugin(plugin)}
-                        className="h-10 w-10 p-0 border-white/20 text-white hover:bg-white/10 hover:border-white/40 transition-all"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeletePlugin(plugin._id)}
-                        className="h-10 w-10 p-0 border-white/20 text-white hover:bg-red-500/20 hover:border-red-400/40 transition-all"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </>
-                  )}
-                  {isPluginInstalled(plugin._id) ? (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      disabled
-                      className="h-10 px-4 bg-gray-600 text-white text-sm font-medium"
-                    >
-                      <Check className="h-4 w-4 mr-2" />
-                      Installed
-                    </Button>
                   ) : (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => handleInstallPlugin(plugin._id)}
-                      className="h-10 px-4 bg-white text-black text-sm font-medium hover:bg-gray-200 transition-all"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Install
-                    </Button>
+                    <div className="relative w-full h-32 sm:h-36 rounded-t-lg overflow-hidden bg-gray-800 flex items-center justify-center">
+                      <ImageIcon className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />
+                    </div>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  <CardHeader className="flex-row items-center space-x-3 pb-3 p-4 sm:p-5">
+                    {plugin.iconUrl ? (
+                      <Image
+                        src={plugin.iconUrl || "/placeholder.svg"}
+                        alt={`${plugin.name} icon`}
+                        width={36}
+                        height={36}
+                        className="rounded-full object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-gray-600 flex items-center justify-center flex-shrink-0">
+                        <ImageIcon className="h-5 w-5 text-gray-400" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <CardTitle className="text-white text-base sm:text-lg truncate font-semibold">
+                        {plugin.name}
+                      </CardTitle>
+                      <CardDescription className="text-gray-400 text-sm truncate">
+                        {plugin.installs} installs
+                      </CardDescription>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0 pb-4 px-4 sm:px-5 flex-1 flex flex-col">
+                    <p className="text-gray-300 text-sm sm:text-base mb-4 line-clamp-3 flex-1 leading-relaxed">
+                      {plugin.description}
+                    </p>
+                    <div className="flex justify-end space-x-2">
+                      {isAdmin && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditPlugin(plugin)}
+                            className="h-10 w-10 p-0 border-white/20 text-white hover:bg-white/10 hover:border-white/40 transition-all"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeletePlugin(plugin._id)}
+                            className="h-10 w-10 p-0 border-white/20 text-white hover:bg-red-500/20 hover:border-red-400/40 transition-all"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                      {isPluginInstalled(plugin._id) ? (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled
+                          className="h-10 px-4 bg-gray-600 text-white text-sm font-medium"
+                        >
+                          <Check className="h-4 w-4 mr-2" />
+                          Installed
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleInstallPlugin(plugin._id)}
+                          className="h-10 px-4 bg-white text-black text-sm font-medium hover:bg-gray-200 transition-all"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Install
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="installed" className="flex-1 overflow-auto p-4 sm:p-6 mt-2">
+            {userPlugins.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
+                <Package className="h-16 w-16 mb-6 opacity-50" />
+                <p className="text-center text-base sm:text-lg font-medium mb-2">No plugins installed yet.</p>
+                <p className="text-center text-sm sm:text-base opacity-75">Browse the Plugin Store to get started!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                {userPlugins.map((plugin) => (
+                  <Card
+                    key={plugin.pluginId}
+                    className="glass-card flex flex-col h-full min-h-[280px] sm:min-h-[320px]"
+                  >
+                    {plugin.thumbnailUrl ? (
+                      <div className="relative w-full h-32 sm:h-36 rounded-t-lg overflow-hidden">
+                        <Image
+                          src={plugin.thumbnailUrl || "/placeholder.svg"}
+                          alt={`${plugin.name} thumbnail`}
+                          layout="fill"
+                          objectFit="cover"
+                          className="rounded-t-lg"
+                        />
+                      </div>
+                    ) : (
+                      <div className="relative w-full h-32 sm:h-36 rounded-t-lg overflow-hidden bg-gray-800 flex items-center justify-center">
+                        <ImageIcon className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />
+                      </div>
+                    )}
+                    <CardHeader className="flex-row items-center space-x-3 pb-3 p-4 sm:p-5">
+                      {plugin.iconUrl ? (
+                        <Image
+                          src={plugin.iconUrl || "/placeholder.svg"}
+                          alt={`${plugin.name} icon`}
+                          width={36}
+                          height={36}
+                          className="rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-gray-600 flex items-center justify-center flex-shrink-0">
+                          <ImageIcon className="h-5 w-5 text-gray-400" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <CardTitle className="text-white text-base sm:text-lg truncate font-semibold">
+                          {plugin.name}
+                        </CardTitle>
+                        <CardDescription className="text-gray-400 text-sm truncate">
+                          Installed {new Date(plugin.installed_at).toLocaleDateString()}
+                        </CardDescription>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0 pb-4 px-4 sm:px-5 flex-1 flex flex-col">
+                      <p className="text-gray-300 text-sm sm:text-base mb-4 line-clamp-3 flex-1 leading-relaxed">
+                        {plugin.description}
+                      </p>
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditPluginId(plugin.pluginId)
+                            setIsAICreatorOpen(true)
+                            setPluginName(plugin.name)
+                            setPluginDescription(plugin.description)
+                            setMessages([
+                              {
+                                role: "ai",
+                                content: `Editing: ${plugin.name}\n\n${plugin.description}`,
+                                isCode: false,
+                              },
+                            ])
+                          }}
+                          className="h-10 w-10 p-0 border-white/20 text-white hover:bg-white/10 hover:border-white/40 transition-all"
+                        >
+                          <Image src="https://i.ibb.co/RLVF1Rj/IMG-0362.png" alt="AI" width={16} height={16} />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleUninstallPlugin(plugin.pluginId)}
+                          className="h-10 px-4 text-sm font-medium transition-all"
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Remove
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
 
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="w-[95vw] max-w-[500px] bg-black border-white/20 text-white">
@@ -837,6 +861,6 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
           </DialogContent>
         </Dialog>
       </div>
-    </div>
-  )
+    )
+  )\
 }
