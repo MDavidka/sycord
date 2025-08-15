@@ -32,6 +32,12 @@ import {
   Send,
   Copy,
   Trash,
+  Home,
+  Shield,
+  LifeBuoy,
+  Zap,
+  LinkIcon,
+  Settings,
 } from "lucide-react"
 import Image from "next/image"
 import type { Plugin, UserPlugin } from "@/lib/types"
@@ -533,73 +539,163 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   }
 
   return (
-    <div className="bg-black text-white">
-      <div className="p-4 sm:p-6 border-b border-white/20 flex items-center justify-between">
-        <h1 className="text-xl sm:text-2xl font-semibold text-white flex items-center">
-          <Package className="h-6 w-6 sm:h-7 sm:w-7 mr-3" />
-          <span className="hidden sm:inline">Plugin Management</span>
-          <span className="sm:hidden">Plugins</span>
-        </h1>
-        <div className="flex space-x-3">
-          {isAdmin && (
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-white text-black hover:bg-gray-200 h-11 px-4 sm:px-6 text-sm sm:text-base font-medium">
-                  <Plus className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">New Plugin</span>
-                  <span className="sm:hidden ml-1">New</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="w-[95vw] max-w-[500px] bg-black border-white/20 text-white">
-                <DialogHeader>
-                  <DialogTitle className="text-white text-lg">Create New Plugin</DialogTitle>
-                  <DialogDescription className="text-gray-400">
-                    Fill in the details for your new plugin.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-6 py-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-3 sm:gap-4">
-                    <Label htmlFor="name" className="sm:text-right text-white font-medium">
-                      Name
-                    </Label>
-                    <Input
-                      id="name"
-                      value={newPluginName}
-                      onChange={(e) => setNewPluginName(e.target.value)}
-                      className="sm:col-span-3 bg-black/60 border-white/20 text-white h-11"
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-3 sm:gap-4">
-                    <Label htmlFor="description" className="sm:text-right text-white font-medium">
-                      Description
-                    </Label>
-                    <Textarea
-                      id="description"
-                      value={newPluginDescription}
-                      onChange={(e) => setNewPluginDescription(e.target.value)}
-                      className="sm:col-span-3 bg-black/60 border-white/20 text-white min-h-[100px]"
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    onClick={handleCreatePlugin}
-                    className="bg-white text-black hover:bg-gray-200 w-full sm:w-auto h-11 px-6 font-medium"
-                  >
-                    Create Plugin
+    <div className="space-y-6">
+      {setActiveTab && (
+        <div className="glass-card border-b border-white/10">
+          <div className="px-4 py-2">
+            <nav className="flex space-x-1 overflow-x-auto">
+              <Button
+                variant={activeTab === "home" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setActiveTab("home")}
+                className={`${
+                  activeTab === "home" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
+                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
+              >
+                <Home className="h-4 w-4 mr-2" />
+                Home
+              </Button>
+              <Button
+                variant={activeTab === "sentinel" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setActiveTab("sentinel")}
+                className={`${
+                  activeTab === "sentinel" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
+                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
+              >
+                <Shield className="h-4 w-4 mr-2" />
+                Sentinel
+              </Button>
+              <Button
+                variant={activeTab === "support" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setActiveTab("support")}
+                className={`${
+                  activeTab === "support" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
+                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
+              >
+                <LifeBuoy className="h-4 w-4 mr-2" />
+                Support
+              </Button>
+              <Button
+                variant={activeTab === "events" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setActiveTab("events")}
+                className={`${
+                  activeTab === "events" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
+                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
+              >
+                <Zap className="h-4 w-4 mr-2" />
+                Functions
+              </Button>
+              <Button
+                variant={activeTab === "integrations" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setActiveTab("integrations")}
+                className={`${
+                  activeTab === "integrations"
+                    ? "bg-white text-black"
+                    : "text-white hover:bg-gray-100 hover:text-gray-900"
+                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
+              >
+                <LinkIcon className="h-4 w-4 mr-2" />
+                Integrations
+              </Button>
+              <Button
+                variant={activeTab === "plugins" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setActiveTab("plugins")}
+                className={`${
+                  activeTab === "plugins" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
+                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
+              >
+                <Package className="h-4 w-4 mr-2" />
+                Plugins
+              </Button>
+              <Button
+                variant={activeTab === "settings" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setActiveTab("settings")}
+                className={`${
+                  activeTab === "settings" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
+                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+            </nav>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-black text-white">
+        <div className="p-4 sm:p-6 border-b border-white/20 flex items-center justify-between">
+          <h1 className="text-xl sm:text-2xl font-semibold text-white flex items-center">
+            <Package className="h-6 w-6 sm:h-7 sm:w-7 mr-3" />
+            <span className="hidden sm:inline">Plugin Management</span>
+            <span className="sm:hidden">Plugins</span>
+          </h1>
+          <div className="flex space-x-3">
+            {isAdmin && (
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-white text-black hover:bg-gray-200 h-11 px-4 sm:px-6 text-sm sm:text-base font-medium">
+                    <Plus className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">New Plugin</span>
+                    <span className="sm:hidden ml-1">New</span>
                   </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
-          <Button
-            onClick={() => setIsAICreatorOpen(true)}
-            className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90 h-11 px-4 sm:px-6 text-sm sm:text-base font-medium"
-          >
-            <Image src="https://i.ibb.co/RLVF1Rj/IMG-0362.png" alt="AI" width={18} height={18} className="sm:mr-2" />
-            <span className="hidden sm:inline">AI Lab</span>
-            <span className="sm:hidden ml-1">AI</span>
-          </Button>
+                </DialogTrigger>
+                <DialogContent className="w-[95vw] max-w-[500px] bg-black border-white/20 text-white">
+                  <DialogHeader>
+                    <DialogTitle className="text-white text-lg">Create New Plugin</DialogTitle>
+                    <DialogDescription className="text-gray-400">
+                      Fill in the details for your new plugin.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-6 py-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-3 sm:gap-4">
+                      <Label htmlFor="name" className="sm:text-right text-white font-medium">
+                        Name
+                      </Label>
+                      <Input
+                        id="name"
+                        value={newPluginName}
+                        onChange={(e) => setNewPluginName(e.target.value)}
+                        className="sm:col-span-3 bg-black/60 border-white/20 text-white h-11"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-3 sm:gap-4">
+                      <Label htmlFor="description" className="sm:text-right text-white font-medium">
+                        Description
+                      </Label>
+                      <Textarea
+                        id="description"
+                        value={newPluginDescription}
+                        onChange={(e) => setNewPluginDescription(e.target.value)}
+                        className="sm:col-span-3 bg-black/60 border-white/20 text-white min-h-[100px]"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      onClick={handleCreatePlugin}
+                      className="bg-white text-black hover:bg-gray-200 w-full sm:w-auto h-11 px-6 font-medium"
+                    >
+                      Create Plugin
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+            <Button
+              onClick={() => setIsAICreatorOpen(true)}
+              className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90 h-11 px-4 sm:px-6 text-sm sm:text-base font-medium"
+            >
+              <Image src="https://i.ibb.co/RLVF1Rj/IMG-0362.png" alt="AI" width={18} height={18} className="sm:mr-2" />
+              <span className="hidden sm:inline">AI Lab</span>
+              <span className="sm:hidden ml-1">AI</span>
+            </Button>
+          </div>
         </div>
 
         <Tabs defaultValue="store" className="flex-1 flex flex-col overflow-hidden">
@@ -861,6 +957,6 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
           </DialogContent>
         </Dialog>
       </div>
-    )
-  )\
+    </div>
+  )
 }
