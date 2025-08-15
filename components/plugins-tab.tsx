@@ -18,9 +18,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Package, Plus, Download, Check, X, Edit, Trash2, ImageIcon } from "lucide-react"
+import { Package, Plus, Download, Check, X, Edit, Trash2, ImageIcon, Bot } from "lucide-react"
 import Image from "next/image"
-import type { Plugin, UserPlugin } from "@/lib/types" // Import Plugin and UserPlugin interfaces
+import type { Plugin, UserPlugin } from "@/lib/types"
 
 export default function PluginsTab() {
   const { data: session } = useSession()
@@ -31,16 +31,21 @@ export default function PluginsTab() {
   const [loading, setLoading] = useState(true)
   const [newPluginName, setNewPluginName] = useState("")
   const [newPluginDescription, setNewPluginDescription] = useState("")
-  const [newPluginIconUrl, setNewPluginIconUrl] = useState("") // New state for icon URL
-  const [newPluginThumbnailUrl, setNewPluginThumbnailUrl] = useState("") // New state for thumbnail URL
+  const [newPluginIconUrl, setNewPluginIconUrl] = useState("")
+  const [newPluginThumbnailUrl, setNewPluginThumbnailUrl] = useState("")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+
+  const [isAICreatorOpen, setIsAICreatorOpen] = useState(false) // Added AI plugin creator state
+  const [aiPrompt, setAiPrompt] = useState("")
+  const [generatedCode, setGeneratedCode] = useState("")
+  const [isGenerating, setIsGenerating] = useState(false)
 
   const [editPluginId, setEditPluginId] = useState<string | null>(null)
   const [editPluginName, setEditPluginName] = useState("")
   const [editPluginDescription, setEditPluginDescription] = useState("")
   const [editPluginActive, setEditPluginActive] = useState(false)
-  const [editPluginIconUrl, setEditPluginIconUrl] = useState("") // New state for edit icon URL
-  const [editPluginThumbnailUrl, setEditPluginThumbnailUrl] = useState("") // New state for edit thumbnail URL
+  const [editPluginIconUrl, setEditPluginIconUrl] = useState("")
+  const [editPluginThumbnailUrl, setEditPluginThumbnailUrl] = useState("")
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   useEffect(() => {
@@ -68,7 +73,7 @@ export default function PluginsTab() {
       const response = await fetch("/api/user-plugins")
       if (response.ok) {
         const data = await response.json()
-        setUserPlugins(data.installedPlugins) // Corrected to installedPlugins
+        setUserPlugins(data.installedPlugins)
       }
     } catch (error) {
       console.error("Error fetching user plugins:", error)
@@ -85,15 +90,15 @@ export default function PluginsTab() {
         body: JSON.stringify({
           name: newPluginName,
           description: newPluginDescription,
-          iconUrl: newPluginIconUrl, // Include icon URL
-          thumbnailUrl: newPluginThumbnailUrl, // Include thumbnail URL
+          iconUrl: newPluginIconUrl,
+          thumbnailUrl: newPluginThumbnailUrl,
         }),
       })
       if (response.ok) {
         setNewPluginName("")
         setNewPluginDescription("")
-        setNewPluginIconUrl("") // Clear icon URL
-        setNewPluginThumbnailUrl("") // Clear thumbnail URL
+        setNewPluginIconUrl("")
+        setNewPluginThumbnailUrl("")
         setIsCreateDialogOpen(false)
         fetchPlugins()
       } else {
@@ -104,18 +109,76 @@ export default function PluginsTab() {
     }
   }
 
+  const handleGeneratePlugin = async () => {
+    // Added AI plugin generation function
+    if (!aiPrompt.trim()) return
+
+    setIsGenerating(true)
+    setGeneratedCode("")
+
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer YOUR_API_KEY_HERE", // Replace with actual API key
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "llama3-70b-8192",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are an expert Discord bot developer. Generate a Python Cog for discord.py 2.0 based on the user request. Include all imports.",
+            },
+            {
+              role: "user",
+              content: aiPrompt,
+            },
+          ],
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setGeneratedCode(data.choices[0].message.content)
+      } else {
+        console.error("Failed to generate plugin code")
+        setGeneratedCode("// Error: Failed to generate plugin code. Please check your API key and try again.")
+      }
+    } catch (error) {
+      console.error("Error generating plugin:", error)
+      setGeneratedCode("// Error: Failed to connect to AI service. Please try again.")
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleDownloadCode = () => {
+    // Added download function for generated code
+    const blob = new Blob([generatedCode], { type: "text/plain" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = "generated_plugin.py"
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   const handleInstallPlugin = async (pluginId: string) => {
     try {
       const response = await fetch("/api/user-plugins", {
-        method: "POST", // Changed to POST
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ pluginId, action: "install" }), // Added action: "install"
+        body: JSON.stringify({ pluginId, action: "install" }),
       })
       if (response.ok) {
         fetchUserPlugins()
-        fetchPlugins() // Update installs count
+        fetchPlugins()
       } else {
         console.error("Failed to install plugin")
       }
@@ -127,15 +190,15 @@ export default function PluginsTab() {
   const handleUninstallPlugin = async (pluginId: string) => {
     try {
       const response = await fetch("/api/user-plugins", {
-        method: "POST", // Changed to POST
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ pluginId, action: "uninstall" }), // Added action: "uninstall"
+        body: JSON.stringify({ pluginId, action: "uninstall" }),
       })
       if (response.ok) {
         fetchUserPlugins()
-        fetchPlugins() // Update installs count
+        fetchPlugins()
       } else {
         console.error("Failed to uninstall plugin")
       }
@@ -149,8 +212,8 @@ export default function PluginsTab() {
     setEditPluginName(plugin.name)
     setEditPluginDescription(plugin.description)
     setEditPluginActive(plugin.active)
-    setEditPluginIconUrl(plugin.iconUrl || "") // Set edit icon URL
-    setEditPluginThumbnailUrl(plugin.thumbnailUrl || "") // Set edit thumbnail URL
+    setEditPluginIconUrl(plugin.iconUrl || "")
+    setEditPluginThumbnailUrl(plugin.thumbnailUrl || "")
     setIsEditDialogOpen(true)
   }
 
@@ -167,8 +230,8 @@ export default function PluginsTab() {
           name: editPluginName,
           description: editPluginDescription,
           active: editPluginActive,
-          iconUrl: editPluginIconUrl, // Include updated icon URL
-          thumbnailUrl: editPluginThumbnailUrl, // Include updated thumbnail URL
+          iconUrl: editPluginIconUrl,
+          thumbnailUrl: editPluginThumbnailUrl,
         }),
       })
       if (response.ok) {
@@ -245,77 +308,178 @@ export default function PluginsTab() {
             </TabsList>
 
             <TabsContent value="store" className="mt-6">
-              {isAdmin && (
-                <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <div className="flex gap-3 mb-6">
+                {isAdmin && (
+                  <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="bg-white text-black hover:bg-gray-200">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create New Plugin
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px] bg-black border-white/20 text-white">
+                      <DialogHeader>
+                        <DialogTitle className="text-white">Create New Plugin</DialogTitle>
+                        <DialogDescription className="text-gray-400">
+                          Fill in the details for your new plugin.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="name" className="text-right text-white">
+                            Name
+                          </Label>
+                          <Input
+                            id="name"
+                            value={newPluginName}
+                            onChange={(e) => setNewPluginName(e.target.value)}
+                            className="col-span-3 bg-black/60 border-white/20 text-white"
+                          />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="description" className="text-right text-white">
+                            Description
+                          </Label>
+                          <Textarea
+                            id="description"
+                            value={newPluginDescription}
+                            onChange={(e) => setNewPluginDescription(e.target.value)}
+                            className="col-span-3 bg-black/60 border-white/20 text-white min-h-[80px]"
+                          />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="iconUrl" className="text-right text-white">
+                            Icon URL
+                          </Label>
+                          <Input
+                            id="iconUrl"
+                            value={newPluginIconUrl}
+                            onChange={(e) => setNewPluginIconUrl(e.target.value)}
+                            placeholder="https://example.com/icon.png"
+                            className="col-span-3 bg-black/60 border-white/20 text-white"
+                          />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="thumbnailUrl" className="text-right text-white">
+                            Thumbnail URL
+                          </Label>
+                          <Input
+                            id="thumbnailUrl"
+                            value={newPluginThumbnailUrl}
+                            onChange={(e) => setNewPluginThumbnailUrl(e.target.value)}
+                            placeholder="https://example.com/thumbnail.png"
+                            className="col-span-3 bg-black/60 border-white/20 text-white"
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button onClick={handleCreatePlugin} className="bg-white text-black hover:bg-gray-200">
+                          Create Plugin
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
+
+                <Dialog open={isAICreatorOpen} onOpenChange={setIsAICreatorOpen}>
+                  {" "}
+                  {/* Added AI Plugin Creator button */}
                   <DialogTrigger asChild>
-                    <Button className="bg-white text-black hover:bg-gray-200 mb-6">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create New Plugin
+                    <Button className="bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700">
+                      <Bot className="h-4 w-4 mr-2" />
+                      Create Plugin Using AI
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px] bg-black border-white/20 text-white">
+                  <DialogContent className="sm:max-w-4xl bg-black border-white/20 text-white max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle className="text-white">Create New Plugin</DialogTitle>
+                      <DialogTitle className="text-white flex items-center">
+                        <Bot className="h-5 w-5 mr-2" />
+                        AI Plugin Creator
+                      </DialogTitle>
                       <DialogDescription className="text-gray-400">
-                        Fill in the details for your new plugin.
+                        Describe what you want your Discord bot plugin to do, and AI will generate the code for you.
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="name" className="text-right text-white">
-                          Name
-                        </Label>
-                        <Input
-                          id="name"
-                          value={newPluginName}
-                          onChange={(e) => setNewPluginName(e.target.value)}
-                          className="col-span-3 bg-black/60 border-white/20 text-white"
-                        />
+
+                    <div className="grid gap-6 py-4">
+                      <div className="space-y-3">
+                        <Label className="text-white text-sm">Describe your plugin</Label>
+                        <div className="flex gap-2">
+                          <Textarea
+                            placeholder="Example: Create a moderation plugin that can ban, kick, and mute users with logging..."
+                            value={aiPrompt}
+                            onChange={(e) => setAiPrompt(e.target.value)}
+                            className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[100px] flex-1"
+                            disabled={isGenerating}
+                          />
+                          <Button
+                            onClick={handleGeneratePlugin}
+                            disabled={isGenerating || !aiPrompt.trim()}
+                            className="bg-white text-black hover:bg-gray-200 self-end"
+                          >
+                            {isGenerating ? "Generating..." : "Generate"}
+                          </Button>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="description" className="text-right text-white">
-                          Description
-                        </Label>
-                        <Textarea
-                          id="description"
-                          value={newPluginDescription}
-                          onChange={(e) => setNewPluginDescription(e.target.value)}
-                          className="col-span-3 bg-black/60 border-white/20 text-white min-h-[80px]"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="iconUrl" className="text-right text-white">
-                          Icon URL
-                        </Label>
-                        <Input
-                          id="iconUrl"
-                          value={newPluginIconUrl}
-                          onChange={(e) => setNewPluginIconUrl(e.target.value)}
-                          placeholder="https://example.com/icon.png"
-                          className="col-span-3 bg-black/60 border-white/20 text-white"
-                        />
-                      </div>
-                      <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="thumbnailUrl" className="text-right text-white">
-                          Thumbnail URL
-                        </Label>
-                        <Input
-                          id="thumbnailUrl"
-                          value={newPluginThumbnailUrl}
-                          onChange={(e) => setNewPluginThumbnailUrl(e.target.value)}
-                          placeholder="https://example.com/thumbnail.png"
-                          className="col-span-3 bg-black/60 border-white/20 text-white"
-                        />
-                      </div>
+
+                      {isGenerating && ( // Loading State
+                        <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                          <div className="w-16 h-16 relative">
+                            <Image
+                              src="/generic-robot-icon.png"
+                              alt="Sycord Bot"
+                              width={64}
+                              height={64}
+                              className="rounded-full"
+                            />
+                          </div>
+                          <div className="text-center">
+                            <p className="text-white font-medium animate-pulse">sycord is working</p>
+                            <p className="text-gray-400 text-sm">Generating your plugin code...</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {generatedCode &&
+                        !isGenerating && ( // Code Editor Section
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-white text-sm">Generated Plugin Code</Label>
+                              <Button
+                                onClick={handleDownloadCode}
+                                variant="outline"
+                                size="sm"
+                                className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+                              >
+                                <Download className="h-4 w-4 mr-2" />
+                                Download
+                              </Button>
+                            </div>
+                            <div className="relative">
+                              <pre className="bg-gray-900 border border-white/20 rounded-lg p-4 text-sm text-gray-300 overflow-x-auto max-h-96 overflow-y-auto">
+                                <code>{generatedCode}</code>
+                              </pre>
+                            </div>
+                          </div>
+                        )}
                     </div>
+
                     <DialogFooter>
-                      <Button onClick={handleCreatePlugin} className="bg-white text-black hover:bg-gray-200">
-                        Create Plugin
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setIsAICreatorOpen(false)
+                          setAiPrompt("")
+                          setGeneratedCode("")
+                        }}
+                        className="border-white/20 text-white hover:bg-white/10"
+                      >
+                        Close
                       </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-              )}
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {plugins.map((plugin) => (
@@ -468,7 +632,6 @@ export default function PluginsTab() {
             </TabsContent>
           </Tabs>
 
-          {/* Edit Plugin Dialog */}
           <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
             <DialogContent className="sm:max-w-[425px] bg-black border-white/20 text-white">
               <DialogHeader>
