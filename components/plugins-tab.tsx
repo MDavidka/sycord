@@ -34,9 +34,6 @@ import {
   Beaker,
   Code,
   Copy,
-  Settings,
-  HelpCircle,
-  RotateCcw,
   ArrowLeft,
 } from "lucide-react"
 import Image from "next/image"
@@ -94,6 +91,17 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null)
+  const [chatSessions, setChatSessions] = useState<{
+    [key: string]: {
+      messages: { role: "user" | "ai" | "system"; content: string; isCode?: boolean; timestamp?: Date }[]
+      generatedCode: string
+      usageInstructions: string
+      pluginName: string
+      codeHistory: string[]
+    }
+  }>({})
 
   useEffect(() => {
     fetchPlugins()
@@ -184,7 +192,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
     setIsGenerating(true)
     setGenerationProgress(0)
     setGeneratedCode("")
-    setUsageInstructions("") // Clear previous usage instructions
+    setUsageInstructions("")
 
     const progressInterval = setInterval(() => {
       setGenerationProgress((prev) => {
@@ -198,6 +206,15 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
 
     const currentPrompt = aiPrompt
     setAiPrompt("")
+
+    let contextMessage = ""
+    if (currentChatId && chatSessions[currentChatId]?.codeHistory.length > 0) {
+      const latestCode = chatSessions[currentChatId].codeHistory[chatSessions[currentChatId].codeHistory.length - 1]
+      contextMessage = `Previous code context:\n${latestCode}\n\nUser request: ${currentPrompt}`
+    } else {
+      contextMessage = currentPrompt
+    }
+
     try {
       const response = await fetch("/api/ai/generate-plugin", {
         method: "POST",
@@ -205,7 +222,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          message: currentPrompt,
+          message: contextMessage,
         }),
       })
 
@@ -220,14 +237,35 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
       const fullResponse = data.code
       const parts = fullResponse.split(/2\.\s*/)
 
+      let codeSection = ""
+      let usageSection = ""
+
       if (parts.length >= 2) {
-        const codeSection = parts[0].trim()
-        const usageSection = parts[1].trim()
-        setGeneratedCode(codeSection)
-        setUsageInstructions(usageSection)
+        codeSection = parts[0].trim()
+        usageSection = parts[1].trim()
       } else {
-        setGeneratedCode(fullResponse)
-        setUsageInstructions("No usage instructions provided.")
+        codeSection = fullResponse
+        usageSection = "No usage instructions provided."
+      }
+
+      setGeneratedCode(codeSection)
+      setUsageInstructions(usageSection)
+
+      if (currentChatId) {
+        setChatSessions((prev) => ({
+          ...prev,
+          [currentChatId]: {
+            ...prev[currentChatId],
+            messages: [
+              ...prev[currentChatId].messages,
+              { role: "user", content: currentPrompt, timestamp: new Date() },
+              { role: "ai", content: "Discord bot generated successfully!", isCode: true, timestamp: new Date() },
+            ],
+            generatedCode: codeSection,
+            usageInstructions: usageSection,
+            codeHistory: [...(prev[currentChatId]?.codeHistory || []), codeSection],
+          },
+        }))
       }
 
       setMessages((prev) => [
@@ -277,14 +315,29 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
       })
       if (response.ok) {
         await fetchUserAIFunctions()
+
+        const newChatId = Date.now().toString()
+        setChatSessions((prev) => ({
+          ...prev,
+          [newChatId]: {
+            messages: [],
+            generatedCode: "",
+            usageInstructions: "",
+            pluginName: "",
+            codeHistory: [],
+          },
+        }))
+        setCurrentChatId(newChatId)
+        setMessages([])
+        setGeneratedCode("")
+        setUsageInstructions("")
+
         setIsAICreatorOpen(false)
         setAiPrompt("")
         setPluginName("")
         setPluginDescription("")
         setPluginThumbnailUrl("")
         setPluginProfileUrl("")
-        setGeneratedCode("")
-        setUsageInstructions("") // Clear usage instructions
         setMessages([])
       } else {
         throw new Error("Failed to save function")
@@ -313,6 +366,18 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   }
 
   const handleClearConversation = () => {
+    if (currentChatId) {
+      setChatSessions((prev) => ({
+        ...prev,
+        [currentChatId]: {
+          messages: [],
+          generatedCode: "",
+          usageInstructions: "",
+          pluginName: "",
+          codeHistory: [],
+        },
+      }))
+    }
     setMessages([])
     setGeneratedCode("")
     setUsageInstructions("")
@@ -452,24 +517,75 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
     setPluginName(aiFunction.name)
     setPluginDescription(aiFunction.description)
     setGeneratedCode(aiFunction.code)
+    setUsageInstructions(aiFunction.usageInstructions || "")
     setPluginThumbnailUrl(aiFunction.thumbnailUrl || "")
     setPluginProfileUrl(aiFunction.profileUrl || "")
-    // Include full code context for editing/follow-up requests
+
+    const editChatId = `edit-${aiFunction.id}-${Date.now()}`
+    setChatSessions((prev) => ({
+      ...prev,
+      [editChatId]: {
+        messages: [
+          {
+            role: "system",
+            content: `Editing saved Discord bot: ${aiFunction.name}`,
+            isCode: false,
+            timestamp: new Date(),
+          },
+          {
+            role: "ai",
+            content: `Ready to edit "${aiFunction.name}". You can request modifications or additions to this Discord bot.`,
+            isCode: false,
+            timestamp: new Date(),
+          },
+        ],
+        generatedCode: aiFunction.code,
+        usageInstructions: aiFunction.usageInstructions || "",
+        pluginName: aiFunction.name,
+        codeHistory: [aiFunction.code],
+      },
+    }))
+    setCurrentChatId(editChatId)
     setMessages([
       {
         role: "system",
-        content: `Current code context:\n${aiFunction.code}`,
+        content: `Editing saved Discord bot: ${aiFunction.name}`,
         isCode: false,
+        timestamp: new Date(),
       },
       {
         role: "ai",
-        content: `Ready to edit: ${aiFunction.name}. You can now request modifications or additions to this Discord bot.`,
+        content: `Ready to edit "${aiFunction.name}". You can request modifications or additions to this Discord bot.`,
         isCode: false,
+        timestamp: new Date(),
       },
     ])
   }
 
   const isPluginInstalled = (pluginId: string) => userPlugins.some((p) => p.pluginId === pluginId)
+
+  const handleNewChat = () => {
+    const newChatId = Date.now().toString()
+    setChatSessions((prev) => ({
+      ...prev,
+      [newChatId]: {
+        messages: [],
+        generatedCode: "",
+        usageInstructions: "",
+        pluginName: "",
+        codeHistory: [],
+      },
+    }))
+    setCurrentChatId(newChatId)
+    setMessages([])
+    setGeneratedCode("")
+    setUsageInstructions("")
+    setPluginName("")
+    setPluginDescription("")
+    setGenerationProgress(0)
+    setHasError(false)
+    setErrorMessage("")
+  }
 
   if (loading) {
     return (
@@ -486,243 +602,216 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
     return (
       <>
         <Dialog open={isAICreatorOpen} onOpenChange={setIsAICreatorOpen}>
-          <DialogContent className="w-full h-full sm:w-[95vw] sm:max-w-6xl sm:h-[90vh] bg-black/95 backdrop-blur-xl border-0 sm:border sm:border-white/10 text-white overflow-hidden p-0 sm:rounded-lg">
-            <DialogHeader className="border-b border-white/10 p-3 sm:p-4 bg-black/50 backdrop-blur-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 sm:space-x-3">
+          <DialogContent className="w-full h-full max-w-none max-h-none m-0 p-0 bg-black/95 backdrop-blur-xl border-0 rounded-none sm:w-[95vw] sm:h-[95vh] sm:max-w-4xl sm:max-h-[90vh] sm:m-auto sm:rounded-xl sm:border sm:border-white/10">
+            <div className="flex flex-col h-full">
+              <div className="flex items-center justify-between p-3 sm:p-4 border-b border-white/10 bg-black/50">
+                <div className="flex items-center space-x-3">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setIsAICreatorOpen(false)}
-                    className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 sm:hidden"
+                    className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10"
                   >
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
-                  <div className="w-5 h-5 sm:w-8 sm:h-8 relative">
-                    <Image src="/s1-logo.png" alt="S1 AI Lab" width={32} height={32} className="object-contain" />
-                  </div>
-                  <div>
-                    <DialogTitle className="text-white text-base sm:text-xl font-semibold">S1</DialogTitle>
-                    <DialogDescription className="text-gray-400 text-xs sm:text-sm hidden sm:block">
-                      Generate Discord bots with AI assistance
-                    </DialogDescription>
-                    <div className="text-gray-400 text-xs sm:hidden">Model: S1</div>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-1 sm:space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleClearConversation}
-                    className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 hidden sm:flex"
-                    title="Clear Conversation"
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 hidden sm:flex"
-                    title="Settings"
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 hidden sm:flex"
-                    title="Help"
-                  >
-                    <HelpCircle className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsAICreatorOpen(false)}
-                    className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 hidden sm:flex"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </DialogHeader>
-
-            <div className="flex-1 flex flex-col overflow-hidden h-full">
-              <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-4xl mx-auto w-full">
-                {messages.map((message, index) => (
-                  <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                    {message.role !== "system" && (
-                      <div
-                        className={`max-w-[85%] sm:max-w-[75%] p-3 sm:p-4 rounded-2xl sm:rounded-xl relative ${
-                          message.role === "user"
-                            ? "bg-white text-black ml-4"
-                            : hasError && message.content.startsWith("Error:")
-                              ? "bg-red-900/50 text-red-100 border border-red-700/50 mr-4"
-                              : "bg-gray-800/60 text-white border border-gray-700/30 mr-4"
-                        }`}
-                        style={{
-                          fontSize: window.innerWidth < 768 ? "14px" : "16px",
-                          lineHeight: "1.5",
-                        }}
-                      >
-                        <div className="mb-1">{message.content}</div>
-                        {message.timestamp && (
-                          <div
-                            className={`text-xs opacity-60 mt-2 ${
-                              message.role === "user" ? "text-right" : "text-left"
-                            }`}
-                          >
-                            {formatTimestamp(message.timestamp)}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {isGenerating && (
-                  <div className="flex justify-start">
-                    <div className="bg-gray-800/60 text-white border border-gray-700/30 mr-4 p-3 sm:p-4 rounded-2xl sm:rounded-xl max-w-[85%] sm:max-w-[75%]">
-                      <div className="flex items-center space-x-2">
-                        <span style={{ fontSize: window.innerWidth < 768 ? "14px" : "16px", lineHeight: "1.5" }}>
-                          Generating your Discord bot
-                        </span>
-                        <div className="flex space-x-1">
-                          <div
-                            className="w-2 h-2 bg-white rounded-full animate-bounce"
-                            style={{ animationDelay: "0ms" }}
-                          ></div>
-                          <div
-                            className="w-2 h-2 bg-white rounded-full animate-bounce"
-                            style={{ animationDelay: "150ms" }}
-                          ></div>
-                          <div
-                            className="w-2 h-2 bg-white rounded-full animate-bounce"
-                            style={{ animationDelay: "300ms" }}
-                          ></div>
-                        </div>
-                      </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-gray-400 text-sm">Model:</span>
+                    <div className="flex items-center space-x-1">
+                      <Image src="/s1-logo.png" alt="S1" width={16} height={16} />
+                      <span className="text-white text-sm font-medium">S1</span>
                     </div>
                   </div>
-                )}
-
-                <div ref={messagesEndRef} />
+                  {currentChatId && chatSessions[currentChatId]?.pluginName && (
+                    <span className="text-gray-400 text-sm">• Editing: {chatSessions[currentChatId].pluginName}</span>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNewChat}
+                  className="text-gray-400 hover:text-white hover:bg-white/10 text-sm"
+                >
+                  New Chat
+                </Button>
               </div>
 
-              {(isGenerating || generatedCode) && (
-                <div className="p-3 sm:p-6 border-t border-white/10 max-w-4xl mx-auto w-full">
-                  <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-xl p-4 sm:p-6 shadow-2xl">
-                    <div className="flex items-center justify-between mb-3 sm:mb-4">
-                      <div className="flex items-center space-x-2 sm:space-x-3">
-                        <div className="w-5 h-5 sm:w-6 sm:h-6 relative">
-                          <Image src="/s1-logo.png" alt="S1" width={24} height={24} className="object-contain" />
-                        </div>
-                        <h3 className="text-white font-medium text-base sm:text-lg">{pluginName}</h3>
-                        {generatedCode && (
-                          <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded-full">
-                            Latest Version
-                          </span>
-                        )}
-                      </div>
-                      {!isGenerating && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setGeneratedCode("")
-                            setUsageInstructions("")
-                            setGenerationProgress(0)
-                          }}
-                          className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10"
-                        >
-                          <X className="h-3 w-3 sm:h-4 sm:w-4" />
-                        </Button>
-                      )}
-                    </div>
-
-                    {isGenerating && (
-                      <div className="mb-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-gray-300 text-sm">Generating...</span>
-                          <span className="text-gray-300 text-sm">{Math.round(generationProgress)}%</span>
-                        </div>
-                        <div className="w-full bg-gray-800/50 rounded-full h-2">
-                          <div
-                            className="bg-white h-2 rounded-full transition-all duration-300 ease-out"
-                            style={{ width: `${generationProgress}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {usageInstructions && (
-                      <div className="mb-4">
-                        <h4 className="text-white font-medium mb-2 text-sm sm:text-base">How to use:</h4>
+              <div className="flex-1 flex flex-col overflow-hidden h-full">
+                <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-4xl mx-auto w-full">
+                  {messages.map((message, index) => (
+                    <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                      {message.role !== "system" && (
                         <div
-                          className="text-gray-300 prose prose-invert max-w-none"
+                          className={`max-w-[85%] sm:max-w-[75%] p-3 sm:p-4 rounded-2xl sm:rounded-xl relative ${
+                            message.role === "user"
+                              ? "bg-white text-black ml-4"
+                              : hasError && message.content.startsWith("Error:")
+                                ? "bg-red-900/50 text-red-100 border border-red-700/50 mr-4"
+                                : "bg-gray-800/60 text-white border border-gray-700/30 mr-4"
+                          }`}
                           style={{
                             fontSize: window.innerWidth < 768 ? "14px" : "16px",
                             lineHeight: "1.5",
                           }}
                         >
-                          <ReactMarkdown>{usageInstructions}</ReactMarkdown>
+                          <div className="mb-1">{message.content}</div>
+                          {message.timestamp && (
+                            <div
+                              className={`text-xs opacity-60 mt-2 ${
+                                message.role === "user" ? "text-right" : "text-left"
+                              }`}
+                            >
+                              {formatTimestamp(message.timestamp)}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
+                  ))}
 
-                    {(isGenerating || generatedCode) && (
-                      <div className="mb-4">
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={() => setIsCodeModalOpen(true)}
-                            variant="outline"
-                            className="flex-1 bg-transparent border-white/20 text-white hover:bg-white/10 hover:border-white/30 h-12 justify-center"
-                          >
-                            <Code className="h-5 w-5" />
-                          </Button>
-                          <Button
-                            onClick={handleSaveAIFunction}
-                            className="flex-1 bg-white text-black hover:bg-gray-200 h-12 justify-center font-medium"
-                          >
-                            <Save className="h-5 w-5" />
-                          </Button>
+                  {isGenerating && (
+                    <div className="flex justify-start">
+                      <div className="bg-gray-800/60 text-white border border-gray-700/30 mr-4 p-3 sm:p-4 rounded-2xl sm:rounded-xl max-w-[85%] sm:max-w-[75%]">
+                        <div className="flex items-center space-x-2">
+                          <span style={{ fontSize: window.innerWidth < 768 ? "14px" : "16px", lineHeight: "1.5" }}>
+                            Generating your Discord bot
+                          </span>
+                          <div className="flex space-x-1">
+                            <div
+                              className="w-2 h-2 bg-white rounded-full animate-bounce"
+                              style={{ animationDelay: "0ms" }}
+                            ></div>
+                            <div
+                              className="w-2 h-2 bg-white rounded-full animate-bounce"
+                              style={{ animationDelay: "150ms" }}
+                            ></div>
+                            <div
+                              className="w-2 h-2 bg-white rounded-full animate-bounce"
+                              style={{ animationDelay: "300ms" }}
+                            ></div>
+                          </div>
                         </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
+
+                  <div ref={messagesEndRef} />
                 </div>
-              )}
 
-              <div className="border-t border-white/10 p-3 sm:p-6 bg-black/50 backdrop-blur-sm sticky bottom-0 max-w-4xl mx-auto w-full">
-                <div className="flex space-x-2 sm:space-x-3 items-end">
-                  <div className="flex-1 min-w-0">
-                    <Textarea
-                      ref={textareaRef}
-                      value={aiPrompt}
-                      onChange={(e) => setAiPrompt(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      placeholder="Talk to S1..."
-                      className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 resize-none min-h-[44px] max-h-32 w-full"
-                      style={{
-                        fontSize: "16px",
-                        lineHeight: "1.4",
-                        padding: "12px 14px",
-                      }}
-                      disabled={isGenerating}
-                      rows={1}
-                    />
-                    <div className="text-xs text-gray-500 mt-1 hidden sm:block">
-                      Press Enter to send, Shift+Enter for new line
+                {(isGenerating || generatedCode) && (
+                  <div className="p-3 sm:p-6 border-t border-white/10 max-w-4xl mx-auto w-full">
+                    <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-xl p-4 sm:p-6 shadow-2xl">
+                      <div className="flex items-center justify-between mb-3 sm:mb-4">
+                        <div className="flex items-center space-x-2 sm:space-x-3">
+                          <div className="w-5 h-5 sm:w-6 sm:h-6 relative">
+                            <Image src="/s1-logo.png" alt="S1" width={24} height={24} className="object-contain" />
+                          </div>
+                          <h3 className="text-white font-medium text-base sm:text-lg">{pluginName}</h3>
+                          {generatedCode && (
+                            <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded-full">
+                              Latest Version
+                            </span>
+                          )}
+                        </div>
+                        {!isGenerating && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setGeneratedCode("")
+                              setUsageInstructions("")
+                              setGenerationProgress(0)
+                            }}
+                            className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10"
+                          >
+                            <X className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </Button>
+                        )}
+                      </div>
+
+                      {isGenerating && (
+                        <div className="mb-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-gray-300 text-sm">Generating...</span>
+                            <span className="text-gray-300 text-sm">{Math.round(generationProgress)}%</span>
+                          </div>
+                          <div className="w-full bg-gray-800/50 rounded-full h-2">
+                            <div
+                              className="bg-white h-2 rounded-full transition-all duration-300 ease-out"
+                              style={{ width: `${generationProgress}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {usageInstructions && (
+                        <div className="mb-4">
+                          <h4 className="text-white font-medium mb-2 text-sm sm:text-base">How to use:</h4>
+                          <div
+                            className="text-gray-300 prose prose-invert max-w-none"
+                            style={{
+                              fontSize: window.innerWidth < 768 ? "14px" : "16px",
+                              lineHeight: "1.5",
+                            }}
+                          >
+                            <ReactMarkdown>{usageInstructions}</ReactMarkdown>
+                          </div>
+                        </div>
+                      )}
+
+                      {(isGenerating || generatedCode) && (
+                        <div className="mb-4">
+                          <div className="flex gap-2">
+                            <Button
+                              onClick={() => setIsCodeModalOpen(true)}
+                              variant="outline"
+                              className="flex-1 bg-transparent border-white/20 text-white hover:bg-white/10 hover:border-white/30 h-12 justify-center"
+                            >
+                              <Code className="h-5 w-5" />
+                            </Button>
+                            <Button
+                              onClick={handleSaveAIFunction}
+                              className="flex-1 bg-white text-black hover:bg-gray-200 h-12 justify-center font-medium"
+                            >
+                              <Save className="h-5 w-5" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <Button
-                    onClick={handleGeneratePlugin}
-                    disabled={isGenerating || !aiPrompt.trim()}
-                    size="sm"
-                    className="bg-white text-black hover:bg-gray-200 h-11 px-3 sm:px-6 flex-shrink-0 ml-2"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
+                )}
+
+                <div className="border-t border-white/10 p-3 sm:p-6 bg-black/50 backdrop-blur-sm sticky bottom-0 max-w-4xl mx-auto w-full">
+                  <div className="flex space-x-2 sm:space-x-3 items-end">
+                    <div className="flex-1 min-w-0">
+                      <Textarea
+                        ref={textareaRef}
+                        value={aiPrompt}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Describe the Discord bot you want to create..."
+                        className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 resize-none min-h-[44px] max-h-32 w-full"
+                        style={{
+                          fontSize: "16px",
+                          lineHeight: "1.4",
+                          padding: "12px 14px",
+                        }}
+                        disabled={isGenerating}
+                        rows={1}
+                      />
+                      <div className="text-xs text-gray-500 mt-1 hidden sm:block">
+                        Press Enter to send, Shift+Enter for new line
+                      </div>
+                    </div>
+                    <Button
+                      onClick={handleGeneratePlugin}
+                      disabled={isGenerating || !aiPrompt.trim()}
+                      size="sm"
+                      className="bg-white text-black hover:bg-gray-200 h-11 px-3 sm:px-6 flex-shrink-0 ml-2"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
