@@ -7,111 +7,168 @@ import ReactMarkdown from "react-markdown"
 
 interface ChatMessage {
   id: string
-  role: "user" | "ai"
+  role: "user" | "ai" | "system"
   content: string
   isCode?: boolean
+  timestamp?: Date
   showCode?: boolean
 }
 
-export default function AIChat({ isOpen, onClose, currentAIFunction }: { isOpen: boolean, onClose: () => void, currentAIFunction?: UserAIFunction | null }) {
-  const [input, setInput] = useState("")
+interface AIChatProps {
+  isOpen: boolean
+  onClose: () => void
+  currentAIFunction?: UserAIFunction | null
+}
+
+export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatProps) {
+  const [aiPrompt, setAiPrompt] = useState("")
   const [generatedCode, setGeneratedCode] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [hasError, setHasError] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
   const [messages, setMessages] = useState<ChatMessage[]>([])
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  const handleSubmit = async () => {
-    if (!input.trim() || isGenerating) return
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto"
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + "px"
+    }
+  }, [aiPrompt])
+
+  useEffect(() => {
+    if (currentAIFunction && isOpen) {
+      setGeneratedCode(currentAIFunction.code || "")
+      setMessages([
+        {
+          id: "init",
+          role: "ai",
+          content: "Hello! I'm your AI assistant. Describe what you want to create.",
+          timestamp: new Date()
+        }
+      ])
+    }
+  }, [currentAIFunction, isOpen])
+
+  const handleGenerateAI = async () => {
+    if (!aiPrompt.trim()) return
 
     setIsGenerating(true)
-    const userMessage: ChatMessage = { 
-      id: Date.now().toString(),
+    setHasError(false)
+    
+    // Add user message immediately
+    const userMessage: ChatMessage = {
+      id: `msg_${Date.now()}_user`,
       role: "user",
-      content: input 
+      content: aiPrompt,
+      timestamp: new Date(),
     }
+    
     setMessages(prev => [...prev, userMessage])
-    setInput("")
+    setAiPrompt("")
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Generate mock response
+      const mockCode = `def ${aiPrompt.toLowerCase().replace(/\s+/g, '_')}():\n    """${aiPrompt}"""\n    return "Function created successfully"`
       
       const aiMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
+        id: `msg_${Date.now()}_ai`,
         role: "ai",
-        content: "Here's the generated code for your plugin:",
+        content: "Here's the code for your request:",
         isCode: true,
-        showCode: false
+        timestamp: new Date(),
+        showCode: false,
       }
-      
-      setGeneratedCode(`# Generated Discord Plugin\n# ${input}\n\ndef plugin_main():\n    return "${input}"`)
+
+      setGeneratedCode(mockCode)
       setMessages(prev => [...prev, aiMessage])
+      
     } catch (error) {
-      console.error(error)
+      console.error("Error generating AI response:", error)
+      setHasError(true)
+      setErrorMessage("Failed to generate code. Please try again.")
     } finally {
       setIsGenerating(false)
     }
   }
 
-  const toggleCode = (id: string) => {
+  const handleSaveAIFunction = async () => {
+    if (!generatedCode.trim()) return
+
+    setIsSaving(true)
+    try {
+      // Simulate save operation
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      onClose()
+    } catch (error) {
+      console.error("Error saving function:", error)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const toggleCodeVisibility = (messageId: string) => {
     setMessages(messages.map(msg => 
-      msg.id === id ? { ...msg, showCode: !msg.showCode } : msg
+      msg.id === messageId ? { ...msg, showCode: !msg.showCode } : msg
     ))
+  }
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(generatedCode)
   }
 
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 bg-gray-900 flex flex-col">
+    <div className="fixed inset-0 z-50 bg-gray-900/90 backdrop-blur-2xl flex flex-col">
       {/* Header */}
-      <div className="sticky top-0 z-10 p-4 bg-gray-800/90 backdrop-blur-md border-b border-gray-700 flex items-center justify-between">
+      <div className="sticky top-0 z-20 p-4 bg-gray-900/80 backdrop-blur-xl border-b border-gray-700 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <button 
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-700 transition-colors"
+            className="p-2 rounded-lg hover:bg-gray-800 transition-all border border-gray-700"
           >
             <ArrowLeft className="h-5 w-5 text-gray-300" />
           </button>
-          <div className="w-7 h-7 relative">
-            <Image 
-              src="/s1-logo.png" 
-              alt="AI" 
-              width={28} 
-              height={28} 
-              className="object-contain"
-            />
+          <div className="w-8 h-8 relative">
+            <div className="bg-gradient-to-br from-gray-300 to-gray-500 rounded-lg w-full h-full flex items-center justify-center">
+              <span className="font-bold text-gray-900 text-xs">AI</span>
+            </div>
           </div>
-          <h1 className="text-gray-200 font-medium">AI Plugin Builder</h1>
+          <h1 className="text-gray-200 text-lg font-medium">Code Assistant</h1>
         </div>
         
         <button 
           onClick={() => setMessages([])}
-          className="p-2 rounded-lg hover:bg-gray-700 transition-colors"
+          className="p-2 rounded-lg hover:bg-gray-800 transition-all border border-gray-700"
         >
           <Plus className="h-5 w-5 text-gray-300" />
         </button>
       </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-5">
+      {/* Chat Container */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center p-6">
-            <div className="mb-5 w-16 h-16 relative opacity-80">
-              <Image 
-                src="/s1-logo.png" 
-                alt="AI" 
-                width={64} 
-                height={64} 
-                className="object-contain"
-              />
+          <div className="flex flex-col items-center justify-center h-full text-center p-8">
+            <div className="mb-6 w-20 h-20 relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-gray-300 to-gray-500 rounded-xl rotate-45"></div>
+              <div className="absolute inset-0 flex items-center justify-center rotate-[-45deg]">
+                <span className="font-bold text-gray-900 text-2xl">AI</span>
+              </div>
             </div>
-            <h2 className="text-xl font-medium text-gray-300 mb-2">AI Plugin Builder</h2>
+            <h2 className="text-2xl font-bold text-gray-200 mb-2">AI Code Generator</h2>
             <p className="text-gray-400 max-w-md">
-              Describe the Discord plugin you want to create
+              Describe the functionality you need, and I'll create the code for you.
             </p>
           </div>
         ) : (
@@ -120,10 +177,10 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: { isOpen:
               key={message.id} 
               className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
             >
-              <div className={`max-w-[85%] rounded-xl p-4 ${
+              <div className={`max-w-[85%] rounded-xl p-4 backdrop-blur-sm ${
                 message.role === "user"
-                  ? "bg-gray-700 text-gray-100"
-                  : "bg-gray-800/80 text-gray-200 border border-gray-700"
+                  ? "bg-gray-800 text-gray-200"
+                  : "bg-gray-800/60 text-gray-200 border border-gray-700"
               }`}>
                 {message.isCode ? (
                   <div className="space-y-4">
@@ -131,47 +188,47 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: { isOpen:
                       {message.content}
                     </ReactMarkdown>
                     
-                    <div className="mt-3 bg-gray-900 rounded-lg overflow-hidden border border-gray-700">
-                      <div className="flex justify-between items-center p-3 bg-gray-800/50">
-                        <span className="text-sm text-gray-400">Generated Plugin</span>
+                    <div className="mt-3 bg-gray-900/50 rounded-xl border border-gray-700 overflow-hidden">
+                      <div className="flex items-center justify-between p-3 bg-gray-800/30">
                         <div className="flex space-x-2">
                           <button
-                            onClick={() => toggleCode(message.id)}
-                            className="text-xs px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-md flex items-center transition-colors"
+                            onClick={() => toggleCodeVisibility(message.id)}
+                            className="text-xs px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg flex items-center transition-all"
                           >
-                            <Eye className="h-4 w-4 mr-1.5" />
-                            {message.showCode ? "Hide" : "Show Code"}
+                            <Eye className="h-4 w-4 mr-1.5 text-gray-300" />
+                            {message.showCode ? "Hide Code" : "Show Code"}
                           </button>
                           <button
-                            onClick={() => navigator.clipboard.writeText(generatedCode)}
-                            className="p-1.5 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors"
+                            onClick={handleSaveAIFunction}
+                            disabled={isSaving}
+                            className="text-xs px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg flex items-center transition-all disabled:opacity-50"
                           >
-                            <Copy className="h-4 w-4" />
+                            <Save className="h-4 w-4 mr-1.5 text-gray-300" />
+                            {isSaving ? "Saving..." : "Save"}
                           </button>
                         </div>
                       </div>
                       
                       {message.showCode && (
-                        <div className="p-3 max-h-60 overflow-auto">
+                        <div className="p-3 bg-gray-900/80 max-h-60 overflow-auto border-t border-gray-800">
+                          <div className="flex justify-end mb-2">
+                            <button
+                              onClick={copyToClipboard}
+                              className="text-xs px-2 py-1 bg-gray-800 hover:bg-gray-700 rounded flex items-center"
+                            >
+                              <Copy className="h-3.5 w-3.5 mr-1 text-gray-300" />
+                              Copy
+                            </button>
+                          </div>
                           <pre className="text-sm text-gray-300 font-mono whitespace-pre-wrap">
                             {generatedCode}
                           </pre>
                         </div>
                       )}
-                      
-                      <div className="p-3 border-t border-gray-700 bg-gray-800/50">
-                        <button
-                          onClick={() => console.log("Save plugin")}
-                          className="w-full py-2 bg-gray-700 hover:bg-gray-600 rounded-md flex items-center justify-center transition-colors"
-                        >
-                          <Save className="h-4 w-4 mr-2" />
-                          Save Plugin
-                        </button>
-                      </div>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-gray-200">{message.content}</p>
+                  <p className="text-gray-300">{message.content}</p>
                 )}
               </div>
             </div>
@@ -180,41 +237,54 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: { isOpen:
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Generating Indicator */}
+      {isGenerating && (
+        <div className="sticky bottom-0 p-3 bg-gray-900/80 backdrop-blur-lg border-t border-gray-700">
+          <div className="flex items-center space-x-3">
+            <div className="flex-1 bg-gray-800/50 rounded-full h-1.5 overflow-hidden">
+              <div 
+                className="bg-gradient-to-r from-gray-500 to-gray-300 h-full rounded-full animate-pulse"
+                style={{ width: "70%" }}
+              />
+            </div>
+            <span className="text-xs text-gray-400">Generating...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {hasError && (
+        <div className="sticky bottom-0 p-3 bg-red-900/50 backdrop-blur-lg border-t border-red-700">
+          <p className="text-red-300 text-sm">{errorMessage}</p>
+        </div>
+      )}
+
       {/* Input Area */}
-      <div className="sticky bottom-0 p-4 bg-gray-800/90 backdrop-blur-md border-t border-gray-700">
+      <div className="sticky bottom-0 p-4 bg-gray-900/80 backdrop-blur-xl border-t border-gray-700">
         <div className="flex space-x-3">
           <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Describe your plugin..."
-            className="flex-1 bg-gray-700 border border-gray-600 rounded-xl text-gray-200 placeholder-gray-400 p-3 min-h-[56px] max-h-40 resize-none focus:outline-none focus:ring-1 focus:ring-gray-500"
+            ref={textareaRef}
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            placeholder="Describe your code request..."
+            className="flex-1 bg-gray-800/50 border border-gray-700 rounded-xl text-gray-200 placeholder-gray-500 resize-none min-h-[56px] max-h-40 p-3 text-base focus:outline-none focus:ring-1 focus:ring-gray-500"
             style={{ fontSize: "16px" }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault()
-                handleSubmit()
+                handleGenerateAI()
               }
             }}
           />
           <button
-            onClick={handleSubmit}
-            disabled={!input.trim() || isGenerating}
-            className="h-14 w-14 flex-shrink-0 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-xl flex items-center justify-center transition-colors disabled:opacity-50 disabled:hover:bg-gray-700"
+            onClick={handleGenerateAI}
+            disabled={!aiPrompt.trim() || isGenerating}
+            className="h-14 w-14 flex-shrink-0 bg-gradient-to-br from-gray-700 to-gray-800 border border-gray-700 rounded-xl flex items-center justify-center hover:from-gray-600 hover:to-gray-700 transition-all disabled:opacity-40"
           >
             <Send className="h-5 w-5 text-gray-300" />
           </button>
         </div>
       </div>
-
-      {/* Generating Indicator */}
-      {isGenerating && (
-        <div className="sticky bottom-16 left-0 right-0 flex justify-center">
-          <div className="bg-gray-800 text-gray-300 text-sm px-4 py-2 rounded-full border border-gray-700 shadow-lg flex items-center space-x-2">
-            <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
-            <span>Generating...</span>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
