@@ -531,32 +531,26 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
                 </div>
               ))}
 
+              {/* AI Function Generation Card */}
               {(isGenerating || generatedCode) && (
                 <div className="mb-6">
-                  <div className="bg-white/[0.02] backdrop-blur-xl rounded-2xl border border-white/[0.08] shadow-2xl shadow-black/20 overflow-hidden">
+                  <div className="bg-gray-900 border border-gray-700 rounded-lg shadow-lg overflow-hidden">
                     {/* Header Section */}
-                    <div className="p-6 border-b border-white/[0.06]">
-                      <div className="flex items-center space-x-4">
-                        <div className="relative">
-                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-white to-gray-100 flex items-center justify-center shadow-lg">
-                            <Beaker className="h-6 w-6 text-gray-800" />
-                          </div>
-                          {isGenerating && (
-                            <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 opacity-20 animate-pulse"></div>
-                          )}
+                    <div className="p-4 border-b border-gray-700">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center">
+                          <Beaker className="h-5 w-5 text-gray-900" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-white font-semibold text-lg tracking-tight">
-                            {pluginName || "Generating Function..."}
-                          </h3>
-                          <p className="text-gray-400 text-sm font-medium mt-1">
-                            {isGenerating ? "AI is crafting your function" : "Function ready to use"}
+                          <h3 className="text-white font-medium text-base">{pluginName || "Generating Function..."}</h3>
+                          <p className="text-gray-400 text-sm">
+                            {isGenerating ? "AI is crafting your function" : "Function ready"}
                           </p>
                         </div>
                         {generationProgress === 100 && (
-                          <div className="flex items-center space-x-2 text-green-400">
-                            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-                            <span className="text-sm font-medium">Ready</span>
+                          <div className="flex items-center space-x-2 text-white">
+                            <div className="w-2 h-2 rounded-full bg-white"></div>
+                            <span className="text-sm">Ready</span>
                           </div>
                         )}
                       </div>
@@ -564,77 +558,71 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
 
                     {/* Progress Section */}
                     {isGenerating && (
-                      <div className="px-6 py-4 bg-black/10">
-                        <div className="flex justify-between items-center mb-3">
-                          <span className="text-gray-300 text-sm font-medium">Generation Progress</span>
-                          <span className="text-white text-sm font-mono font-semibold">
-                            {Math.round(generationProgress)}%
-                          </span>
+                      <div className="px-4 py-3 bg-gray-800">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-gray-300 text-sm">Progress</span>
+                          <span className="text-white text-sm font-mono">{Math.round(generationProgress)}%</span>
                         </div>
-                        <div className="relative w-full h-2 bg-gray-800/60 rounded-full overflow-hidden">
+                        <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
                           <div
-                            className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-500 ease-out shadow-lg shadow-blue-500/20"
+                            className="h-full bg-white rounded-full transition-all duration-500"
                             style={{ width: `${generationProgress}%` }}
                           />
-                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse"></div>
                         </div>
                       </div>
                     )}
 
                     {/* Action Buttons */}
                     {generatedCode && generationProgress === 100 && (
-                      <div className="p-6 bg-gradient-to-b from-transparent to-black/5">
-                        <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="p-4">
+                        <div className="flex gap-2">
                           <Button
                             variant="outline"
-                            className="flex-1 h-12 border-white/10 bg-white/[0.02] text-white hover:bg-white/[0.06] hover:border-white/20 transition-all duration-200 font-medium backdrop-blur-sm"
+                            size="sm"
+                            className="h-8 px-3 border-gray-600 bg-transparent text-white hover:bg-gray-800 hover:border-gray-500 text-sm"
                             onClick={() => setShowCodeViewer(!showCodeViewer)}
                           >
-                            <Code className="h-4 w-4 mr-2" />
+                            <Code className="h-3 w-3 mr-1" />
                             {showCodeViewer ? "Hide Code" : "Show Code"}
                           </Button>
                           <Button
-                            className="flex-1 h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-medium shadow-lg shadow-blue-500/25 transition-all duration-200"
+                            size="sm"
+                            className="h-8 px-3 bg-white text-gray-900 hover:bg-gray-200 text-sm"
                             onClick={handleSaveAIFunction}
                             disabled={isSaving}
                           >
-                            <Save className="h-4 w-4 mr-2" />
-                            {isSaving ? "Saving..." : "Save Function"}
+                            <Save className="h-3 w-3 mr-1" />
+                            {isSaving ? "Saving..." : "Save"}
                           </Button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Code Viewer Section */}
-                    {showCodeViewer && generatedCode && (
-                      <div className="border-t border-white/[0.06] bg-black/20">
-                        <div className="p-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                              <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                              <span className="text-gray-400 text-sm font-medium ml-3">Generated Code</span>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={handleCopyCode}
-                              className="text-gray-400 hover:text-white hover:bg-white/10 h-8 px-3 font-medium transition-all duration-200"
-                            >
-                              <Copy className="h-4 w-4 mr-2" />
-                              Copy
-                            </Button>
-                          </div>
-                          <div className="bg-black/40 rounded-xl border border-white/[0.08] overflow-hidden">
-                            <pre className="text-sm font-mono text-gray-200 p-4 overflow-x-auto whitespace-pre-wrap break-words max-h-80 overflow-y-auto leading-relaxed">
-                              {generatedCode}
-                            </pre>
-                          </div>
                         </div>
                       </div>
                     )}
                   </div>
+
+                  {/* Code Viewer Section - Only shown when user clicks Show Code */}
+                  {showCodeViewer && generatedCode && (
+                    <div className="mt-4 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+                      <div className="p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-gray-400 text-sm">Generated Code</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={handleCopyCode}
+                            className="h-7 px-2 text-gray-400 hover:text-white hover:bg-gray-800 text-sm"
+                          >
+                            <Copy className="h-3 w-3 mr-1" />
+                            Copy
+                          </Button>
+                        </div>
+                        <div className="bg-black rounded border border-gray-700 overflow-hidden">
+                          <pre className="text-sm font-mono text-gray-200 p-3 overflow-x-auto whitespace-pre-wrap break-words max-h-80 overflow-y-auto">
+                            {generatedCode}
+                          </pre>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </>
