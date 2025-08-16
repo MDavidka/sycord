@@ -178,6 +178,36 @@ export interface UserAIFunction {
   created_at: string
   thumbnailUrl?: string
   profileUrl?: string
+  usageInstructions?: string
+  chatSessions?: ChatSession[]
+  currentChatId?: string
+}
+
+export interface ChatSession {
+  id: string
+  name: string
+  messages: ChatMessage[]
+  codeVersions: CodeVersion[]
+  created_at: string
+  last_updated: string
+}
+
+export interface ChatMessage {
+  id: string
+  role: "user" | "ai" | "system"
+  content: string
+  isCode?: boolean
+  timestamp: Date
+  codeVersionId?: string
+}
+
+export interface CodeVersion {
+  id: string
+  code: string
+  usageInstructions: string
+  version: number
+  created_at: string
+  prompt: string
 }
 
 export interface DiscordRole {

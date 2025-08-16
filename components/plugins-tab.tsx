@@ -49,7 +49,34 @@ interface PluginsTabProps {
   setActiveTab?: (tab: string) => void
 }
 
-export default function PluginsTab({ serverId, activeTab, setActiveTab }: PluginsTabProps) {
+interface ChatMessage {
+  id: string
+  role: "user" | "ai" | "system"
+  content: string
+  isCode?: boolean
+  timestamp?: Date
+  codeVersionId?: string
+}
+
+interface CodeVersion {
+  id: string
+  code: string
+  usageInstructions: string
+  version: number
+  created_at: string
+  prompt: string
+}
+
+interface ChatSession {
+  id: string
+  name: string
+  messages: ChatMessage[]
+  codeVersions: CodeVersion[]
+  created_at: string
+  last_updated: string
+}
+
+export default function PluginsTab() {
   const { data: session } = useSession()
   const isAdmin = session?.user?.email === "dmarton336@gmail.com"
 
@@ -73,9 +100,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   const [pluginThumbnailUrl, setPluginThumbnailUrl] = useState("")
   const [pluginProfileUrl, setPluginProfileUrl] = useState("")
   const [isSaving, setIsSaving] = useState(false)
-  const [messages, setMessages] = useState<
-    { role: "user" | "ai" | "system"; content: string; isCode?: boolean; timestamp?: Date }[]
-  >([])
+  const [codeViewerContent, setCodeViewerContent] = useState("")
   const [editingMetadata, setEditingMetadata] = useState(false)
   const [showCodeViewer, setShowCodeViewer] = useState(false)
   const [usageInstructions, setUsageInstructions] = useState("")
@@ -91,10 +116,12 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   const [editPluginThumbnailUrl, setEditPluginThumbnailUrl] = useState("")
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
-  const [currentChatId, setCurrentChatId] = useState<string | null>(null)
-  const [chatSessions, setChatSessions] = useState<{
-    [key: string]: { role: "user" | "ai" | "system"; content: string; isCode?: boolean; timestamp?: Date }[]
-  }>({})
+  const [currentAIFunction, setCurrentAIFunction] = useState<UserAIFunction | null>(null)
+  const [currentChatSession, setCurrentChatSession] = useState<ChatSession | null>(null)
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [codeVersions, setCodeVersions] = useState<CodeVersion[]>([])
+  const [currentCodeVersion, setCurrentCodeVersion] = useState<CodeVersion | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
@@ -183,40 +210,82 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
     }
   }
 
-  const handleGeneratePlugin = async () => {
+  const handleEditAIFunction = async (aiFunction: UserAIFunction) => {
+    setCurrentAIFunction(aiFunction)
+
+    // Load existing chat sessions or create default one
+    const sessions = aiFunction.chatSessions || []
+    setChatSessions(sessions)
+
+    if (sessions.length > 0) {
+      const currentSession = sessions.find((s) => s.id === aiFunction.currentChatId) || sessions[0]
+      setCurrentChatSession(currentSession)
+      setMessages(currentSession.messages || [])
+      setCodeVersions(currentSession.codeVersions || [])
+
+      // Set current code version to latest
+      if (currentSession.codeVersions && currentSession.codeVersions.length > 0) {
+        const latestVersion = currentSession.codeVersions[currentSession.codeVersions.length - 1]
+        setCurrentCodeVersion(latestVersion)
+        setGeneratedCode(latestVersion.code)
+        setUsageInstructions(latestVersion.usageInstructions)
+      }
+    } else {
+      // Create initial chat session
+      const initialSession: ChatSession = {
+        id: `chat_${Date.now()}`,
+        name: "Main Chat",
+        messages: [],
+        codeVersions: [
+          {
+            id: `version_${Date.now()}`,
+            code: aiFunction.code,
+            usageInstructions: aiFunction.usageInstructions || "",
+            version: 1,
+            created_at: new Date().toISOString(),
+            prompt: "Initial creation",
+          },
+        ],
+        created_at: new Date().toISOString(),
+        last_updated: new Date().toISOString(),
+      }
+
+      setChatSessions([initialSession])
+      setCurrentChatSession(initialSession)
+      setMessages([])
+      setCodeVersions(initialSession.codeVersions)
+      setCurrentCodeVersion(initialSession.codeVersions[0])
+      setGeneratedCode(aiFunction.code)
+      setUsageInstructions(aiFunction.usageInstructions || "")
+    }
+
+    setIsAICreatorOpen(true)
+    setPluginName(aiFunction.name)
+    setPluginDescription(aiFunction.description)
+    setPluginThumbnailUrl(aiFunction.thumbnailUrl || "")
+    setPluginProfileUrl(aiFunction.profileUrl || "")
+  }
+
+  const handleGenerateAI = async () => {
     if (!aiPrompt.trim()) return
+
     setIsGenerating(true)
     setGenerationProgress(0)
     setHasError(false)
 
-    const currentPrompt = aiPrompt
-    setAiPrompt("")
-
-    // Get current chat messages for context
-    const currentMessages = currentChatId ? chatSessions[currentChatId] || [] : messages
-
-    // Add user message to current chat
-    const newUserMessage = { role: "user" as const, content: currentPrompt, timestamp: new Date() }
-    const updatedMessages = [...currentMessages, newUserMessage]
-
-    if (currentChatId) {
-      setChatSessions((prev) => ({
-        ...prev,
-        [currentChatId]: updatedMessages,
-      }))
-    } else {
-      setMessages(updatedMessages)
-    }
-
     const progressInterval = setInterval(() => {
       setGenerationProgress((prev) => Math.min(prev + Math.random() * 15, 95))
-    }, 200)
+    }, 500)
 
     try {
-      // Include previous code context for follow-up requests
-      let contextPrompt = currentPrompt
-      if (generatedCode) {
-        contextPrompt = `Previous code context:\n${generatedCode}\n\nUser request: ${currentPrompt}`
+      let contextPrompt = aiPrompt
+      if (currentCodeVersion && currentChatSession) {
+        const previousVersions = codeVersions.slice(-3) // Last 3 versions for context
+        const contextInfo = previousVersions
+          .map((v) => `Version ${v.version}: ${v.code.substring(0, 500)}...`)
+          .join("\n\n")
+
+        contextPrompt = `Previous code context:\n${contextInfo}\n\nUser request: ${aiPrompt}`
       }
 
       const response = await fetch("/api/ai/generate-plugin", {
@@ -224,7 +293,9 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ prompt: contextPrompt }),
+        body: JSON.stringify({
+          message: contextPrompt,
+        }),
       })
 
       if (!response.ok) {
@@ -235,108 +306,167 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
       clearInterval(progressInterval)
       setGenerationProgress(100)
 
-      // Parse the response to separate code and usage instructions
-      const parts = data.code.split(/(?=\d+\.\s)/)
-      const codeSection = parts[0]?.trim() || data.code
-      const usageSection =
-        parts
-          .find((part: string) => part.match(/^\d+\.\s/))
-          ?.replace(/^\d+\.\s/, "")
-          .trim() || ""
+      const fullResponse = data.code
+      const parts = fullResponse.split(/2\.\s*/)
+
+      let codeSection = ""
+      let usageSection = ""
+
+      if (parts.length >= 2) {
+        codeSection = parts[0].trim()
+        usageSection = parts[1].trim()
+      } else {
+        codeSection = fullResponse
+        usageSection = "No usage instructions provided."
+      }
 
       setGeneratedCode(codeSection)
       setUsageInstructions(usageSection)
-      setIsGenerating(false)
 
-      // Add AI response to current chat
-      const aiMessage = {
-        role: "ai" as const,
-        content: "Discord bot generated successfully!",
-        isCode: true,
-        timestamp: new Date(),
+      const newCodeVersion: CodeVersion = {
+        id: `version_${Date.now()}`,
+        code: codeSection,
+        usageInstructions: usageSection,
+        version: (currentCodeVersion?.version || 0) + 1,
+        created_at: new Date().toISOString(),
+        prompt: aiPrompt,
       }
-      const finalMessages = [...updatedMessages, aiMessage]
 
-      if (currentChatId) {
-        setChatSessions((prev) => ({
-          ...prev,
-          [currentChatId]: finalMessages,
-        }))
-      } else {
-        setMessages(finalMessages)
+      setCurrentCodeVersion(newCodeVersion)
+      setCodeVersions((prev) => [...prev, newCodeVersion])
+
+      const newMessages: ChatMessage[] = [
+        ...messages,
+        {
+          id: `msg_${Date.now()}_user`,
+          role: "user",
+          content: aiPrompt,
+          timestamp: new Date(),
+        },
+        {
+          id: `msg_${Date.now()}_ai`,
+          role: "ai",
+          content: "Discord bot generated successfully!",
+          isCode: true,
+          timestamp: new Date(),
+          codeVersionId: newCodeVersion.id,
+        },
+      ]
+
+      setMessages(newMessages)
+
+      if (currentAIFunction && currentChatSession) {
+        await fetch("/api/user-ai-functions", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            functionId: currentAIFunction._id,
+            chatSessionId: currentChatSession.id,
+            messages: newMessages,
+            action: "updateChat",
+          }),
+        })
+
+        await fetch("/api/user-ai-functions", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            functionId: currentAIFunction._id,
+            chatSessionId: currentChatSession.id,
+            newCodeVersion,
+            action: "addCodeVersion",
+          }),
+        })
       }
     } catch (error) {
       console.error("Error generating plugin:", error)
       clearInterval(progressInterval)
       setGenerationProgress(0)
       setIsGenerating(false)
-      setMessages((prev) => [
-        ...prev,
-        { role: "user", content: currentPrompt, timestamp: new Date() },
-        {
-          role: "ai",
-          content: "Sorry, there was an error generating the bot. Please try again.",
-          timestamp: new Date(),
-        },
-      ])
+      setHasError(true)
+      setErrorMessage("Sorry, there was an error generating the bot. Please try again.")
     } finally {
-      setTimeout(() => {
-        setIsGenerating(false)
-        setGenerationProgress(0)
-      }, 500)
+      setIsGenerating(false)
+      setAiPrompt("")
     }
   }
 
   const handleSaveAIFunction = async () => {
     if (!generatedCode || !pluginName.trim()) return
     setIsSaving(true)
+
     try {
-      const response = await fetch("/api/user-ai-functions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: pluginName,
-          description: pluginDescription,
-          code: generatedCode,
-          usageInstructions: usageInstructions,
-          thumbnailUrl: pluginThumbnailUrl,
-          profileUrl: pluginProfileUrl,
-        }),
-      })
-
-      if (response.ok) {
-        const savedFunction = await response.json()
-
-        // Create new chat session for this saved function
-        const chatId = `chat_${savedFunction.id || Date.now()}`
-        setChatSessions((prev) => ({
-          ...prev,
-          [chatId]: messages,
-        }))
-
-        await fetchUserAIFunctions()
-
-        // Reset current chat and start fresh
-        setIsAICreatorOpen(false)
-        setAiPrompt("")
-        setPluginName("")
-        setPluginDescription("")
-        setPluginThumbnailUrl("")
-        setPluginProfileUrl("")
-        setGeneratedCode("")
-        setUsageInstructions("")
-        setMessages([])
-        setCurrentChatId(null)
+      if (currentAIFunction) {
+        // Update existing function
+        await fetch("/api/user-ai-functions", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            functionId: currentAIFunction._id,
+            chatSessionId: currentChatSession?.id,
+            messages,
+            action: "updateChat",
+          }),
+        })
       } else {
-        throw new Error("Failed to save function")
+        // Create new function
+        const response = await fetch("/api/user-ai-functions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: pluginName,
+            description: pluginDescription,
+            code: generatedCode,
+            usageInstructions: usageInstructions,
+            thumbnailUrl: pluginThumbnailUrl,
+            profileUrl: pluginProfileUrl,
+            chatSessionId: currentChatSession?.id,
+          }),
+        })
+
+        if (!response.ok) throw new Error("Failed to save function")
       }
+
+      await fetchUserAIFunctions()
+      handleCloseAICreator()
     } catch (error) {
-      console.error("Error saving function:", error)
+      console.error("Error saving AI function:", error)
     } finally {
       setIsSaving(false)
     }
+  }
+
+  const handleStartNewChat = () => {
+    setCurrentAIFunction(null)
+    setCurrentChatSession(null)
+    setChatSessions([])
+    setMessages([])
+    setCodeVersions([])
+    setCurrentCodeVersion(null)
+    setGeneratedCode("")
+    setUsageInstructions("")
+    setPluginName("")
+    setPluginDescription("")
+    setPluginThumbnailUrl("")
+    setPluginProfileUrl("")
+    setIsAICreatorOpen(true)
+  }
+
+  const handleCloseAICreator = () => {
+    setIsAICreatorOpen(false)
+    setCurrentAIFunction(null)
+    setCurrentChatSession(null)
+    setChatSessions([])
+    setMessages([])
+    setCodeVersions([])
+    setCurrentCodeVersion(null)
+    setGeneratedCode("")
+    setUsageInstructions("")
+    setPluginName("")
+    setPluginDescription("")
+    setPluginThumbnailUrl("")
+    setPluginProfileUrl("")
+    setAiPrompt("")
   }
 
   const handleDownloadCode = () => {
@@ -355,11 +485,13 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
     navigator.clipboard.writeText(generatedCode)
   }
 
-  const handleClearChat = () => {
+  const handleClearConversation = () => {
     setMessages([])
     setGeneratedCode("")
     setUsageInstructions("")
-    setCurrentChatId(null)
+    setGenerationProgress(0)
+    setHasError(false)
+    setErrorMessage("")
   }
 
   const formatTimestamp = (timestamp: Date) => {
@@ -369,11 +501,11 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
-      handleGeneratePlugin()
+      handleGenerateAI()
     }
   }
 
-  const handleClearChatOld = () => {
+  const handleClearChat = () => {
     const lastCodeMessage = messages.filter((msg) => msg.isCode).pop()
     if (lastCodeMessage) {
       setMessages([lastCodeMessage])
@@ -488,50 +620,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
     }
   }
 
-  const handleEditAIFunction = (aiFunction: any) => {
-    setIsAICreatorOpen(true)
-    setGeneratedCode(aiFunction.code)
-    setUsageInstructions(aiFunction.usageInstructions || "")
-
-    // Create or load chat session for this function
-    const chatId = `chat_${aiFunction.id}`
-    setCurrentChatId(chatId)
-
-    // Load existing chat or create new one with function context
-    const existingChat = chatSessions[chatId]
-    if (existingChat) {
-      setMessages(existingChat)
-    } else {
-      const initialMessages = [
-        {
-          role: "system" as const,
-          content: `Loaded saved function: ${aiFunction.name}`,
-          isCode: false,
-          timestamp: new Date(),
-        },
-        {
-          role: "ai" as const,
-          content: `Ready to edit: ${aiFunction.name}. You can now request modifications or additions to this Discord bot.\n\nHow to use:\n${aiFunction.usageInstructions || "No usage instructions available."}`,
-          isCode: false,
-          timestamp: new Date(),
-        },
-      ]
-      setMessages(initialMessages)
-      setChatSessions((prev) => ({
-        ...prev,
-        [chatId]: initialMessages,
-      }))
-    }
-  }
-
   const isPluginInstalled = (pluginId: string) => userPlugins.some((p) => p.pluginId === pluginId)
-
-  const handleClearConversation = () => {
-    setMessages([])
-    setGeneratedCode("")
-    setUsageInstructions("")
-    setCurrentChatId(null)
-  }
 
   if (loading) {
     return (
@@ -611,8 +700,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
 
             <div className="flex-1 flex flex-col overflow-hidden h-full">
               <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-4xl mx-auto w-full">
-                {/* Update messages display to use current chat session */}
-                {(currentChatId ? chatSessions[currentChatId] || [] : messages).map((message, index) => (
+                {messages.map((message, index) => (
                   <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                     {message.role !== "system" && (
                       <div
@@ -779,7 +867,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
                     </div>
                   </div>
                   <Button
-                    onClick={handleGeneratePlugin}
+                    onClick={handleGenerateAI}
                     disabled={isGenerating || !aiPrompt.trim()}
                     size="sm"
                     className="bg-white text-black hover:bg-gray-200 h-11 px-3 sm:px-6 flex-shrink-0 ml-2"
@@ -937,7 +1025,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
               </Dialog>
             )}
             <Button
-              onClick={() => setIsAICreatorOpen(true)}
+              onClick={handleStartNewChat}
               className="w-full bg-white text-black hover:bg-gray-100 transition-all duration-200 h-12 font-medium shadow-lg"
             >
               <div className="flex items-center space-x-2">
@@ -1082,72 +1170,41 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+              // Updated Created tab to show edit functionality
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {userAIFunctions.map((aiFunction) => (
-                  <Card key={aiFunction._id} className="glass-card flex flex-col h-full min-h-[280px] sm:min-h-[320px]">
-                    {aiFunction.thumbnailUrl ? (
-                      <div className="relative w-full h-32 sm:h-36 rounded-t-lg overflow-hidden">
-                        <Image
-                          src={aiFunction.thumbnailUrl || "/placeholder.svg"}
-                          alt={`${aiFunction.name} thumbnail`}
-                          layout="fill"
-                          objectFit="cover"
-                          className="rounded-t-lg"
-                        />
+                  <div key={aiFunction._id?.toString()} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <div className="flex items-start space-x-3">
+                      <img
+                        src={aiFunction.thumbnailUrl || "/placeholder.svg?height=40&width=40"}
+                        alt={aiFunction.name}
+                        className="w-10 h-10 rounded-lg object-cover"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-white truncate">{aiFunction.name}</h3>
+                        <p className="text-sm text-gray-400 line-clamp-2">{aiFunction.description}</p>
+                        {aiFunction.usageInstructions && (
+                          <div className="mt-2 p-2 bg-gray-900 rounded text-xs text-gray-300">
+                            {aiFunction.usageInstructions.substring(0, 100)}...
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <div className="relative w-full h-32 sm:h-36 rounded-t-lg overflow-hidden bg-gray-800 flex items-center justify-center">
-                        <Beaker className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />
-                      </div>
-                    )}
-                    <CardHeader className="flex-row items-center space-x-3 pb-3 p-4 sm:p-5">
-                      {aiFunction.profileUrl ? (
-                        <Image
-                          src={aiFunction.profileUrl || "/placeholder.svg"}
-                          alt={`${aiFunction.name} profile`}
-                          width={36}
-                          height={36}
-                          className="rounded-full object-cover flex-shrink-0"
-                        />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0">
-                          <Beaker className="h-5 w-5 text-black" />
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <CardTitle className="text-white text-base sm:text-lg truncate font-semibold">
-                          {aiFunction.name}
-                        </CardTitle>
-                        <CardDescription className="text-gray-400 text-sm truncate">
-                          Created {new Date(aiFunction.created_at).toLocaleDateString()}
-                        </CardDescription>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pt-0 pb-4 px-4 sm:px-5 flex-1 flex flex-col">
-                      <p className="text-gray-300 text-sm sm:text-base mb-4 line-clamp-3 flex-1 leading-relaxed">
-                        {aiFunction.description}
-                      </p>
-                      <div className="flex justify-end space-x-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEditAIFunction(aiFunction)}
-                          className="h-10 w-10 p-0 border-white/20 text-white hover:bg-white/10 hover:border-white/40 transition-all"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDeleteAIFunction(aiFunction._id as string)}
-                          className="h-10 px-4 text-sm font-medium transition-all"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                    <div className="mt-4 flex space-x-2">
+                      <button
+                        onClick={() => handleEditAIFunction(aiFunction)}
+                        className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                      >
+                        Continue Chat
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAIFunction(aiFunction._id?.toString() || "")}
+                        className="bg-red-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
