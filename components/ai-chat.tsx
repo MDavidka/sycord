@@ -45,16 +45,9 @@ interface AIChatProps {
 
 export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatProps) {
   const [aiPrompt, setAiPrompt] = useState("")
-  const [generatedCode, setGeneratedCode] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationProgress, setGenerationProgress] = useState(0)
   const [generationStep, setGenerationStep] = useState("")
-  const [pluginName, setPluginName] = useState("")
-  const [pluginDescription, setPluginDescription] = useState("")
-  const [pluginThumbnailUrl, setPluginThumbnailUrl] = useState("")
-  const [pluginProfileUrl, setPluginProfileUrl] = useState("")
-  const [isSaving, setIsSaving] = useState(false)
-  const [usageInstructions, setUsageInstructions] = useState("")
   const [hasError, setHasError] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
 
@@ -93,8 +86,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         if (currentSession.codeVersions && currentSession.codeVersions.length > 0) {
           const latestVersion = currentSession.codeVersions[currentSession.codeVersions.length - 1]
           setCurrentCodeVersion(latestVersion)
-          setGeneratedCode(latestVersion.code)
-          setUsageInstructions(latestVersion.usageInstructions)
         }
       } else {
         const initialSession: ChatSession = {
@@ -120,14 +111,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         setMessages([])
         setCodeVersions(initialSession.codeVersions)
         setCurrentCodeVersion(initialSession.codeVersions[0])
-        setGeneratedCode(currentAIFunction.code)
-        setUsageInstructions(currentAIFunction.usageInstructions || "")
       }
-
-      setPluginName(currentAIFunction.name)
-      setPluginDescription(currentAIFunction.description)
-      setPluginThumbnailUrl(currentAIFunction.thumbnailUrl || "")
-      setPluginProfileUrl(currentAIFunction.profileUrl || "")
     }
   }, [currentAIFunction, isOpen])
 
@@ -156,15 +140,10 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     }, 1000)
 
     try {
-      let contextPrompt = `Please provide only raw Python code without any explanations, usage notes, or comments. User request: ${aiPrompt}`
+      let contextPrompt = `User request: ${aiPrompt}`
 
       if (currentCodeVersion && currentChatSession) {
-        const previousVersions = codeVersions.slice(-3)
-        const contextInfo = previousVersions
-          .map((v) => `Version ${v.version}: ${v.code.substring(0, 500)}...`)
-          .join("\n\n")
-
-        contextPrompt = `Current code state: ${currentCodeVersion.code}\n\nPlease make these changes and provide only raw Python code: ${aiPrompt}`
+        contextPrompt = `Update current code: ${currentCodeVersion.code.substring(0, 1000)}...\n\nRequest: ${aiPrompt}`
       }
 
       const response = await fetch("/api/ai/generate-plugin", {
@@ -225,8 +204,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       const newCodeVersions = [...codeVersions, newCodeVersion]
       setCodeVersions(newCodeVersions)
       setCurrentCodeVersion(newCodeVersion)
-      setGeneratedCode(data.code || "")
-      setUsageInstructions(data.usageInstructions || "")
 
       if (currentChatSession) {
         const updatedSession = {
@@ -258,9 +235,9 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
   }
 
   const handleSaveAIFunction = async () => {
-    if (!pluginName.trim() || !generatedCode.trim()) return
+    if (!currentCodeVersion?.code.trim()) return
 
-    setIsSaving(true)
+    const isSaving = true
     try {
       const method = currentAIFunction ? "PUT" : "POST"
       const url = currentAIFunction ? `/api/user-ai-functions/${currentAIFunction._id}` : "/api/user-ai-functions"
@@ -271,12 +248,10 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: pluginName,
-          description: pluginDescription,
-          code: generatedCode,
-          usageInstructions,
-          thumbnailUrl: pluginThumbnailUrl,
-          profileUrl: pluginProfileUrl,
+          name: currentAIFunction?.name || "New Function",
+          description: currentAIFunction?.description || "",
+          code: currentCodeVersion.code,
+          usageInstructions: currentCodeVersion.usageInstructions,
           chatSessions,
           currentChatId: currentChatSession?.id,
         }),
@@ -287,8 +262,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       }
     } catch (error) {
       console.error("Error saving AI function:", error)
-    } finally {
-      setIsSaving(false)
     }
   }
 
@@ -316,8 +289,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     setMessages([])
     setCodeVersions([])
     setCurrentCodeVersion(null)
-    setGeneratedCode("")
-    setUsageInstructions("")
   }
 
   if (!isOpen) return null
@@ -387,7 +358,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
                         <ReactMarkdown className="text-base leading-relaxed">{message.content}</ReactMarkdown>
 
-                        {generatedCode && (
+                        {currentCodeVersion?.code && (
                           <div className="bg-gray-50/80 rounded-lg border border-gray-200/50 overflow-hidden">
                             <div className="flex items-center justify-between p-3 border-b border-gray-200/50">
                               <span className="text-sm font-medium text-gray-700">Generated Code</span>
@@ -413,7 +384,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  onClick={() => copyToClipboard(generatedCode)}
+                                  onClick={() => copyToClipboard(currentCodeVersion.code)}
                                   className="h-8 w-8 p-0 text-gray-600 hover:text-gray-900 bg-white hover:bg-gray-100"
                                 >
                                   <Copy className="h-4 w-4" />
@@ -421,10 +392,11 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                               </div>
                             </div>
 
-                            {message.showCode && (
+                            {message.showCode && currentCodeVersion?.code && (
                               <div className="p-3">
                                 <pre className="text-sm text-gray-800 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">
-                                  {generatedCode}
+                                  {currentCodeVersion.code.substring(0, 500)}
+                                  {currentCodeVersion.code.length > 500 && "..."}
                                 </pre>
                               </div>
                             )}
@@ -434,7 +406,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                                 <Button
                                   size="sm"
                                   onClick={handleSaveAIFunction}
-                                  disabled={!pluginName.trim() || !generatedCode.trim() || isSaving}
                                   className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200"
                                 >
                                   <Save className="h-4 w-4 mr-1" />
@@ -449,13 +420,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                                   Check Code
                                 </Button>
                               </div>
-
-                              {isGenerating && (
-                                <div className="flex items-center space-x-2">
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                  <span className="text-xs text-gray-600">Processing...</span>
-                                </div>
-                              )}
                             </div>
                           </div>
                         )}
@@ -510,7 +474,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                 onChange={(e) => setAiPrompt(e.target.value)}
                 placeholder="Describe what you want to create..."
                 className="flex-1 bg-white/80 border-gray-200/50 text-gray-900 placeholder-gray-500 resize-none min-h-[44px] max-h-32 text-base"
-                style={{ fontSize: "16px" }} // Prevents zoom on iOS
+                style={{ fontSize: "16px" }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault()
