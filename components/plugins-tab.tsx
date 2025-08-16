@@ -34,6 +34,9 @@ import {
   Beaker,
   Code,
   Copy,
+  Settings,
+  HelpCircle,
+  RotateCcw,
   ArrowLeft,
 } from "lucide-react"
 import Image from "next/image"
@@ -88,20 +91,14 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   const [editPluginThumbnailUrl, setEditPluginThumbnailUrl] = useState("")
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null)
+  const [chatSessions, setChatSessions] = useState<{
+    [key: string]: { role: "user" | "ai" | "system"; content: string; isCode?: boolean; timestamp?: Date }[]
+  }>({})
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  const [currentChatId, setCurrentChatId] = useState<string | null>(null)
-  const [chatSessions, setChatSessions] = useState<{
-    [key: string]: {
-      messages: { role: "user" | "ai" | "system"; content: string; isCode?: boolean; timestamp?: Date }[]
-      generatedCode: string
-      usageInstructions: string
-      pluginName: string
-      codeHistory: string[]
-    }
-  }>({})
 
   useEffect(() => {
     fetchPlugins()
@@ -187,43 +184,47 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   }
 
   const handleGeneratePlugin = async () => {
-    if (!aiPrompt.trim() || isGenerating) return
-
+    if (!aiPrompt.trim()) return
     setIsGenerating(true)
     setGenerationProgress(0)
-    setGeneratedCode("")
-    setUsageInstructions("")
-
-    const progressInterval = setInterval(() => {
-      setGenerationProgress((prev) => {
-        if (prev >= 90) {
-          clearInterval(progressInterval)
-          return 90
-        }
-        return prev + Math.random() * 15
-      })
-    }, 200)
+    setHasError(false)
 
     const currentPrompt = aiPrompt
     setAiPrompt("")
 
-    let contextMessage = ""
-    if (currentChatId && chatSessions[currentChatId]?.codeHistory.length > 0) {
-      const latestCode = chatSessions[currentChatId].codeHistory[chatSessions[currentChatId].codeHistory.length - 1]
-      contextMessage = `Previous code context:\n${latestCode}\n\nUser request: ${currentPrompt}`
+    // Get current chat messages for context
+    const currentMessages = currentChatId ? chatSessions[currentChatId] || [] : messages
+
+    // Add user message to current chat
+    const newUserMessage = { role: "user" as const, content: currentPrompt, timestamp: new Date() }
+    const updatedMessages = [...currentMessages, newUserMessage]
+
+    if (currentChatId) {
+      setChatSessions((prev) => ({
+        ...prev,
+        [currentChatId]: updatedMessages,
+      }))
     } else {
-      contextMessage = currentPrompt
+      setMessages(updatedMessages)
     }
 
+    const progressInterval = setInterval(() => {
+      setGenerationProgress((prev) => Math.min(prev + Math.random() * 15, 95))
+    }, 200)
+
     try {
+      // Include previous code context for follow-up requests
+      let contextPrompt = currentPrompt
+      if (generatedCode) {
+        contextPrompt = `Previous code context:\n${generatedCode}\n\nUser request: ${currentPrompt}`
+      }
+
       const response = await fetch("/api/ai/generate-plugin", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          message: contextMessage,
-        }),
+        body: JSON.stringify({ prompt: contextPrompt }),
       })
 
       if (!response.ok) {
@@ -234,45 +235,36 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
       clearInterval(progressInterval)
       setGenerationProgress(100)
 
-      const fullResponse = data.code
-      const parts = fullResponse.split(/2\.\s*/)
-
-      let codeSection = ""
-      let usageSection = ""
-
-      if (parts.length >= 2) {
-        codeSection = parts[0].trim()
-        usageSection = parts[1].trim()
-      } else {
-        codeSection = fullResponse
-        usageSection = "No usage instructions provided."
-      }
+      // Parse the response to separate code and usage instructions
+      const parts = data.code.split(/(?=\d+\.\s)/)
+      const codeSection = parts[0]?.trim() || data.code
+      const usageSection =
+        parts
+          .find((part: string) => part.match(/^\d+\.\s/))
+          ?.replace(/^\d+\.\s/, "")
+          .trim() || ""
 
       setGeneratedCode(codeSection)
       setUsageInstructions(usageSection)
+      setIsGenerating(false)
+
+      // Add AI response to current chat
+      const aiMessage = {
+        role: "ai" as const,
+        content: "Discord bot generated successfully!",
+        isCode: true,
+        timestamp: new Date(),
+      }
+      const finalMessages = [...updatedMessages, aiMessage]
 
       if (currentChatId) {
         setChatSessions((prev) => ({
           ...prev,
-          [currentChatId]: {
-            ...prev[currentChatId],
-            messages: [
-              ...prev[currentChatId].messages,
-              { role: "user", content: currentPrompt, timestamp: new Date() },
-              { role: "ai", content: "Discord bot generated successfully!", isCode: true, timestamp: new Date() },
-            ],
-            generatedCode: codeSection,
-            usageInstructions: usageSection,
-            codeHistory: [...(prev[currentChatId]?.codeHistory || []), codeSection],
-          },
+          [currentChatId]: finalMessages,
         }))
+      } else {
+        setMessages(finalMessages)
       }
-
-      setMessages((prev) => [
-        ...prev,
-        { role: "user", content: currentPrompt, timestamp: new Date() },
-        { role: "ai", content: "Discord bot generated successfully!", isCode: true, timestamp: new Date() },
-      ])
     } catch (error) {
       console.error("Error generating plugin:", error)
       clearInterval(progressInterval)
@@ -313,37 +305,35 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
           profileUrl: pluginProfileUrl,
         }),
       })
-      if (response.ok) {
-        await fetchUserAIFunctions()
 
-        const newChatId = Date.now().toString()
+      if (response.ok) {
+        const savedFunction = await response.json()
+
+        // Create new chat session for this saved function
+        const chatId = `chat_${savedFunction.id || Date.now()}`
         setChatSessions((prev) => ({
           ...prev,
-          [newChatId]: {
-            messages: [],
-            generatedCode: "",
-            usageInstructions: "",
-            pluginName: "",
-            codeHistory: [],
-          },
+          [chatId]: messages,
         }))
-        setCurrentChatId(newChatId)
-        setMessages([])
-        setGeneratedCode("")
-        setUsageInstructions("")
 
+        await fetchUserAIFunctions()
+
+        // Reset current chat and start fresh
         setIsAICreatorOpen(false)
         setAiPrompt("")
         setPluginName("")
         setPluginDescription("")
         setPluginThumbnailUrl("")
         setPluginProfileUrl("")
+        setGeneratedCode("")
+        setUsageInstructions("")
         setMessages([])
+        setCurrentChatId(null)
       } else {
         throw new Error("Failed to save function")
       }
     } catch (error) {
-      console.error("Error saving AI function:", error)
+      console.error("Error saving function:", error)
     } finally {
       setIsSaving(false)
     }
@@ -365,25 +355,11 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
     navigator.clipboard.writeText(generatedCode)
   }
 
-  const handleClearConversation = () => {
-    if (currentChatId) {
-      setChatSessions((prev) => ({
-        ...prev,
-        [currentChatId]: {
-          messages: [],
-          generatedCode: "",
-          usageInstructions: "",
-          pluginName: "",
-          codeHistory: [],
-        },
-      }))
-    }
+  const handleClearChat = () => {
     setMessages([])
     setGeneratedCode("")
     setUsageInstructions("")
-    setGenerationProgress(0)
-    setHasError(false)
-    setErrorMessage("")
+    setCurrentChatId(null)
   }
 
   const formatTimestamp = (timestamp: Date) => {
@@ -397,7 +373,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
     }
   }
 
-  const handleClearChat = () => {
+  const handleClearChatOld = () => {
     const lastCodeMessage = messages.filter((msg) => msg.isCode).pop()
     if (lastCodeMessage) {
       setMessages([lastCodeMessage])
@@ -512,79 +488,49 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
     }
   }
 
-  const handleEditAIFunction = (aiFunction: UserAIFunction) => {
+  const handleEditAIFunction = (aiFunction: any) => {
     setIsAICreatorOpen(true)
-    setPluginName(aiFunction.name)
-    setPluginDescription(aiFunction.description)
     setGeneratedCode(aiFunction.code)
     setUsageInstructions(aiFunction.usageInstructions || "")
-    setPluginThumbnailUrl(aiFunction.thumbnailUrl || "")
-    setPluginProfileUrl(aiFunction.profileUrl || "")
 
-    const editChatId = `edit-${aiFunction.id}-${Date.now()}`
-    setChatSessions((prev) => ({
-      ...prev,
-      [editChatId]: {
-        messages: [
-          {
-            role: "system",
-            content: `Editing saved Discord bot: ${aiFunction.name}`,
-            isCode: false,
-            timestamp: new Date(),
-          },
-          {
-            role: "ai",
-            content: `Ready to edit "${aiFunction.name}". You can request modifications or additions to this Discord bot.`,
-            isCode: false,
-            timestamp: new Date(),
-          },
-        ],
-        generatedCode: aiFunction.code,
-        usageInstructions: aiFunction.usageInstructions || "",
-        pluginName: aiFunction.name,
-        codeHistory: [aiFunction.code],
-      },
-    }))
-    setCurrentChatId(editChatId)
-    setMessages([
-      {
-        role: "system",
-        content: `Editing saved Discord bot: ${aiFunction.name}`,
-        isCode: false,
-        timestamp: new Date(),
-      },
-      {
-        role: "ai",
-        content: `Ready to edit "${aiFunction.name}". You can request modifications or additions to this Discord bot.`,
-        isCode: false,
-        timestamp: new Date(),
-      },
-    ])
+    // Create or load chat session for this function
+    const chatId = `chat_${aiFunction.id}`
+    setCurrentChatId(chatId)
+
+    // Load existing chat or create new one with function context
+    const existingChat = chatSessions[chatId]
+    if (existingChat) {
+      setMessages(existingChat)
+    } else {
+      const initialMessages = [
+        {
+          role: "system" as const,
+          content: `Loaded saved function: ${aiFunction.name}`,
+          isCode: false,
+          timestamp: new Date(),
+        },
+        {
+          role: "ai" as const,
+          content: `Ready to edit: ${aiFunction.name}. You can now request modifications or additions to this Discord bot.\n\nHow to use:\n${aiFunction.usageInstructions || "No usage instructions available."}`,
+          isCode: false,
+          timestamp: new Date(),
+        },
+      ]
+      setMessages(initialMessages)
+      setChatSessions((prev) => ({
+        ...prev,
+        [chatId]: initialMessages,
+      }))
+    }
   }
 
   const isPluginInstalled = (pluginId: string) => userPlugins.some((p) => p.pluginId === pluginId)
 
-  const handleNewChat = () => {
-    const newChatId = Date.now().toString()
-    setChatSessions((prev) => ({
-      ...prev,
-      [newChatId]: {
-        messages: [],
-        generatedCode: "",
-        usageInstructions: "",
-        pluginName: "",
-        codeHistory: [],
-      },
-    }))
-    setCurrentChatId(newChatId)
+  const handleClearConversation = () => {
     setMessages([])
     setGeneratedCode("")
     setUsageInstructions("")
-    setPluginName("")
-    setPluginDescription("")
-    setGenerationProgress(0)
-    setHasError(false)
-    setErrorMessage("")
+    setCurrentChatId(null)
   }
 
   if (loading) {
@@ -602,216 +548,244 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
     return (
       <>
         <Dialog open={isAICreatorOpen} onOpenChange={setIsAICreatorOpen}>
-          <DialogContent className="w-full h-full max-w-none max-h-none m-0 p-0 bg-black/95 backdrop-blur-xl border-0 rounded-none sm:w-[95vw] sm:h-[95vh] sm:max-w-4xl sm:max-h-[90vh] sm:m-auto sm:rounded-xl sm:border sm:border-white/10">
-            <div className="flex flex-col h-full">
-              <div className="flex items-center justify-between p-3 sm:p-4 border-b border-white/10 bg-black/50">
-                <div className="flex items-center space-x-3">
+          <DialogContent className="w-full h-full sm:w-[95vw] sm:max-w-6xl sm:h-[90vh] bg-black/95 backdrop-blur-xl border-0 sm:border sm:border-white/10 text-white overflow-hidden p-0 sm:rounded-lg">
+            <DialogHeader className="border-b border-white/10 p-3 sm:p-4 bg-black/50 backdrop-blur-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2 sm:space-x-3">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setIsAICreatorOpen(false)}
-                    className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10"
+                    className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 sm:hidden"
                   >
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-gray-400 text-sm">Model:</span>
-                    <div className="flex items-center space-x-1">
-                      <Image src="/s1-logo.png" alt="S1" width={16} height={16} />
-                      <span className="text-white text-sm font-medium">S1</span>
+                  <div className="w-5 h-5 sm:w-8 sm:h-8 relative">
+                    <Image src="/s1-logo.png" alt="S1 AI Lab" width={32} height={32} className="object-contain" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-white text-base sm:text-xl font-semibold">S1</DialogTitle>
+                    <DialogDescription className="text-gray-400 text-xs sm:text-sm hidden sm:block">
+                      Generate Discord bots with AI assistance
+                    </DialogDescription>
+                    <div className="text-gray-400 text-xs sm:hidden">Model: S1</div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-1 sm:space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClearConversation}
+                    className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 hidden sm:flex"
+                    title="Clear Conversation"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 hidden sm:flex"
+                    title="Settings"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 hidden sm:flex"
+                    title="Help"
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsAICreatorOpen(false)}
+                    className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 hidden sm:flex"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="flex-1 flex flex-col overflow-hidden h-full">
+              <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-4xl mx-auto w-full">
+                {/* Update messages display to use current chat session */}
+                {(currentChatId ? chatSessions[currentChatId] || [] : messages).map((message, index) => (
+                  <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                    {message.role !== "system" && (
+                      <div
+                        className={`max-w-[85%] sm:max-w-[75%] p-3 sm:p-4 rounded-2xl sm:rounded-xl relative ${
+                          message.role === "user"
+                            ? "bg-white text-black ml-4"
+                            : hasError && message.content.startsWith("Error:")
+                              ? "bg-red-900/50 text-red-100 border border-red-700/50 mr-4"
+                              : "bg-gray-800/60 text-white border border-gray-700/30 mr-4"
+                        }`}
+                        style={{
+                          fontSize: window.innerWidth < 768 ? "14px" : "16px",
+                          lineHeight: "1.5",
+                        }}
+                      >
+                        <div className="mb-1">{message.content}</div>
+                        {message.timestamp && (
+                          <div
+                            className={`text-xs opacity-60 mt-2 ${
+                              message.role === "user" ? "text-right" : "text-left"
+                            }`}
+                          >
+                            {formatTimestamp(message.timestamp)}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {isGenerating && (
+                  <div className="flex justify-start">
+                    <div className="bg-gray-800/60 text-white border border-gray-700/30 mr-4 p-3 sm:p-4 rounded-2xl sm:rounded-xl max-w-[85%] sm:max-w-[75%]">
+                      <div className="flex items-center space-x-2">
+                        <span style={{ fontSize: window.innerWidth < 768 ? "14px" : "16px", lineHeight: "1.5" }}>
+                          Generating your Discord bot
+                        </span>
+                        <div className="flex space-x-1">
+                          <div
+                            className="w-2 h-2 bg-white rounded-full animate-bounce"
+                            style={{ animationDelay: "0ms" }}
+                          ></div>
+                          <div
+                            className="w-2 h-2 bg-white rounded-full animate-bounce"
+                            style={{ animationDelay: "150ms" }}
+                          ></div>
+                          <div
+                            className="w-2 h-2 bg-white rounded-full animate-bounce"
+                            style={{ animationDelay: "300ms" }}
+                          ></div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  {currentChatId && chatSessions[currentChatId]?.pluginName && (
-                    <span className="text-gray-400 text-sm">• Editing: {chatSessions[currentChatId].pluginName}</span>
-                  )}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleNewChat}
-                  className="text-gray-400 hover:text-white hover:bg-white/10 text-sm"
-                >
-                  New Chat
-                </Button>
+                )}
+
+                <div ref={messagesEndRef} />
               </div>
 
-              <div className="flex-1 flex flex-col overflow-hidden h-full">
-                <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-4xl mx-auto w-full">
-                  {messages.map((message, index) => (
-                    <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                      {message.role !== "system" && (
+              {(isGenerating || generatedCode) && (
+                <div className="p-3 sm:p-6 border-t border-white/10 max-w-4xl mx-auto w-full">
+                  <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-xl p-4 sm:p-6 shadow-2xl">
+                    <div className="flex items-center justify-between mb-3 sm:mb-4">
+                      <div className="flex items-center space-x-2 sm:space-x-3">
+                        <div className="w-5 h-5 sm:w-6 sm:h-6 relative">
+                          <Image src="/s1-logo.png" alt="S1" width={24} height={24} className="object-contain" />
+                        </div>
+                        <h3 className="text-white font-medium text-base sm:text-lg">{pluginName}</h3>
+                        {generatedCode && (
+                          <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded-full">
+                            Latest Version
+                          </span>
+                        )}
+                      </div>
+                      {!isGenerating && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setGeneratedCode("")
+                            setUsageInstructions("")
+                            setGenerationProgress(0)
+                          }}
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10"
+                        >
+                          <X className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
+                      )}
+                    </div>
+
+                    {isGenerating && (
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-gray-300 text-sm">Generating...</span>
+                          <span className="text-gray-300 text-sm">{Math.round(generationProgress)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-800/50 rounded-full h-2">
+                          <div
+                            className="bg-white h-2 rounded-full transition-all duration-300 ease-out"
+                            style={{ width: `${generationProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {usageInstructions && (
+                      <div className="mb-4">
+                        <h4 className="text-white font-medium mb-2 text-sm sm:text-base">How to use:</h4>
                         <div
-                          className={`max-w-[85%] sm:max-w-[75%] p-3 sm:p-4 rounded-2xl sm:rounded-xl relative ${
-                            message.role === "user"
-                              ? "bg-white text-black ml-4"
-                              : hasError && message.content.startsWith("Error:")
-                                ? "bg-red-900/50 text-red-100 border border-red-700/50 mr-4"
-                                : "bg-gray-800/60 text-white border border-gray-700/30 mr-4"
-                          }`}
+                          className="text-gray-300 prose prose-invert max-w-none"
                           style={{
                             fontSize: window.innerWidth < 768 ? "14px" : "16px",
                             lineHeight: "1.5",
                           }}
                         >
-                          <div className="mb-1">{message.content}</div>
-                          {message.timestamp && (
-                            <div
-                              className={`text-xs opacity-60 mt-2 ${
-                                message.role === "user" ? "text-right" : "text-left"
-                              }`}
-                            >
-                              {formatTimestamp(message.timestamp)}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-
-                  {isGenerating && (
-                    <div className="flex justify-start">
-                      <div className="bg-gray-800/60 text-white border border-gray-700/30 mr-4 p-3 sm:p-4 rounded-2xl sm:rounded-xl max-w-[85%] sm:max-w-[75%]">
-                        <div className="flex items-center space-x-2">
-                          <span style={{ fontSize: window.innerWidth < 768 ? "14px" : "16px", lineHeight: "1.5" }}>
-                            Generating your Discord bot
-                          </span>
-                          <div className="flex space-x-1">
-                            <div
-                              className="w-2 h-2 bg-white rounded-full animate-bounce"
-                              style={{ animationDelay: "0ms" }}
-                            ></div>
-                            <div
-                              className="w-2 h-2 bg-white rounded-full animate-bounce"
-                              style={{ animationDelay: "150ms" }}
-                            ></div>
-                            <div
-                              className="w-2 h-2 bg-white rounded-full animate-bounce"
-                              style={{ animationDelay: "300ms" }}
-                            ></div>
-                          </div>
+                          <ReactMarkdown>{usageInstructions}</ReactMarkdown>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  <div ref={messagesEndRef} />
-                </div>
-
-                {(isGenerating || generatedCode) && (
-                  <div className="p-3 sm:p-6 border-t border-white/10 max-w-4xl mx-auto w-full">
-                    <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-xl p-4 sm:p-6 shadow-2xl">
-                      <div className="flex items-center justify-between mb-3 sm:mb-4">
-                        <div className="flex items-center space-x-2 sm:space-x-3">
-                          <div className="w-5 h-5 sm:w-6 sm:h-6 relative">
-                            <Image src="/s1-logo.png" alt="S1" width={24} height={24} className="object-contain" />
-                          </div>
-                          <h3 className="text-white font-medium text-base sm:text-lg">{pluginName}</h3>
-                          {generatedCode && (
-                            <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded-full">
-                              Latest Version
-                            </span>
-                          )}
-                        </div>
-                        {!isGenerating && (
+                    {(isGenerating || generatedCode) && (
+                      <div className="mb-4">
+                        <div className="flex gap-2">
                           <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setGeneratedCode("")
-                              setUsageInstructions("")
-                              setGenerationProgress(0)
-                            }}
-                            className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10"
+                            onClick={() => setIsCodeModalOpen(true)}
+                            variant="outline"
+                            className="flex-1 bg-transparent border-white/20 text-white hover:bg-white/10 hover:border-white/30 h-12 justify-center"
                           >
-                            <X className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <Code className="h-5 w-5" />
                           </Button>
-                        )}
-                      </div>
-
-                      {isGenerating && (
-                        <div className="mb-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-gray-300 text-sm">Generating...</span>
-                            <span className="text-gray-300 text-sm">{Math.round(generationProgress)}%</span>
-                          </div>
-                          <div className="w-full bg-gray-800/50 rounded-full h-2">
-                            <div
-                              className="bg-white h-2 rounded-full transition-all duration-300 ease-out"
-                              style={{ width: `${generationProgress}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {usageInstructions && (
-                        <div className="mb-4">
-                          <h4 className="text-white font-medium mb-2 text-sm sm:text-base">How to use:</h4>
-                          <div
-                            className="text-gray-300 prose prose-invert max-w-none"
-                            style={{
-                              fontSize: window.innerWidth < 768 ? "14px" : "16px",
-                              lineHeight: "1.5",
-                            }}
+                          <Button
+                            onClick={handleSaveAIFunction}
+                            className="flex-1 bg-white text-black hover:bg-gray-200 h-12 justify-center font-medium"
                           >
-                            <ReactMarkdown>{usageInstructions}</ReactMarkdown>
-                          </div>
+                            <Save className="h-5 w-5" />
+                          </Button>
                         </div>
-                      )}
-
-                      {(isGenerating || generatedCode) && (
-                        <div className="mb-4">
-                          <div className="flex gap-2">
-                            <Button
-                              onClick={() => setIsCodeModalOpen(true)}
-                              variant="outline"
-                              className="flex-1 bg-transparent border-white/20 text-white hover:bg-white/10 hover:border-white/30 h-12 justify-center"
-                            >
-                              <Code className="h-5 w-5" />
-                            </Button>
-                            <Button
-                              onClick={handleSaveAIFunction}
-                              className="flex-1 bg-white text-black hover:bg-gray-200 h-12 justify-center font-medium"
-                            >
-                              <Save className="h-5 w-5" />
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="border-t border-white/10 p-3 sm:p-6 bg-black/50 backdrop-blur-sm sticky bottom-0 max-w-4xl mx-auto w-full">
-                  <div className="flex space-x-2 sm:space-x-3 items-end">
-                    <div className="flex-1 min-w-0">
-                      <Textarea
-                        ref={textareaRef}
-                        value={aiPrompt}
-                        onChange={(e) => setAiPrompt(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Describe the Discord bot you want to create..."
-                        className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 resize-none min-h-[44px] max-h-32 w-full"
-                        style={{
-                          fontSize: "16px",
-                          lineHeight: "1.4",
-                          padding: "12px 14px",
-                        }}
-                        disabled={isGenerating}
-                        rows={1}
-                      />
-                      <div className="text-xs text-gray-500 mt-1 hidden sm:block">
-                        Press Enter to send, Shift+Enter for new line
                       </div>
-                    </div>
-                    <Button
-                      onClick={handleGeneratePlugin}
-                      disabled={isGenerating || !aiPrompt.trim()}
-                      size="sm"
-                      className="bg-white text-black hover:bg-gray-200 h-11 px-3 sm:px-6 flex-shrink-0 ml-2"
-                    >
-                      <Send className="h-4 w-4" />
-                    </Button>
+                    )}
                   </div>
+                </div>
+              )}
+
+              <div className="border-t border-white/10 p-3 sm:p-6 bg-black/50 backdrop-blur-sm sticky bottom-0 max-w-4xl mx-auto w-full">
+                <div className="flex space-x-2 sm:space-x-3 items-end">
+                  <div className="flex-1 min-w-0">
+                    <Textarea
+                      ref={textareaRef}
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="Describe the Discord bot you want to create..."
+                      className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 resize-none min-h-[44px] max-h-32 w-full"
+                      style={{
+                        fontSize: "16px",
+                        lineHeight: "1.4",
+                        padding: "12px 14px",
+                      }}
+                      disabled={isGenerating}
+                      rows={1}
+                    />
+                    <div className="text-xs text-gray-500 mt-1 hidden sm:block">
+                      Press Enter to send, Shift+Enter for new line
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleGeneratePlugin}
+                    disabled={isGenerating || !aiPrompt.trim()}
+                    size="sm"
+                    className="bg-white text-black hover:bg-gray-200 h-11 px-3 sm:px-6 flex-shrink-0 ml-2"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </div>
