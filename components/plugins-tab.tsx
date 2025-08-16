@@ -16,18 +16,24 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Package,
   Plus,
+  Download,
+  Check,
   X,
   Edit,
   Trash2,
+  ImageIcon,
   Save,
   Send,
+  Beaker,
   Code,
+  Copy,
   Settings,
   HelpCircle,
   RotateCcw,
@@ -144,7 +150,7 @@ export default function PluginsTab() {
       const response = await fetch("/api/plugins")
       if (response.ok) {
         const data = await response.json()
-        setPlugins(data.plugins)
+        setPlugins(data)
       }
     } catch (error) {
       console.error("Error fetching plugins:", error)
@@ -158,7 +164,7 @@ export default function PluginsTab() {
       const response = await fetch("/api/user-plugins")
       if (response.ok) {
         const data = await response.json()
-        setUserPlugins(data.installedPlugins)
+        setUserPlugins(data)
       }
     } catch (error) {
       console.error("Error fetching user plugins:", error)
@@ -170,7 +176,7 @@ export default function PluginsTab() {
       const response = await fetch("/api/user-ai-functions")
       if (response.ok) {
         const data = await response.json()
-        setUserAIFunctions(data.functions)
+        setUserAIFunctions(data)
       }
     } catch (error) {
       console.error("Error fetching user AI functions:", error)
@@ -178,6 +184,8 @@ export default function PluginsTab() {
   }
 
   const handleCreatePlugin = async () => {
+    if (!newPluginName.trim() || !newPluginDescription.trim()) return
+
     try {
       const response = await fetch("/api/plugins", {
         method: "POST",
@@ -191,6 +199,7 @@ export default function PluginsTab() {
           thumbnailUrl: newPluginThumbnailUrl,
         }),
       })
+
       if (response.ok) {
         setNewPluginName("")
         setNewPluginDescription("")
@@ -204,60 +213,98 @@ export default function PluginsTab() {
     }
   }
 
-  const handleEditAIFunction = async (aiFunction: UserAIFunction) => {
-    setCurrentAIFunction(aiFunction)
+  const handleInstallPlugin = async (pluginId: string) => {
+    try {
+      const response = await fetch("/api/user-plugins", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ pluginId }),
+      })
 
-    // Load existing chat sessions or create default one
-    const sessions = aiFunction.chatSessions || []
-    setChatSessions(sessions)
-
-    if (sessions.length > 0) {
-      const currentSession = sessions.find((s) => s.id === aiFunction.currentChatId) || sessions[0]
-      setCurrentChatSession(currentSession)
-      setMessages(currentSession.messages || [])
-      setCodeVersions(currentSession.codeVersions || [])
-
-      // Set current code version to latest
-      if (currentSession.codeVersions && currentSession.codeVersions.length > 0) {
-        const latestVersion = currentSession.codeVersions[currentSession.codeVersions.length - 1]
-        setCurrentCodeVersion(latestVersion)
-        setGeneratedCode(latestVersion.code)
-        setUsageInstructions(latestVersion.usageInstructions)
+      if (response.ok) {
+        fetchUserPlugins()
+        fetchPlugins()
       }
-    } else {
-      // Create initial chat session
-      const initialSession: ChatSession = {
-        id: `chat_${Date.now()}`,
-        name: "Main Chat",
-        messages: [],
-        codeVersions: [
-          {
-            id: `version_${Date.now()}`,
-            code: aiFunction.code,
-            usageInstructions: aiFunction.usageInstructions || "",
-            version: 1,
-            created_at: new Date().toISOString(),
-            prompt: "Initial creation",
-          },
-        ],
-        created_at: new Date().toISOString(),
-        last_updated: new Date().toISOString(),
-      }
-
-      setChatSessions([initialSession])
-      setCurrentChatSession(initialSession)
-      setMessages([])
-      setCodeVersions(initialSession.codeVersions)
-      setCurrentCodeVersion(initialSession.codeVersions[0])
-      setGeneratedCode(aiFunction.code)
-      setUsageInstructions(aiFunction.usageInstructions || "")
+    } catch (error) {
+      console.error("Error installing plugin:", error)
     }
+  }
 
-    setIsAICreatorOpen(true)
-    setPluginName(aiFunction.name)
-    setPluginDescription(aiFunction.description)
-    setPluginThumbnailUrl(aiFunction.thumbnailUrl || "")
-    setPluginProfileUrl(aiFunction.profileUrl || "")
+  const handleUninstallPlugin = async (pluginId: string) => {
+    try {
+      const response = await fetch("/api/user-plugins", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ pluginId }),
+      })
+
+      if (response.ok) {
+        fetchUserPlugins()
+        fetchPlugins()
+      }
+    } catch (error) {
+      console.error("Error uninstalling plugin:", error)
+    }
+  }
+
+  const handleDeletePlugin = async (pluginId: string) => {
+    try {
+      const response = await fetch("/api/plugins", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ pluginId }),
+      })
+
+      if (response.ok) {
+        fetchPlugins()
+      }
+    } catch (error) {
+      console.error("Error deleting plugin:", error)
+    }
+  }
+
+  const handleEditPlugin = (plugin: Plugin) => {
+    setEditPluginId(plugin._id)
+    setEditPluginName(plugin.name)
+    setEditPluginDescription(plugin.description)
+    setEditPluginActive(plugin.active)
+    setEditPluginIconUrl(plugin.iconUrl || "")
+    setEditPluginThumbnailUrl(plugin.thumbnailUrl || "")
+    setIsEditDialogOpen(true)
+  }
+
+  const handleUpdatePlugin = async () => {
+    if (!editPluginId) return
+
+    try {
+      const response = await fetch("/api/plugins", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          pluginId: editPluginId,
+          name: editPluginName,
+          description: editPluginDescription,
+          active: editPluginActive,
+          iconUrl: editPluginIconUrl,
+          thumbnailUrl: editPluginThumbnailUrl,
+        }),
+      })
+
+      if (response.ok) {
+        setIsEditDialogOpen(false)
+        fetchPlugins()
+      }
+    } catch (error) {
+      console.error("Error updating plugin:", error)
+    }
   }
 
   const handleGenerateAI = async () => {
@@ -372,124 +419,37 @@ export default function PluginsTab() {
           }),
         })
       }
+
+      setAiPrompt("")
     } catch (error) {
-      console.error("Error generating plugin:", error)
+      console.error("Error generating AI plugin:", error)
       clearInterval(progressInterval)
       setGenerationProgress(0)
-      setIsGenerating(false)
       setHasError(true)
-      setErrorMessage("Sorry, there was an error generating the bot. Please try again.")
-    } finally {
-      setIsGenerating(false)
-      setAiPrompt("")
-    }
-  }
+      setErrorMessage("Failed to generate plugin. Please try again.")
 
-  const handleSaveAIFunction = async () => {
-    if (!generatedCode || !pluginName.trim()) return
-    setIsSaving(true)
-
-    try {
-      if (currentAIFunction) {
-        // Update existing function
-        await fetch("/api/user-ai-functions", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            functionId: currentAIFunction._id,
-            chatSessionId: currentChatSession?.id,
-            messages,
-            action: "updateChat",
-          }),
-        })
-      } else {
-        // Create new function
-        const response = await fetch("/api/user-ai-functions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: pluginName,
-            description: pluginDescription,
-            code: generatedCode,
-            usageInstructions: usageInstructions,
-            thumbnailUrl: pluginThumbnailUrl,
-            profileUrl: pluginProfileUrl,
-            chatSessionId: currentChatSession?.id,
-          }),
-        })
-
-        if (!response.ok) throw new Error("Failed to save function")
+      const errorMessage: ChatMessage = {
+        id: `msg_${Date.now()}_error`,
+        role: "ai",
+        content: "Error: Failed to generate plugin. Please try again.",
+        timestamp: new Date(),
       }
 
-      await fetchUserAIFunctions()
-      handleCloseAICreator()
-    } catch (error) {
-      console.error("Error saving AI function:", error)
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `msg_${Date.now()}_user`,
+          role: "user",
+          content: aiPrompt,
+          timestamp: new Date(),
+        },
+        errorMessage,
+      ])
+
+      setAiPrompt("")
     } finally {
-      setIsSaving(false)
+      setIsGenerating(false)
     }
-  }
-
-  const handleStartNewChat = () => {
-    setCurrentAIFunction(null)
-    setCurrentChatSession(null)
-    setChatSessions([])
-    setMessages([])
-    setCodeVersions([])
-    setCurrentCodeVersion(null)
-    setGeneratedCode("")
-    setUsageInstructions("")
-    setPluginName("")
-    setPluginDescription("")
-    setPluginThumbnailUrl("")
-    setPluginProfileUrl("")
-    setIsAICreatorOpen(true)
-  }
-
-  const handleCloseAICreator = () => {
-    setIsAICreatorOpen(false)
-    setCurrentAIFunction(null)
-    setCurrentChatSession(null)
-    setChatSessions([])
-    setMessages([])
-    setCodeVersions([])
-    setCurrentCodeVersion(null)
-    setGeneratedCode("")
-    setUsageInstructions("")
-    setPluginName("")
-    setPluginDescription("")
-    setPluginThumbnailUrl("")
-    setPluginProfileUrl("")
-    setAiPrompt("")
-  }
-
-  const handleDownloadCode = () => {
-    const blob = new Blob([generatedCode], { type: "text/plain" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `${pluginName.replace(/\s+/g, "_").toLowerCase()}.py`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
-
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(generatedCode)
-  }
-
-  const handleClearConversation = () => {
-    setMessages([])
-    setGeneratedCode("")
-    setUsageInstructions("")
-    setGenerationProgress(0)
-    setHasError(false)
-    setErrorMessage("")
-  }
-
-  const formatTimestamp = (timestamp: Date) => {
-    return timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -499,113 +459,96 @@ export default function PluginsTab() {
     }
   }
 
-  const handleClearChat = () => {
-    const lastCodeMessage = messages.filter((msg) => msg.isCode).pop()
-    if (lastCodeMessage) {
-      setMessages([lastCodeMessage])
-    } else {
-      setMessages([])
-    }
+  const formatTimestamp = (timestamp: Date) => {
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }).format(timestamp)
   }
 
-  const handleInstallPlugin = async (pluginId: string) => {
+  const handleStartNewChat = () => {
+    setMessages([])
+    setGeneratedCode("")
+    setUsageInstructions("")
+    setCurrentCodeVersion(null)
+    setCodeVersions([])
+    setCurrentAIFunction(null)
+    setCurrentChatSession(null)
+    setIsAICreatorOpen(true)
+  }
+
+  const handleClearConversation = () => {
+    setMessages([])
+    setGeneratedCode("")
+    setUsageInstructions("")
+    setCurrentCodeVersion(null)
+    setCodeVersions([])
+    setAiPrompt("")
+    setHasError(false)
+    setErrorMessage("")
+  }
+
+  const handleSaveAIFunction = async () => {
+    if (!generatedCode || !pluginName) return
+
+    setIsSaving(true)
     try {
-      const response = await fetch("/api/user-plugins", {
+      const response = await fetch("/api/user-ai-functions", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ pluginId, action: "install" }),
-      })
-      if (response.ok) {
-        fetchUserPlugins()
-        fetchPlugins()
-      }
-    } catch (error) {
-      console.error("Error installing plugin:", error)
-    }
-  }
-
-  const handleUninstallPlugin = async (pluginId: string) => {
-    try {
-      const response = await fetch("/api/user-plugins", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ pluginId, action: "uninstall" }),
-      })
-      if (response.ok) {
-        fetchUserPlugins()
-        fetchPlugins()
-      }
-    } catch (error) {
-      console.error("Error uninstalling plugin:", error)
-    }
-  }
-
-  const handleEditPlugin = (plugin: Plugin) => {
-    setEditPluginId(plugin._id)
-    setEditPluginName(plugin.name)
-    setEditPluginDescription(plugin.description)
-    setEditPluginActive(plugin.active)
-    setEditPluginIconUrl(plugin.iconUrl || "")
-    setEditPluginThumbnailUrl(plugin.thumbnailUrl || "")
-    setIsEditDialogOpen(true)
-  }
-
-  const handleUpdatePlugin = async () => {
-    if (!editPluginId) return
-    try {
-      const response = await fetch("/api/plugins", {
-        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          _id: editPluginId,
-          name: editPluginName,
-          description: editPluginDescription,
-          active: editPluginActive,
-          iconUrl: editPluginIconUrl,
-          thumbnailUrl: editPluginThumbnailUrl,
+          name: pluginName,
+          description: pluginDescription,
+          code: generatedCode,
+          usageInstructions,
+          thumbnailUrl: pluginThumbnailUrl,
+          profileUrl: pluginProfileUrl,
+          messages,
+          codeVersions,
         }),
       })
+
       if (response.ok) {
-        setIsEditDialogOpen(false)
-        fetchPlugins()
+        fetchUserAIFunctions()
+        setGeneratedCode("")
+        setUsageInstructions("")
+        setPluginName("")
+        setPluginDescription("")
+        setPluginThumbnailUrl("")
+        setPluginProfileUrl("")
       }
     } catch (error) {
-      console.error("Error updating plugin:", error)
+      console.error("Error saving AI function:", error)
+    } finally {
+      setIsSaving(false)
     }
   }
 
-  const handleDeletePlugin = async (pluginId: string) => {
-    if (!window.confirm("Are you sure you want to delete this plugin?")) return
-    try {
-      const response = await fetch("/api/plugins", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ _id: pluginId }),
-      })
-      if (response.ok) fetchPlugins()
-    } catch (error) {
-      console.error("Error deleting plugin:", error)
-    }
+  const handleEditAIFunction = (aiFunction: UserAIFunction) => {
+    setCurrentAIFunction(aiFunction)
+    setPluginName(aiFunction.name)
+    setPluginDescription(aiFunction.description)
+    setGeneratedCode(aiFunction.code || "")
+    setUsageInstructions(aiFunction.usageInstructions || "")
+    setMessages(aiFunction.messages || [])
+    setCodeVersions(aiFunction.codeVersions || [])
+    setCurrentCodeVersion(aiFunction.codeVersions?.[aiFunction.codeVersions.length - 1] || null)
+    setIsAICreatorOpen(true)
   }
 
   const handleDeleteAIFunction = async (functionId: string) => {
-    if (!window.confirm("Are you sure you want to delete this AI function?")) return
     try {
       const response = await fetch("/api/user-ai-functions", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ _id: functionId }),
+        body: JSON.stringify({ functionId }),
       })
+
       if (response.ok) {
         fetchUserAIFunctions()
       }
@@ -632,9 +575,9 @@ export default function PluginsTab() {
       <>
         <Dialog open={isAICreatorOpen} onOpenChange={setIsAICreatorOpen}>
           <DialogContent className="w-full h-full sm:w-[95vw] sm:max-w-6xl sm:h-[90vh] bg-black/95 backdrop-blur-xl border-0 sm:border sm:border-white/10 text-white overflow-hidden p-0 sm:rounded-lg">
-            <DialogHeader className="border-b border-white/10 p-3 sm:p-4 bg-black/50 backdrop-blur-sm">
+            <DialogHeader className="border-b border-white/10 p-4 bg-black/50 backdrop-blur-sm shrink-0">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 sm:space-x-3">
+                <div className="flex items-center space-x-3">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -643,18 +586,18 @@ export default function PluginsTab() {
                   >
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
-                  <div className="w-5 h-5 sm:w-8 sm:h-8 relative">
+                  <div className="w-8 h-8 relative">
                     <Image src="/s1-logo.png" alt="S1 AI Lab" width={32} height={32} className="object-contain" />
                   </div>
                   <div>
-                    <DialogTitle className="text-white text-base sm:text-xl font-semibold">S1</DialogTitle>
-                    <DialogDescription className="text-gray-400 text-xs sm:text-sm hidden sm:block">
+                    <DialogTitle className="text-white text-xl font-semibold">S1 AI Lab</DialogTitle>
+                    <DialogDescription className="text-gray-400 text-sm hidden sm:block">
                       Generate Discord bots with AI assistance
                     </DialogDescription>
-                    <div className="text-gray-400 text-xs sm:hidden">Model: S1</div>
+                    <div className="text-gray-400 text-xs sm:hidden">AI-Powered Bot Generator</div>
                   </div>
                 </div>
-                <div className="flex items-center space-x-1 sm:space-x-2">
+                <div className="flex items-center space-x-2">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -693,27 +636,60 @@ export default function PluginsTab() {
             </DialogHeader>
 
             <div className="flex-1 flex flex-col overflow-hidden h-full">
-              <div className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-6 space-y-3 sm:space-y-4 md:space-y-6 max-w-4xl mx-auto w-full">
+              <div
+                ref={chatContainerRef}
+                className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 max-w-4xl mx-auto w-full"
+              >
+                {messages.length === 0 && (
+                  <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                    <div className="w-16 h-16 relative mb-4">
+                      <Image src="/s1-logo.png" alt="S1" width={64} height={64} className="object-contain opacity-50" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-white mb-2">Welcome to S1 AI Lab</h3>
+                    <p className="text-gray-400 max-w-md">
+                      Describe the Discord bot you want to create, and I'll generate the code for you with detailed
+                      instructions.
+                    </p>
+                  </div>
+                )}
+
                 {messages.map((message, index) => (
-                  <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div
+                    key={message.id || index}
+                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
                     {message.role !== "system" && (
-                      <div
-                        className={`max-w-[90%] sm:max-w-[85%] md:max-w-[75%] p-3 sm:p-4 relative transition-all duration-200 ${
-                          message.role === "user"
-                            ? "bg-white text-black ml-2 sm:ml-4 rounded-2xl sm:rounded-xl shadow-lg"
-                            : hasError && message.content.startsWith("Error:")
-                              ? "bg-red-900/50 text-red-100 border border-red-700/50 mr-2 sm:mr-4 rounded-2xl sm:rounded-xl"
-                              : "bg-gray-800/60 text-white border border-gray-700/30 mr-2 sm:mr-4 rounded-2xl sm:rounded-xl backdrop-blur-sm"
-                        }`}
-                      >
-                        <div className="text-sm sm:text-base leading-relaxed">{message.content}</div>
-                        {message.timestamp && (
-                          <div
-                            className={`text-xs opacity-60 mt-2 ${
-                              message.role === "user" ? "text-right" : "text-left"
-                            }`}
-                          >
-                            {formatTimestamp(message.timestamp)}
+                      <div className="flex items-start space-x-3 max-w-[85%] sm:max-w-[75%]">
+                        {message.role === "ai" && (
+                          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-1">
+                            <Image src="/s1-logo.png" alt="AI" width={16} height={16} className="object-contain" />
+                          </div>
+                        )}
+
+                        <div
+                          className={`p-4 rounded-2xl relative ${
+                            message.role === "user"
+                              ? "bg-white text-black"
+                              : hasError && message.content.startsWith("Error:")
+                                ? "bg-red-900/50 text-red-100 border border-red-700/50"
+                                : "bg-gray-800/60 text-white border border-gray-700/30"
+                          }`}
+                        >
+                          <div className="text-sm sm:text-base leading-relaxed">{message.content}</div>
+                          {message.timestamp && (
+                            <div
+                              className={`text-xs opacity-60 mt-2 ${
+                                message.role === "user" ? "text-right" : "text-left"
+                              }`}
+                            >
+                              {formatTimestamp(message.timestamp)}
+                            </div>
+                          )}
+                        </div>
+
+                        {message.role === "user" && (
+                          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center shrink-0 mt-1 text-white text-sm font-medium">
+                            U
                           </div>
                         )}
                       </div>
@@ -723,23 +699,42 @@ export default function PluginsTab() {
 
                 {isGenerating && (
                   <div className="flex justify-start">
-                    <div className="bg-gray-800/60 text-white border border-gray-700/30 mr-2 sm:mr-4 p-3 sm:p-4 rounded-2xl sm:rounded-xl max-w-[90%] sm:max-w-[85%] md:max-w-[75%] backdrop-blur-sm">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm sm:text-base leading-relaxed">Generating your Discord bot</span>
-                        <div className="flex space-x-1">
-                          <div
-                            className="w-2 h-2 bg-white rounded-full animate-bounce"
-                            style={{ animationDelay: "0ms" }}
-                          ></div>
-                          <div
-                            className="w-2 h-2 bg-white rounded-full animate-bounce"
-                            style={{ animationDelay: "150ms" }}
-                          ></div>
-                          <div
-                            className="w-2 h-2 bg-white rounded-full animate-bounce"
-                            style={{ animationDelay: "300ms" }}
-                          ></div>
+                    <div className="flex items-start space-x-3 max-w-[85%] sm:max-w-[75%]">
+                      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 mt-1">
+                        <Image src="/s1-logo.png" alt="AI" width={16} height={16} className="object-contain" />
+                      </div>
+                      <div className="bg-gray-800/60 text-white border border-gray-700/30 p-4 rounded-2xl">
+                        <div className="flex items-center space-x-3">
+                          <span className="text-sm sm:text-base">Generating your Discord bot</span>
+                          <div className="flex space-x-1">
+                            <div
+                              className="w-2 h-2 bg-white rounded-full animate-bounce"
+                              style={{ animationDelay: "0ms" }}
+                            ></div>
+                            <div
+                              className="w-2 h-2 bg-white rounded-full animate-bounce"
+                              style={{ animationDelay: "150ms" }}
+                            ></div>
+                            <div
+                              className="w-2 h-2 bg-white rounded-full animate-bounce"
+                              style={{ animationDelay: "300ms" }}
+                            ></div>
+                          </div>
                         </div>
+                        {generationProgress > 0 && (
+                          <div className="mt-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs text-gray-300">Progress</span>
+                              <span className="text-xs text-gray-300">{Math.round(generationProgress)}%</span>
+                            </div>
+                            <div className="w-full bg-gray-700/50 rounded-full h-1.5">
+                              <div
+                                className="bg-white h-1.5 rounded-full transition-all duration-300 ease-out"
+                                style={{ width: `${generationProgress}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -749,19 +744,17 @@ export default function PluginsTab() {
               </div>
 
               {(isGenerating || generatedCode) && (
-                <div className="p-2 sm:p-4 md:p-6 border-t border-white/10 max-w-4xl mx-auto w-full">
-                  <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-6 shadow-2xl">
-                    <div className="flex items-center justify-between mb-3 sm:mb-4">
-                      <div className="flex items-center space-x-2 sm:space-x-3">
-                        <div className="w-5 h-5 sm:w-6 sm:h-6 relative flex-shrink-0">
+                <div className="border-t border-white/10 p-4 sm:p-6 max-w-4xl mx-auto w-full shrink-0">
+                  <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-4 sm:p-6 shadow-2xl">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-6 h-6 relative">
                           <Image src="/s1-logo.png" alt="S1" width={24} height={24} className="object-contain" />
                         </div>
-                        <h3 className="text-white font-medium text-sm sm:text-base md:text-lg truncate">
-                          {pluginName}
-                        </h3>
+                        <h3 className="text-white font-medium text-lg">{pluginName || "Generated Bot"}</h3>
                         {generatedCode && (
-                          <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded-full whitespace-nowrap">
-                            Latest Version
+                          <span className="text-xs text-gray-400 bg-gray-800/50 px-2 py-1 rounded-full">
+                            v{currentCodeVersion?.version || 1}
                           </span>
                         )}
                       </div>
@@ -774,95 +767,124 @@ export default function PluginsTab() {
                             setUsageInstructions("")
                             setGenerationProgress(0)
                           }}
-                          className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 flex-shrink-0"
+                          className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10"
                         >
-                          <X className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <X className="h-4 w-4" />
                         </Button>
                       )}
                     </div>
 
-                    {isGenerating && (
-                      <div className="mb-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-gray-300 text-xs sm:text-sm">Generating...</span>
-                          <span className="text-gray-300 text-xs sm:text-sm">{Math.round(generationProgress)}%</span>
-                        </div>
-                        <div className="w-full bg-gray-800/50 rounded-full h-2">
-                          <div
-                            className="bg-white h-2 rounded-full transition-all duration-300 ease-out"
-                            style={{ width: `${generationProgress}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-
                     {usageInstructions && (
                       <div className="mb-4">
-                        <h4 className="text-white font-medium mb-2 text-xs sm:text-sm md:text-base">How to use:</h4>
-                        <div className="text-gray-300 prose prose-invert max-w-none text-xs sm:text-sm md:text-base leading-relaxed">
+                        <h4 className="text-white font-medium mb-2 text-base">How to use:</h4>
+                        <div className="text-gray-300 prose prose-invert max-w-none text-sm sm:text-base leading-relaxed">
                           <ReactMarkdown>{usageInstructions}</ReactMarkdown>
                         </div>
                       </div>
                     )}
 
                     {(isGenerating || generatedCode) && (
-                      <div className="mb-4">
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <Button
-                            onClick={() => setIsCodeModalOpen(true)}
-                            variant="outline"
-                            className="flex-1 bg-transparent border-white/20 text-white hover:bg-white/10 hover:border-white/30 h-10 sm:h-12 justify-center text-sm"
-                          >
-                            <Code className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                            View Code
-                          </Button>
-                          <Button
-                            onClick={handleSaveAIFunction}
-                            className="flex-1 bg-white text-black hover:bg-gray-200 h-10 sm:h-12 justify-center font-medium text-sm"
-                          >
-                            <Save className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                            Save Plugin
-                          </Button>
-                        </div>
+                      <div className="flex gap-3">
+                        <Button
+                          onClick={() => setIsCodeModalOpen(true)}
+                          variant="outline"
+                          className="flex-1 bg-transparent border-white/20 text-white hover:bg-white/10 hover:border-white/30 h-12 font-medium"
+                          disabled={isGenerating}
+                        >
+                          <Code className="h-5 w-5 mr-2" />
+                          View Code
+                        </Button>
+                        <Button
+                          onClick={handleSaveAIFunction}
+                          className="flex-1 bg-white text-black hover:bg-gray-200 h-12 font-medium"
+                          disabled={isGenerating || isSaving}
+                        >
+                          <Save className="h-5 w-5 mr-2" />
+                          {isSaving ? "Saving..." : "Save Bot"}
+                        </Button>
                       </div>
                     )}
                   </div>
                 </div>
               )}
 
-              <div className="border-t border-white/10 p-2 sm:p-4 md:p-6 bg-black/50 backdrop-blur-sm sticky bottom-0 max-w-4xl mx-auto w-full">
-                <div className="flex space-x-2 sm:space-x-3 items-end">
+              <div className="border-t border-white/10 p-4 sm:p-6 bg-black/50 backdrop-blur-sm shrink-0 max-w-4xl mx-auto w-full">
+                <div className="flex space-x-3 items-end">
                   <div className="flex-1 min-w-0">
                     <Textarea
                       ref={textareaRef}
                       value={aiPrompt}
                       onChange={(e) => setAiPrompt(e.target.value)}
                       onKeyDown={handleKeyDown}
-                      placeholder={
-                        messages.length > 0
-                          ? "Continue the conversation or ask for modifications..."
-                          : "Describe the Discord bot you want to create..."
-                      }
-                      className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 resize-none min-h-[40px] sm:min-h-[44px] max-h-32 w-full text-sm sm:text-base leading-relaxed px-3 sm:px-4 py-2 sm:py-3 rounded-xl focus:ring-2 focus:ring-white/20 focus:border-white/30 transition-all"
+                      placeholder="Describe the Discord bot you want to create..."
+                      className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 resize-none min-h-[48px] max-h-32 w-full text-base leading-relaxed"
                       disabled={isGenerating}
                       rows={1}
                     />
-                    <div className="text-xs text-gray-500 mt-1 hidden sm:block">
+                    <div className="text-xs text-gray-500 mt-2 hidden sm:block">
                       Press Enter to send, Shift+Enter for new line
                     </div>
-                    <div className="text-xs text-gray-500 mt-1 sm:hidden">Tap send to continue</div>
                   </div>
                   <Button
                     onClick={handleGenerateAI}
                     disabled={isGenerating || !aiPrompt.trim()}
                     size="sm"
-                    className="bg-white text-black hover:bg-gray-200 h-10 sm:h-11 px-3 sm:px-6 flex-shrink-0 rounded-xl font-medium transition-all disabled:opacity-50"
+                    className="bg-white text-black hover:bg-gray-200 h-12 px-4 sm:px-6 shrink-0 font-medium"
                   >
                     <Send className="h-4 w-4" />
-                    <span className="hidden sm:inline ml-2">Send</span>
+                    <span className="ml-2 hidden sm:inline">Send</span>
                   </Button>
                 </div>
               </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isCodeModalOpen} onOpenChange={setIsCodeModalOpen}>
+          <DialogContent className="w-[95vw] max-w-6xl h-[90vh] bg-black/95 backdrop-blur-xl border border-white/10 text-white overflow-hidden p-0 sm:rounded-lg">
+            <DialogHeader className="border-b border-white/10 p-4 bg-black/50 backdrop-blur-sm shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsCodeModalOpen(false)}
+                    className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 sm:hidden"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <Code className="h-5 w-5 text-white" />
+                  <DialogTitle className="text-white text-lg font-semibold truncate">
+                    {pluginName || "Generated Bot"} - Source Code
+                  </DialogTitle>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(generatedCode)
+                    }}
+                    className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10"
+                    title="Copy Code"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsCodeModalOpen(false)}
+                    className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 hidden sm:flex"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </DialogHeader>
+            <div className="flex-1 overflow-auto p-4 sm:p-6">
+              <pre className="bg-gray-900/50 border border-gray-700/50 rounded-lg p-4 text-sm text-gray-300 overflow-auto">
+                <code>{generatedCode}</code>
+              </pre>
             </div>
           </DialogContent>
         </Dialog>
@@ -871,200 +893,397 @@ export default function PluginsTab() {
   }
 
   return (
-    <div className="flex flex-col space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Plugins</h2>
-        {isAdmin && (
-          <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-blue-500 text-white hover:bg-blue-600">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Plugin
-          </Button>
-        )}
-      </div>
-
-      <Tabs defaultValue="installed" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="installed">Installed</TabsTrigger>
-          <TabsTrigger value="available">Available</TabsTrigger>
-        </TabsList>
-        <TabsContent value="installed">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {userPlugins.map((userPlugin) => (
-              <Card key={userPlugin.pluginId} className="bg-gray-800/50 text-white">
-                <CardHeader>
-                  <CardTitle>{plugins.find((p) => p._id === userPlugin.pluginId)?.name}</CardTitle>
-                  <CardDescription>{plugins.find((p) => p._id === userPlugin.pluginId)?.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col space-y-2">
-                  <Button
-                    onClick={() => handleUninstallPlugin(userPlugin.pluginId)}
-                    className="bg-red-500 text-white hover:bg-red-600"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Uninstall
-                  </Button>
-                  <Button
-                    onClick={() => handleEditPlugin(plugins.find((p) => p._id === userPlugin.pluginId)!)}
-                    className="bg-blue-500 text-white hover:bg-blue-600"
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+    <div className="flex flex-col h-full bg-black text-white">
+      <div className="p-4 sm:p-6 border-b border-white/10">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Plugin Manager</h1>
+            <p className="text-gray-400 text-sm sm:text-base">
+              Discover, install, and manage Discord bot plugins for your server
+            </p>
           </div>
-        </TabsContent>
-        <TabsContent value="available">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {plugins.map((plugin) => (
-              <Card key={plugin._id} className="bg-gray-800/50 text-white">
-                <CardHeader>
-                  <CardTitle>{plugin.name}</CardTitle>
-                  <CardDescription>{plugin.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col space-y-2">
-                  {!isPluginInstalled(plugin._id) && (
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
+            {isAdmin && (
+              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-gray-700 text-white hover:bg-gray-600 h-12 px-6 font-medium w-full sm:w-auto">
+                    <Plus className="h-5 w-5 mr-2" />
+                    Create Plugin
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="w-[95vw] max-w-[500px] bg-black border-white/20 text-white">
+                  <DialogHeader>
+                    <DialogTitle className="text-white text-lg">Create New Plugin</DialogTitle>
+                    <DialogDescription className="text-gray-400">
+                      Add a new plugin to the store for users to install.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-6 py-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-3 sm:gap-4">
+                      <Label htmlFor="name" className="sm:text-right text-white font-medium">
+                        Name
+                      </Label>
+                      <Input
+                        id="name"
+                        value={newPluginName}
+                        onChange={(e) => setNewPluginName(e.target.value)}
+                        className="sm:col-span-3 bg-black/60 border-white/20 text-white h-10 sm:h-11"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-3 sm:gap-4">
+                      <Label htmlFor="description" className="sm:text-right text-white font-medium">
+                        Description
+                      </Label>
+                      <Textarea
+                        id="description"
+                        value={newPluginDescription}
+                        onChange={(e) => setNewPluginDescription(e.target.value)}
+                        className="sm:col-span-3 bg-black/60 border-white/20 text-white min-h-[100px]"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
                     <Button
-                      onClick={() => handleInstallPlugin(plugin._id)}
-                      className="bg-green-500 text-white hover:bg-green-600"
+                      onClick={handleCreatePlugin}
+                      className="bg-white text-black hover:bg-gray-200 w-full sm:w-auto h-11 px-6 font-medium"
                     >
-                      <Package className="h-4 w-4 mr-2" />
-                      Install
+                      Create Plugin
                     </Button>
-                  )}
-                  {isAdmin && (
-                    <Button
-                      onClick={() => handleEditPlugin(plugin)}
-                      className="bg-blue-500 text-white hover:bg-blue-600"
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+            <Button
+              onClick={handleStartNewChat}
+              className="w-full bg-white text-black hover:bg-gray-100 transition-all duration-200 h-12 font-medium shadow-lg"
+            >
+              <div className="flex items-center space-x-2">
+                <div className="w-5 h-5 relative">
+                  <Image src="/s1-logo.png" alt="S1" width={20} height={20} className="object-contain" />
+                </div>
+                <span>S1 AI Lab</span>
+              </div>
+            </Button>
           </div>
-        </TabsContent>
-      </Tabs>
+        </div>
 
-      {isCreateDialogOpen && (
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogContent className="bg-black/95 backdrop-blur-xl border-0 sm:border sm:border-white/10 text-white p-6 sm:p-8 md:p-10 rounded-lg">
-            <DialogHeader>
-              <DialogTitle className="text-white text-xl font-semibold">Create Plugin</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="flex flex-col space-y-2">
-                <Label htmlFor="pluginName">Plugin Name</Label>
-                <Input
-                  id="pluginName"
-                  value={newPluginName}
-                  onChange={(e) => setNewPluginName(e.target.value)}
-                  className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400"
-                />
-              </div>
-              <div className="flex flex-col space-y-2">
-                <Label htmlFor="pluginDescription">Description</Label>
-                <Textarea
-                  id="pluginDescription"
-                  value={newPluginDescription}
-                  onChange={(e) => setNewPluginDescription(e.target.value)}
-                  className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 resize-none"
-                />
-              </div>
-              <div className="flex flex-col space-y-2">
-                <Label htmlFor="pluginIconUrl">Icon URL</Label>
-                <Input
-                  id="pluginIconUrl"
-                  value={newPluginIconUrl}
-                  onChange={(e) => setNewPluginIconUrl(e.target.value)}
-                  className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400"
-                />
-              </div>
-              <div className="flex flex-col space-y-2">
-                <Label htmlFor="pluginThumbnailUrl">Thumbnail URL</Label>
-                <Input
-                  id="pluginThumbnailUrl"
-                  value={newPluginThumbnailUrl}
-                  onChange={(e) => setNewPluginThumbnailUrl(e.target.value)}
-                  className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400"
-                />
-              </div>
+        <Tabs defaultValue="store" className="flex-1 flex flex-col overflow-hidden">
+          <div className="px-4 sm:px-6 pt-4">
+            <TabsList className="grid w-full grid-cols-3 bg-gray-800/60 backdrop-blur-sm rounded-xl h-12">
+              <TabsTrigger
+                value="store"
+                className="text-white data-[state=active]:bg-white data-[state=active]:text-black py-3 text-sm sm:text-base font-medium rounded-lg transition-all"
+              >
+                <Package className="h-4 w-4 mr-2" />
+                Plugin Store
+              </TabsTrigger>
+              <TabsTrigger
+                value="created"
+                className="text-white data-[state=active]:bg-white data-[state=active]:text-black py-3 text-sm sm:text-base font-medium rounded-lg transition-all"
+              >
+                <Code className="h-4 w-4 mr-2" />
+                Created
+              </TabsTrigger>
+              <TabsTrigger
+                value="installed"
+                className="text-white data-[state=active]:bg-white data-[state=active]:text-black py-3 text-sm sm:text-base font-medium rounded-lg transition-all"
+              >
+                <Check className="h-4 w-4 mr-2" />
+                Installed
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="store" className="flex-1 overflow-auto p-4 sm:p-6 mt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+              {plugins.map((plugin) => (
+                <Card key={plugin._id} className="glass-card flex flex-col h-full min-h-[280px] sm:min-h-[320px]">
+                  {plugin.thumbnailUrl ? (
+                    <div className="relative w-full h-32 sm:h-36 rounded-t-lg overflow-hidden">
+                      <Image
+                        src={plugin.thumbnailUrl || "/placeholder.svg"}
+                        alt={`${plugin.name} thumbnail`}
+                        layout="fill"
+                        objectFit="cover"
+                        className="rounded-t-lg"
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative w-full h-32 sm:h-36 rounded-t-lg overflow-hidden bg-gray-800 flex items-center justify-center">
+                      <ImageIcon className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />
+                    </div>
+                  )}
+                  <CardHeader className="flex-row items-center space-x-3 pb-3 p-4 sm:p-5">
+                    {plugin.iconUrl ? (
+                      <Image
+                        src={plugin.iconUrl || "/placeholder.svg"}
+                        alt={`${plugin.name} icon`}
+                        width={36}
+                        height={36}
+                        className="rounded-full object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-gray-600 flex items-center justify-center flex-shrink-0">
+                        <ImageIcon className="h-5 w-5 text-gray-400" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <CardTitle className="text-white text-base sm:text-lg truncate font-semibold">
+                        {plugin.name}
+                      </CardTitle>
+                      <CardDescription className="text-gray-400 text-sm truncate">
+                        {plugin.installs} installs
+                      </CardDescription>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0 pb-4 px-4 sm:px-5 flex-1 flex flex-col">
+                    <p className="text-gray-300 text-sm sm:text-base mb-4 line-clamp-3 flex-1 leading-relaxed">
+                      {plugin.description}
+                    </p>
+                    <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+                      {isAdmin && (
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditPlugin(plugin)}
+                            className="h-9 w-9 p-0 border-white/20 text-white hover:bg-white/10 hover:border-white/40 transition-all"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeletePlugin(plugin._id)}
+                            className="h-9 w-9 p-0 border-white/20 text-white hover:bg-red-500/20 hover:border-red-400/40 transition-all"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                      {isPluginInstalled(plugin._id) ? (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled
+                          className="h-9 px-4 bg-gray-600 text-white text-sm font-medium w-full sm:w-auto"
+                        >
+                          <Check className="h-4 w-4 mr-2" />
+                          Installed
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleInstallPlugin(plugin._id)}
+                          className="h-9 px-4 bg-white text-black text-sm font-medium hover:bg-gray-200 transition-all w-full sm:w-auto"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Install
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-            <DialogFooter className="mt-6">
-              <Button onClick={handleCreatePlugin} className="bg-blue-500 text-white hover:bg-blue-600">
-                <Plus className="h-4 w-4 mr-2" />
-                Create
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+          </TabsContent>
 
-      {isEditDialogOpen && (
+          <TabsContent value="created" className="flex-1 overflow-auto p-4 sm:p-6 mt-2">
+            {userAIFunctions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
+                <Beaker className="h-16 w-16 mb-6 opacity-50" />
+                <p className="text-center text-base sm:text-lg font-medium mb-2">No AI functions created yet.</p>
+                <p className="text-center text-sm sm:text-base opacity-75">
+                  Use S1 AI Lab to create your first function!
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {userAIFunctions.map((aiFunction) => (
+                  <div key={aiFunction._id?.toString()} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                    <div className="flex items-start space-x-3">
+                      <img
+                        src={aiFunction.thumbnailUrl || "/placeholder.svg?height=40&width=40"}
+                        alt={aiFunction.name}
+                        className="w-10 h-10 rounded-lg object-cover"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-white truncate">{aiFunction.name}</h3>
+                        <p className="text-sm text-gray-400 line-clamp-2">{aiFunction.description}</p>
+                        {aiFunction.usageInstructions && (
+                          <div className="mt-2 p-2 bg-gray-900 rounded text-xs text-gray-300">
+                            {aiFunction.usageInstructions.substring(0, 100)}...
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-4 flex space-x-2">
+                      <button
+                        onClick={() => handleEditAIFunction(aiFunction)}
+                        className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                      >
+                        Continue Chat
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAIFunction(aiFunction._id?.toString() || "")}
+                        className="bg-red-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="installed" className="flex-1 overflow-auto p-4 sm:p-6 mt-2">
+            {userPlugins.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
+                <Package className="h-16 w-16 mb-6 opacity-50" />
+                <p className="text-center text-base sm:text-lg font-medium mb-2">No plugins installed yet.</p>
+                <p className="text-center text-sm sm:text-base opacity-75">Browse the Plugin Store to get started!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                {userPlugins.map((plugin) => (
+                  <Card
+                    key={plugin.pluginId}
+                    className="glass-card flex flex-col h-full min-h-[280px] sm:min-h-[320px]"
+                  >
+                    {plugin.thumbnailUrl ? (
+                      <div className="relative w-full h-32 sm:h-36 rounded-t-lg overflow-hidden">
+                        <Image
+                          src={plugin.thumbnailUrl || "/placeholder.svg"}
+                          alt={`${plugin.name} thumbnail`}
+                          layout="fill"
+                          objectFit="cover"
+                          className="rounded-t-lg"
+                        />
+                      </div>
+                    ) : (
+                      <div className="relative w-full h-32 sm:h-36 rounded-t-lg overflow-hidden bg-gray-800 flex items-center justify-center">
+                        <ImageIcon className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />
+                      </div>
+                    )}
+                    <CardHeader className="flex-row items-center space-x-3 pb-3 p-4 sm:p-5">
+                      {plugin.iconUrl ? (
+                        <Image
+                          src={plugin.iconUrl || "/placeholder.svg"}
+                          alt={`${plugin.name} icon`}
+                          width={36}
+                          height={36}
+                          className="rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+                          <Beaker className="h-5 w-5 text-black" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <CardTitle className="text-white text-base sm:text-lg truncate font-semibold">
+                          {plugin.name}
+                        </CardTitle>
+                        <CardDescription className="text-gray-400 text-sm truncate">
+                          Installed {new Date(plugin.installed_at).toLocaleDateString()}
+                        </CardDescription>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0 pb-4 px-4 sm:px-5 flex-1 flex flex-col">
+                      <p className="text-gray-300 text-sm sm:text-base mb-4 line-clamp-3 flex-1 leading-relaxed">
+                        {plugin.description}
+                      </p>
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditPluginId(plugin.pluginId)
+                            setIsAICreatorOpen(true)
+                            setPluginName(plugin.name)
+                            setPluginDescription(plugin.description)
+                            setMessages([
+                              {
+                                id: `msg_${Date.now()}`,
+                                role: "ai",
+                                content: `Editing: ${plugin.name}\n\n${plugin.description}`,
+                                isCode: false,
+                                timestamp: new Date(),
+                              },
+                            ])
+                          }}
+                          className="h-10 w-10 p-0 border-white/20 text-white hover:bg-white/10 hover:border-white/40 transition-all"
+                        >
+                          <Beaker className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleUninstallPlugin(plugin.pluginId)}
+                          className="h-10 px-4 text-sm font-medium transition-all"
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Remove
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="bg-black/95 backdrop-blur-xl border-0 sm:border sm:border-white/10 text-white p-6 sm:p-8 md:p-10 rounded-lg">
+          <DialogContent className="w-[95vw] max-w-[500px] bg-black border-white/20 text-white">
             <DialogHeader>
-              <DialogTitle className="text-white text-xl font-semibold">Edit Plugin</DialogTitle>
+              <DialogTitle className="text-white text-lg">Edit Plugin</DialogTitle>
+              <DialogDescription className="text-gray-400">Update plugin details and settings.</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="flex flex-col space-y-2">
-                <Label htmlFor="editPluginName">Plugin Name</Label>
+            <div className="grid gap-6 py-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-3 sm:gap-4">
+                <Label htmlFor="edit-name" className="sm:text-right text-white font-medium">
+                  Name
+                </Label>
                 <Input
-                  id="editPluginName"
+                  id="edit-name"
                   value={editPluginName}
                   onChange={(e) => setEditPluginName(e.target.value)}
-                  className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400"
+                  className="sm:col-span-3 bg-black/60 border-white/20 text-white h-11"
                 />
               </div>
-              <div className="flex flex-col space-y-2">
-                <Label htmlFor="editPluginDescription">Description</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-3 sm:gap-4">
+                <Label htmlFor="edit-description" className="sm:text-right text-white font-medium">
+                  Description
+                </Label>
                 <Textarea
-                  id="editPluginDescription"
+                  id="edit-description"
                   value={editPluginDescription}
                   onChange={(e) => setEditPluginDescription(e.target.value)}
-                  className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 resize-none"
+                  className="sm:col-span-3 bg-black/60 border-white/20 text-white min-h-[100px]"
                 />
               </div>
-              <div className="flex flex-col space-y-2">
-                <Label htmlFor="editPluginIconUrl">Icon URL</Label>
-                <Input
-                  id="editPluginIconUrl"
-                  value={editPluginIconUrl}
-                  onChange={(e) => setEditPluginIconUrl(e.target.value)}
-                  className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400"
-                />
-              </div>
-              <div className="flex flex-col space-y-2">
-                <Label htmlFor="editPluginThumbnailUrl">Thumbnail URL</Label>
-                <Input
-                  id="editPluginThumbnailUrl"
-                  value={editPluginThumbnailUrl}
-                  onChange={(e) => setEditPluginThumbnailUrl(e.target.value)}
-                  className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400"
-                />
-              </div>
-              <div className="flex items-center space-x-2">
-                <Label htmlFor="editPluginActive">Active</Label>
-                <Switch
-                  id="editPluginActive"
-                  checked={editPluginActive}
-                  onCheckedChange={setEditPluginActive}
-                  className="bg-gray-800/50 border-gray-700/50"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-3 sm:gap-4">
+                <Label htmlFor="edit-active" className="sm:text-right text-white font-medium">
+                  Active Status
+                </Label>
+                <div className="sm:col-span-3">
+                  <Switch id="edit-active" checked={editPluginActive} onCheckedChange={setEditPluginActive} />
+                </div>
               </div>
             </div>
-            <DialogFooter className="mt-6">
-              <Button onClick={handleUpdatePlugin} className="bg-blue-500 text-white hover:bg-blue-600">
-                <Save className="h-4 w-4 mr-2" />
-                Save
+            <DialogFooter>
+              <Button
+                onClick={handleUpdatePlugin}
+                className="bg-white text-black hover:bg-gray-200 w-full sm:w-auto h-11 px-6 font-medium"
+              >
+                Save Changes
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      )}
+      </div>
     </div>
   )
 }
