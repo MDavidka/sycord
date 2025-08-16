@@ -62,6 +62,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   const [aiPrompt, setAiPrompt] = useState("")
   const [generatedCode, setGeneratedCode] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generationProgress, setGenerationProgress] = useState(0)
   const [pluginName, setPluginName] = useState("")
   const [pluginDescription, setPluginDescription] = useState("")
   const [pluginThumbnailUrl, setPluginThumbnailUrl] = useState("")
@@ -69,6 +70,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   const [isSaving, setIsSaving] = useState(false)
   const [messages, setMessages] = useState<{ role: "user" | "ai"; content: string; isCode?: boolean }[]>([])
   const [editingMetadata, setEditingMetadata] = useState(false)
+  const [showCodeViewer, setShowCodeViewer] = useState(false)
 
   const [editPluginId, setEditPluginId] = useState<string | null>(null)
   const [editPluginName, setEditPluginName] = useState("")
@@ -160,7 +162,21 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   const handleGeneratePlugin = async () => {
     if (!aiPrompt.trim()) return
     setIsGenerating(true)
+    setGenerationProgress(0)
+    setShowCodeViewer(false)
     setMessages((prev) => [...prev, { role: "user", content: aiPrompt }])
+
+    const progressInterval = setInterval(() => {
+      setGenerationProgress((prev) => {
+        if (prev >= 90) {
+          clearInterval(progressInterval)
+          return 90
+        }
+        return prev + Math.random() * 15
+      })
+    }, 200)
+
+    const currentPrompt = aiPrompt
     setAiPrompt("")
     try {
       const response = await fetch("/api/ai/generate-plugin", {
@@ -168,31 +184,37 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message: aiPrompt }),
+        body: JSON.stringify({ message: currentPrompt }),
       })
       if (response.ok) {
         const data = await response.json()
         setGeneratedCode(data.code)
         setMessages((prev) => [
           ...prev,
-          { role: "ai", content: `Generated plugin code for: "${aiPrompt}"`, isCode: false },
+          { role: "ai", content: `Generated plugin code for: "${currentPrompt}"`, isCode: false },
           { role: "ai", content: data.code, isCode: true },
         ])
-        const words = aiPrompt.split(" ").slice(0, 3).join(" ")
+        const words = currentPrompt.split(" ").slice(0, 3).join(" ")
         setPluginName(words.charAt(0).toUpperCase() + words.slice(1) + " Plugin")
-        setPluginDescription(aiPrompt.length > 100 ? aiPrompt.substring(0, 100) + "..." : aiPrompt)
+        setPluginDescription(currentPrompt.length > 100 ? currentPrompt.substring(0, 100) + "..." : currentPrompt)
+        clearInterval(progressInterval)
+        setGenerationProgress(100)
       } else {
         const errorData = await response.json()
         setMessages((prev) => [
           ...prev,
           { role: "ai", content: `Error: ${errorData.error || "Failed to generate plugin code."}`, isCode: false },
         ])
+        clearInterval(progressInterval)
+        setGenerationProgress(0)
       }
     } catch (error) {
       setMessages((prev) => [
         ...prev,
         { role: "ai", content: "Error: Failed to connect to AI service.", isCode: false },
       ])
+      clearInterval(progressInterval)
+      setGenerationProgress(0)
     } finally {
       setIsGenerating(false)
     }
@@ -414,6 +436,8 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
               setPluginProfileUrl("")
               setGeneratedCode("")
               setMessages([])
+              setGenerationProgress(0)
+              setShowCodeViewer(false)
             }}
             className="text-white hover:bg-white/10 p-2 min-w-[44px] min-h-[44px]"
           >
@@ -468,53 +492,121 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
               </p>
             </div>
           ) : (
-            messages.map((msg, i) => (
-              <div key={i} className={`mb-4 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                {msg.role === "ai" && !msg.isCode && (
-                  <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 mr-2 sm:mr-3 self-end">
-                    <Beaker className="h-4 w-4 text-black" />
-                  </div>
-                )}
-                <div
-                  className={`max-w-[85%] sm:max-w-[80%] p-3 sm:p-4 rounded-lg ${
-                    msg.role === "user"
-                      ? "bg-[#4A90E2] text-white rounded-br-none"
-                      : msg.isCode
-                        ? "bg-gray-800 text-gray-200 w-full max-w-full"
-                        : "bg-gray-800 text-gray-200 rounded-bl-none"
-                  }`}
-                >
-                  {msg.isCode ? (
-                    <div className="relative">
-                      <pre className="text-xs sm:text-sm overflow-x-auto font-mono whitespace-pre-wrap break-words">
-                        {msg.content}
-                      </pre>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="absolute top-2 right-2 h-8 w-8 p-0 text-gray-400 hover:text-white"
-                        onClick={handleCopyCode}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
+            <>
+              {messages.map((msg, i) => (
+                <div key={i} className={`mb-4 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  {msg.role === "ai" && !msg.isCode && (
+                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 mr-2 sm:mr-3 self-end">
+                      <Beaker className="h-4 w-4 text-black" />
                     </div>
-                  ) : (
-                    <span className="text-sm sm:text-base">{msg.content}</span>
                   )}
+                  <div
+                    className={`max-w-[85%] sm:max-w-[80%] p-3 sm:p-4 rounded-lg ${
+                      msg.role === "user"
+                        ? "bg-[#4A90E2] text-white rounded-br-none"
+                        : msg.isCode
+                          ? "bg-gray-800 text-gray-200 w-full max-w-full"
+                          : "bg-gray-800 text-gray-200 rounded-bl-none"
+                    }`}
+                  >
+                    {msg.isCode ? (
+                      <div className="relative">
+                        <pre className="text-xs sm:text-sm overflow-x-auto font-mono whitespace-pre-wrap break-words">
+                          {msg.content}
+                        </pre>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="absolute top-2 right-2 h-8 w-8 p-0 text-gray-400 hover:text-white"
+                          onClick={handleCopyCode}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="text-sm sm:text-base">{msg.content}</span>
+                    )}
+                  </div>
+                  {msg.role === "user" && <div className="w-2 sm:w-6 flex-shrink-0"></div>}
                 </div>
-                {msg.role === "user" && <div className="w-2 sm:w-6 flex-shrink-0"></div>}
-              </div>
-            ))
-          )}
-          {isGenerating && (
-            <div className="flex justify-start mb-4">
-              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 mr-2 sm:mr-3">
-                <Beaker className="h-4 w-4 text-black" />
-              </div>
-              <div className="max-w-[85%] sm:max-w-[80%] p-3 sm:p-4 rounded-lg bg-gray-800 text-gray-200 rounded-bl-none animate-pulse">
-                <span className="text-sm sm:text-base">AI is thinking...</span>
-              </div>
-            </div>
+              ))}
+
+              {(isGenerating || generatedCode) && (
+                <div className="mb-4">
+                  <div className="bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-white/10">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center">
+                          <Beaker className="h-5 w-5 text-black" />
+                        </div>
+                        <div>
+                          <h3 className="text-white font-semibold text-base sm:text-lg">
+                            {pluginName || "Generating Function..."}
+                          </h3>
+                          <p className="text-gray-400 text-sm">
+                            {isGenerating ? "AI is creating your function" : "Function ready"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <div className="flex justify-between text-sm text-gray-400 mb-2">
+                        <span>Progress</span>
+                        <span>{Math.round(generationProgress)}%</span>
+                      </div>
+                      <div className="w-full bg-gray-700 rounded-full h-2">
+                        <div
+                          className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] h-2 rounded-full transition-all duration-300 ease-out"
+                          style={{ width: `${generationProgress}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {generatedCode && generationProgress === 100 && (
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <Button
+                          variant="outline"
+                          className="flex-1 border-white/20 text-white hover:bg-white/10 h-11 bg-transparent"
+                          onClick={() => setShowCodeViewer(!showCodeViewer)}
+                        >
+                          <Code className="h-4 w-4 mr-2" />
+                          {showCodeViewer ? "Hide Code" : "Look Code"}
+                        </Button>
+                        <Button
+                          className="flex-1 bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white h-11"
+                          onClick={handleSaveAIFunction}
+                          disabled={isSaving}
+                        >
+                          <Save className="h-4 w-4 mr-2" />
+                          {isSaving ? "Saving..." : "Save"}
+                        </Button>
+                      </div>
+                    )}
+
+                    {showCodeViewer && generatedCode && (
+                      <div className="mt-4 bg-black/40 rounded-lg p-4 border border-white/10">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-gray-400 text-sm font-medium">Generated Code</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={handleCopyCode}
+                            className="text-gray-400 hover:text-white h-8 px-2"
+                          >
+                            <Copy className="h-4 w-4 mr-1" />
+                            Copy
+                          </Button>
+                        </div>
+                        <pre className="text-xs sm:text-sm overflow-x-auto font-mono text-gray-200 whitespace-pre-wrap break-words max-h-60 overflow-y-auto">
+                          {generatedCode}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
           )}
           <div ref={messagesEndRef} />
         </div>
@@ -566,16 +658,6 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
               disabled={isGenerating || !aiPrompt.trim()}
             >
               <Send className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="flex justify-end mt-3">
-            <Button
-              size="sm"
-              className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white h-10 px-4 text-sm sm:text-base font-medium"
-              onClick={handleSaveAIFunction}
-              disabled={!generatedCode || isSaving}
-            >
-              {isSaving ? "Saving..." : "Save Function"}
             </Button>
           </div>
         </div>
