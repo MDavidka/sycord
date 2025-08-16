@@ -1,498 +1,453 @@
 "use client"
-import { useState, useEffect, useRef, useCallback } from "react"
-import { 
-  Send, ArrowLeft, Plus, Eye, Copy, Save, Edit, Pin, Trash2, 
-  Moon, Sun, Menu, X, RotateCw, Check, ChevronLeft, ChevronRight 
-} from "lucide-react"
-import { format } from "date-fns"
+import { useState, useEffect, useRef } from "react"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Send, Copy, ArrowLeft, Plus, Eye, EyeOff, Save, CheckCircle } from "lucide-react"
+import Image from "next/image"
+import type { UserAIFunction } from "@/lib/types"
 import ReactMarkdown from "react-markdown"
-import rehypeHighlight from "rehype-highlight"
-import "highlight.js/styles/atom-one-dark.css"
-import { motion, AnimatePresence } from "framer-motion"
 
-interface Message {
+interface ChatMessage {
   id: string
-  role: "user" | "ai"
+  role: "user" | "ai" | "system"
   content: string
-  timestamp: Date
   isCode?: boolean
-  code?: string
-  language?: string
+  timestamp?: Date
+  codeVersionId?: string
+  workPlan?: string
+  showCode?: boolean
 }
 
-interface Conversation {
+interface CodeVersion {
   id: string
-  title: string
-  messages: Message[]
-  lastUpdated: Date
+  code: string
+  usageInstructions: string
+  version: number
+  created_at: string
+  prompt: string
 }
 
-export default function ChatInterface() {
-  // State management
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  const [isDarkMode, setIsDarkMode] = useState(true)
-  const [inputValue, setInputValue] = useState("")
+interface ChatSession {
+  id: string
+  name: string
+  messages: ChatMessage[]
+  codeVersions: CodeVersion[]
+  created_at: string
+  last_updated: string
+}
+
+interface AIChatProps {
+  isOpen: boolean
+  onClose: () => void
+  currentAIFunction?: UserAIFunction | null
+}
+
+export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatProps) {
+  const [aiPrompt, setAiPrompt] = useState("")
+  const [generatedCode, setGeneratedCode] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
-  const [activeMessageActions, setActiveMessageActions] = useState<string | null>(null)
-  const [conversations, setConversations] = useState<Conversation[]>([])
-  const [activeConversation, setActiveConversation] = useState<Conversation | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
-  
-  // Refs
+  const [generationProgress, setGenerationProgress] = useState(0)
+  const [generationStep, setGenerationStep] = useState("")
+  const [pluginName, setPluginName] = useState("")
+  const [pluginThumbnailUrl, setPluginThumbnailUrl] = useState("")
+  const [isSaving, setIsSaving] = useState(false)
+  const [usageInstructions, setUsageInstructions] = useState("")
+  const [hasError, setHasError] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
+  const [currentChatSession, setCurrentChatSession] = useState<ChatSession | null>(null)
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [codeVersions, setCodeVersions] = useState<CodeVersion[]>([])
+  const [currentCodeVersion, setCurrentCodeVersion] = useState<CodeVersion | null>(null)
+  const [showCodePopup, setShowCodePopup] = useState(false)
+  const [showSavePopup, setShowSavePopup] = useState(false)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const chatContainerRef = useRef<HTMLDivElement>(null)
-  
-  // Initialize with sample data
+
   useEffect(() => {
-    const sampleConversation: Conversation = {
-      id: "1",
-      title: "Python Discord Bot",
-      messages: [
-        {
-          id: "1-1",
-          role: "ai",
-          content: "Hello! I'm your coding assistant. How can I help you today?",
-          timestamp: new Date(Date.now() - 3600000)
-        },
-        {
-          id: "1-2",
-          role: "user",
-          content: "Create a Python function to calculate Fibonacci sequence",
-          timestamp: new Date(Date.now() - 1800000)
-        },
-        {
-          id: "1-3",
-          role: "ai",
-          content: "Here's the Fibonacci function:",
-          isCode: true,
-          code: `def fibonacci(n):
-    """Calculate Fibonacci sequence up to n terms"""
-    sequence = [0, 1]
-    for i in range(2, n):
-        sequence.append(sequence[i-1] + sequence[i-2])
-    return sequence`,
-          language: "python",
-          timestamp: new Date()
-        }
-      ],
-      lastUpdated: new Date()
-    }
-    
-    setConversations([sampleConversation])
-    setActiveConversation(sampleConversation)
-  }, [])
-  
-  // Auto-resize textarea
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages])
+
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto"
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
     }
-  }, [inputValue])
-  
-  // Scroll to bottom
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [])
-  
+  }, [aiPrompt])
+
   useEffect(() => {
-    scrollToBottom()
-  }, [activeConversation?.messages, scrollToBottom])
-  
-  // Toggle sidebar
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen)
-  }
-  
-  // Create new conversation
-  const createNewConversation = () => {
-    const newConversation: Conversation = {
-      id: Date.now().toString(),
-      title: "New Conversation",
-      messages: [],
-      lastUpdated: new Date()
+    if (currentAIFunction && isOpen) {
+      const sessions = currentAIFunction.chatSessions || []
+      setChatSessions(sessions)
+
+      if (sessions.length > 0) {
+        const currentSession = sessions.find((s) => s.id === currentAIFunction.currentChatId) || sessions[0]
+        setCurrentChatSession(currentSession)
+        setMessages(currentSession.messages || [])
+        setCodeVersions(currentSession.codeVersions || [])
+        if (currentSession.codeVersions && currentSession.codeVersions.length > 0) {
+          const latestVersion = currentSession.codeVersions[currentSession.codeVersions.length - 1]
+          setCurrentCodeVersion(latestVersion)
+          setGeneratedCode(latestVersion.code)
+          setUsageInstructions(latestVersion.usageInstructions)
+        }
+      } else {
+        const initialSession: ChatSession = {
+          id: `chat_${Date.now()}`,
+          name: "Main Chat",
+          messages: [],
+          codeVersions: [
+            {
+              id: `version_${Date.now()}`,
+              code: currentAIFunction.code,
+              usageInstructions: currentAIFunction.usageInstructions || "",
+              version: 1,
+              created_at: new Date().toISOString(),
+              prompt: "Initial creation",
+            },
+          ],
+          created_at: new Date().toISOString(),
+          last_updated: new Date().toISOString(),
+        }
+        setChatSessions([initialSession])
+        setCurrentChatSession(initialSession)
+        setMessages([])
+        setCodeVersions(initialSession.codeVersions)
+        setCurrentCodeVersion(initialSession.codeVersions[0])
+        setGeneratedCode(currentAIFunction.code)
+        setUsageInstructions(currentAIFunction.usageInstructions || "")
+      }
+      setPluginName(currentAIFunction.name)
+      setPluginThumbnailUrl(currentAIFunction.thumbnailUrl || "")
     }
-    
-    setConversations([newConversation, ...conversations])
-    setActiveConversation(newConversation)
-  }
-  
-  // Send message
-  const sendMessage = () => {
-    if (!inputValue.trim() || !activeConversation) return
-    
-    const newMessage: Message = {
-      id: `msg-${Date.now()}`,
-      role: "user",
-      content: inputValue,
-      timestamp: new Date()
-    }
-    
-    const updatedConversation = {
-      ...activeConversation,
-      messages: [...activeConversation.messages, newMessage],
-      lastUpdated: new Date()
-    }
-    
-    setActiveConversation(updatedConversation)
-    setConversations(conversations.map(c => 
-      c.id === activeConversation.id ? updatedConversation : c
-    ))
-    setInputValue("")
-    
-    // Simulate AI response
+  }, [currentAIFunction, isOpen])
+
+  const handleGenerateAI = async () => {
+    if (!aiPrompt.trim()) return
     setIsGenerating(true)
-    setTimeout(() => {
-      const aiResponse: Message = {
-        id: `ai-${Date.now()}`,
+    setGenerationProgress(0)
+    setHasError(false)
+    setGenerationStep("Creating work plan...")
+
+    const progressSteps = [
+      { step: "Creating work plan...", progress: 20 },
+      { step: "Analyzing requirements...", progress: 40 },
+      { step: "Generating code...", progress: 70 },
+      { step: "Finalizing...", progress: 95 },
+    ]
+
+    let stepIndex = 0
+    const progressInterval = setInterval(() => {
+      if (stepIndex < progressSteps.length) {
+        setGenerationStep(progressSteps[stepIndex].step)
+        setGenerationProgress(progressSteps[stepIndex].progress)
+        stepIndex++
+      }
+    }, 1000)
+
+    try {
+      let contextPrompt = `Please provide only raw Python code without any explanations, usage notes, or comments. User request: ${aiPrompt}`
+      if (currentCodeVersion && currentChatSession) {
+        const previousVersions = codeVersions.slice(-3)
+        const contextInfo = previousVersions.map((v) => `Version ${v.version}: ${v.code.substring(0, 500)}...`).join("\n\n")
+        contextPrompt = `Current code state: ${currentCodeVersion.code}\n\nPlease make these changes and provide only raw Python code: ${aiPrompt}`
+      }
+
+      const response = await fetch("/api/ai/generate-plugin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: contextPrompt }),
+      })
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+      const data = await response.json()
+      if (data.error) throw new Error(data.error)
+
+      clearInterval(progressInterval)
+      setGenerationProgress(100)
+      setGenerationStep("Complete!")
+
+      const userMessage: ChatMessage = {
+        id: `msg_${Date.now()}_user`,
+        role: "user",
+        content: aiPrompt,
+        timestamp: new Date(),
+      }
+
+      const workPlan = `Work Plan:\n1. Analyze user requirements\n2. Generate Python code\n3. Optimize for Discord bot functionality\n4. Ensure code quality and structure`
+
+      const aiMessage: ChatMessage = {
+        id: `msg_${Date.now()}_ai`,
         role: "ai",
-        content: "Here's the solution to your request:",
-        timestamp: new Date(),
+        content: "Code generated successfully based on your requirements.",
         isCode: true,
-        code: `# Generated solution
-def solution():
-    """AI-generated code based on your request"""
-    print("Hello World!")
-    return "Success"`,
-        language: "python"
-      }
-      
-      const updatedWithAI = {
-        ...updatedConversation,
-        messages: [...updatedConversation.messages, aiResponse],
-        lastUpdated: new Date()
-      }
-      
-      setActiveConversation(updatedWithAI)
-      setConversations(conversations.map(c => 
-        c.id === activeConversation.id ? updatedWithAI : c
-      ))
-      setIsGenerating(false)
-    }, 2000)
-  }
-  
-  // Regenerate last response
-  const regenerateResponse = () => {
-    if (!activeConversation || activeConversation.messages.length === 0) return
-    
-    const lastMessage = activeConversation.messages[activeConversation.messages.length - 1]
-    if (lastMessage.role !== "ai") return
-    
-    setIsGenerating(true)
-    setTimeout(() => {
-      const updatedMessages = [...activeConversation.messages.slice(0, -1)]
-      const aiResponse: Message = {
-        ...lastMessage,
-        id: `ai-${Date.now()}`,
-        content: "Here's an improved version:",
         timestamp: new Date(),
-        code: `# Improved solution
-def improved_solution():
-    """Better implementation based on your request"""
-    return "Enhanced Success"`
+        workPlan: workPlan,
+        showCode: false,
       }
-      
-      const updatedConversation = {
-        ...activeConversation,
-        messages: [...updatedMessages, aiResponse],
-        lastUpdated: new Date()
+
+      const newMessages = [...messages, userMessage, aiMessage]
+      setMessages(newMessages)
+
+      const newCodeVersion: CodeVersion = {
+        id: `version_${Date.now()}`,
+        code: data.code || "",
+        usageInstructions: data.usageInstructions || "",
+        version: codeVersions.length + 1,
+        created_at: new Date().toISOString(),
+        prompt: aiPrompt,
       }
-      
-      setActiveConversation(updatedConversation)
-      setConversations(conversations.map(c => 
-        c.id === activeConversation.id ? updatedConversation : c
-      ))
+
+      const newCodeVersions = [...codeVersions, newCodeVersion]
+      setCodeVersions(newCodeVersions)
+      setCurrentCodeVersion(newCodeVersion)
+      setGeneratedCode(data.code || "")
+      setUsageInstructions(data.usageInstructions || "")
+
+      if (currentChatSession) {
+        const updatedSession = {
+          ...currentChatSession,
+          messages: newMessages,
+          codeVersions: newCodeVersions,
+          last_updated: new Date().toISOString(),
+        }
+        setCurrentChatSession(updatedSession)
+        const updatedSessions = chatSessions.map((s) => (s.id === currentChatSession.id ? updatedSession : s))
+        setChatSessions(updatedSessions)
+      }
+      setAiPrompt("")
+    } catch (error) {
+      console.error("Error generating AI response:", error)
+      setHasError(true)
+      setErrorMessage(error instanceof Error ? error.message : "An unknown error occurred")
+      clearInterval(progressInterval)
+      setGenerationProgress(0)
+    } finally {
       setIsGenerating(false)
-    }, 2000)
+      setTimeout(() => { setGenerationStep(""); setGenerationProgress(0) }, 2000)
+    }
   }
-  
-  // Copy to clipboard
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
+
+  const handleSaveAIFunction = async () => {
+    if (!pluginName.trim() || !generatedCode.trim()) return
+    setIsSaving(true)
+    try {
+      const method = currentAIFunction ? "PUT" : "POST"
+      const url = currentAIFunction ? `/api/user-ai-functions/${currentAIFunction._id}` : "/api/user-ai-functions"
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: pluginName,
+          description: "",
+          code: generatedCode,
+          usageInstructions,
+          thumbnailUrl: pluginThumbnailUrl,
+          profileUrl: "",
+          chatSessions,
+          currentChatId: currentChatSession?.id,
+        }),
+      })
+      if (response.ok) onClose()
+    } catch (error) {
+      console.error("Error saving AI function:", error)
+    } finally {
+      setIsSaving(false)
+    }
   }
-  
-  // Filter conversations based on search
-  const filteredConversations = conversations.filter(convo => 
-    convo.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    convo.messages.some(msg => 
-      msg.content.toLowerCase().includes(searchQuery.toLowerCase())
-  )
-  
+
+  const toggleCodeVisibility = (messageId: string) => {
+    setMessages(messages.map((msg) => (msg.id === messageId ? { ...msg, showCode: !msg.showCode } : msg)))
+  }
+
+  const copyToClipboard = (text: string) => { navigator.clipboard.writeText(text) }
+
+  const createNewChat = () => {
+    const newSession: ChatSession = {
+      id: `chat_${Date.now()}`,
+      name: `Chat ${chatSessions.length + 1}`,
+      messages: [],
+      codeVersions: [],
+      created_at: new Date().toISOString(),
+      last_updated: new Date().toISOString(),
+    }
+    const updatedSessions = [...chatSessions, newSession]
+    setChatSessions(updatedSessions)
+    setCurrentChatSession(newSession)
+    setMessages([])
+    setCodeVersions([])
+    setCurrentCodeVersion(null)
+    setGeneratedCode("")
+    setUsageInstructions("")
+  }
+
+  if (!isOpen) return null
+
   return (
-    <div className={`flex h-screen ${isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-100 text-gray-900'}`}>
-      {/* Sidebar */}
-      <AnimatePresence>
-        {isSidebarOpen && (
-          <motion.div 
-            initial={{ x: -300 }}
-            animate={{ x: 0 }}
-            exit={{ x: -300 }}
-            transition={{ duration: 0.2 }}
-            className={`w-64 md:w-72 flex flex-col border-r ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}
-          >
-            <div className="p-4 border-b border-gray-700">
-              <button
-                onClick={createNewConversation}
-                className={`w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg transition-all ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
-              >
-                <Plus size={16} />
-                <span>New Conversation</span>
-              </button>
-              
-              <div className="mt-4 relative">
-                <input
-                  type="text"
-                  placeholder="Search conversations..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`w-full py-2 pl-10 pr-4 rounded-lg text-sm ${isDarkMode ? 'bg-gray-700 text-white placeholder-gray-400' : 'bg-gray-200 text-gray-900 placeholder-gray-500'}`}
-                />
-                <div className="absolute left-3 top-2.5">
-                  <svg className={`w-4 h-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                  </svg>
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="fixed inset-0 bg-white/95 backdrop-blur-xl border-0 text-gray-900 overflow-hidden p-0 m-0 flex flex-col">
+        <div className="border-b border-gray-200/50 p-4 bg-white/80 backdrop-blur-sm flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Button variant="ghost" size="sm" onClick={onClose} className="h-9 w-9 p-0 text-gray-600 hover:text-gray-900 hover:bg-gray-100/50">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="w-8 h-8 relative">
+              <Image src="/s1-logo.png" alt="S1 AI Lab" width={32} height={32} className="object-contain" />
+            </div>
+            <span className="text-gray-900 text-xl font-semibold">S1 AI Lab</span>
+          </div>
+          <Button variant="ghost" size="sm" onClick={createNewChat} className="h-9 w-9 p-0 text-gray-600 hover:text-gray-900 hover:bg-gray-100/50">
+            <Plus className="h-5 w-5" />
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/30">
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-500 px-4">
+              <div className="w-16 h-16 relative mb-4 opacity-50">
+                <Image src="/s1-logo.png" alt="S1" width={64} height={64} className="object-contain" />
+              </div>
+              <p className="text-center text-lg font-medium mb-2">Welcome to S1 AI Lab</p>
+              <p className="text-center text-base opacity-75 max-w-md">Describe what you want to create.</p>
+            </div>
+          ) : (
+            messages.map((message) => (
+              <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${message.role === "user" ? "bg-gray-900 text-white" : "bg-white/80 backdrop-blur-sm text-gray-900 border border-gray-200/50 shadow-sm"}`}>
+                  {message.isCode ? (
+                    <div className="space-y-3">
+                      {message.workPlan && (
+                        <div className="bg-blue-50/80 rounded-lg p-3 border border-blue-200/50">
+                          <h4 className="text-sm font-medium text-blue-900 mb-2">Work Plan</h4>
+                          <pre className="text-xs text-blue-800 whitespace-pre-wrap">{message.workPlan}</pre>
+                        </div>
+                      )}
+                      <ReactMarkdown className="text-base leading-relaxed">{message.content}</ReactMarkdown>
+                      {generatedCode && (
+                        <div className="bg-gray-50/80 rounded-lg border border-gray-200/50 overflow-hidden">
+                          <div className="flex items-center justify-between p-3 border-b border-gray-200/50">
+                            <span className="text-sm font-medium text-gray-700">Generated Code</span>
+                            <div className="flex items-center space-x-2">
+                              <Button size="sm" variant="ghost" onClick={() => toggleCodeVisibility(message.id)} className="h-8 px-3 text-gray-600 hover:text-gray-900 bg-white hover:bg-gray-100">
+                                {message.showCode ? <><EyeOff className="h-4 w-4 mr-1" /> Hide Code</> : <><Eye className="h-4 w-4 mr-1" /> Show Code</>}
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => copyToClipboard(generatedCode)} className="h-8 w-8 p-0 text-gray-600 hover:text-gray-900 bg-white hover:bg-gray-100">
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          {message.showCode && (
+                            <div className="p-3">
+                              <pre className="text-sm text-gray-800 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">{generatedCode}</pre>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between p-3 border-t border-gray-200/50 bg-white/50">
+                            <div className="flex items-center space-x-2">
+                              <Button size="sm" onClick={() => setShowSavePopup(true)} disabled={!pluginName.trim() || !generatedCode.trim() || isSaving} className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200">
+                                <Save className="h-4 w-4 mr-1" /> Save
+                              </Button>
+                              <Button size="sm" variant="ghost" className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200">
+                                <CheckCircle className="h-4 w-4 mr-1" /> Check Code
+                              </Button>
+                            </div>
+                            {isGenerating && (
+                              <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                <span className="text-xs text-gray-600">Processing...</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-base leading-relaxed">{message.content}</p>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {isGenerating && (
+          <div className="border-t border-gray-200/50 p-4 bg-white/80 backdrop-blur-sm">
+            <div className="bg-blue-50/80 rounded-lg p-3 border border-blue-200/50">
+              <div className="flex items-center space-x-3">
+                <div className="w-4 h-4 relative">
+                  <Image src="/s1-logo.png" alt="S1" width={16} height={16} className="object-contain" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-blue-900 font-medium">{generationStep}</span>
+                    <span className="text-xs text-blue-700">{Math.round(generationProgress)}%</span>
+                  </div>
+                  <div className="w-full bg-blue-200/50 rounded-full h-2">
+                    <div className="bg-blue-500 h-2 rounded-full transition-all duration-300" style={{ width: `${generationProgress}%` }} />
+                  </div>
                 </div>
               </div>
             </div>
-            
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-2">
-                <h3 className="px-2 py-2 text-xs font-medium uppercase tracking-wider text-gray-500">Conversations</h3>
-                <ul className="space-y-1">
-                  {filteredConversations.map(conversation => (
-                    <li key={conversation.id}>
-                      <button
-                        onClick={() => setActiveConversation(conversation)}
-                        className={`w-full text-left p-2 rounded-lg flex items-center ${activeConversation?.id === conversation.id 
-                          ? (isDarkMode ? 'bg-gray-700' : 'bg-gray-300') 
-                          : (isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200')}`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="truncate font-medium">{conversation.title}</p>
-                          {conversation.messages.length > 0 && (
-                            <p className={`text-xs truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                              {conversation.messages[0].content.substring(0, 50)}
-                              {conversation.messages[0].content.length > 50 ? "..." : ""}
-                            </p>
-                          )}
-                        </div>
-                        <span className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                          {format(conversation.lastUpdated, 'MMM dd')}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-            
-            <div className={`p-4 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-              <button
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                className="flex items-center gap-3 p-2 rounded-lg w-full hover:bg-gray-700 transition-colors"
-              >
-                {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-                <span>{isDarkMode ? "Light Mode" : "Dark Mode"}</span>
-              </button>
-            </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
-      
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className={`sticky top-0 z-10 flex items-center justify-between p-4 border-b ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <div className="flex items-center">
-            <button 
-              onClick={toggleSidebar}
-              className="p-2 mr-2 rounded-lg hover:bg-gray-700 transition-colors md:hidden"
-            >
-              <Menu size={20} />
-            </button>
-            <div className="flex items-center">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-                <span className="font-bold text-white">AI</span>
-              </div>
-              <h1 className="ml-3 text-xl font-bold">Code Assistant</h1>
+
+        {hasError && (
+          <div className="border-t border-red-200/50 p-4 bg-red-50/80">
+            <div className="bg-red-100/80 border border-red-200/50 rounded-lg p-3">
+              <p className="text-red-800 text-sm">{errorMessage}</p>
             </div>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-2 rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-          </div>
-        </header>
-        
-        {/* Chat Container */}
-        <div 
-          ref={chatContainerRef}
-          className={`flex-1 overflow-y-auto p-4 ${isDarkMode ? 'bg-gradient-to-b from-gray-900 to-gray-800' : 'bg-gradient-to-b from-gray-50 to-gray-100'}`}
-        >
-          {activeConversation?.messages.length ? (
-            <div className="max-w-3xl mx-auto space-y-6 pb-24">
-              {activeConversation.messages.map((message) => (
-                <motion.div
-                  key={message.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className={`group relative rounded-2xl p-4 max-w-[85%] ${message.role === 'user' ? 'ml-auto bg-gradient-to-r from-blue-600 to-indigo-700 text-white' : isDarkMode ? 'bg-gray-800' : 'bg-white shadow-sm'}`}
-                  onMouseEnter={() => setActiveMessageActions(message.id)}
-                  onMouseLeave={() => setActiveMessageActions(null)}
-                >
-                  <div className="prose prose-invert max-w-none">
-                    {message.isCode && message.code ? (
-                      <div className="mt-3">
-                        <ReactMarkdown
-                          rehypePlugins={[[rehypeHighlight, { ignoreMissing: true }]]}
-                          components={{
-                            pre: ({ node, ...props }) => (
-                              <div className="relative">
-                                <pre {...props} className="rounded-lg text-sm" />
-                                <button
-                                  onClick={() => copyToClipboard(message.code || '')}
-                                  className={`absolute top-2 right-2 p-1.5 rounded ${isDarkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                                >
-                                  <Copy size={16} />
-                                </button>
-                              </div>
-                            )
-                          }}
-                        >
-                          {`\`\`\`${message.language || 'python'}\n${message.code}\n\`\`\``}
-                        </ReactMarkdown>
-                      </div>
-                    ) : (
-                      <ReactMarkdown
-                        components={{
-                          a: ({ node, ...props }) => (
-                            <a {...props} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline" />
-                          ),
-                          code: ({ node, ...props }) => (
-                            <code {...props} className="px-1 py-0.5 rounded bg-gray-700 text-pink-400" />
-                          )
-                        }}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
-                    )}
-                  </div>
-                  
-                  <div className={`mt-2 text-xs flex items-center ${message.role === 'user' ? 'text-blue-200' : isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                    {format(message.timestamp, 'hh:mm a')}
-                  </div>
-                  
-                  {activeMessageActions === message.id && (
-                    <div className={`absolute top-3 right-3 flex gap-1 ${message.role === 'user' ? 'bg-blue-800' : isDarkMode ? 'bg-gray-700' : 'bg-gray-200'} p-1 rounded-lg`}>
-                      <button className="p-1.5 rounded-md hover:bg-gray-600 transition-colors" title="Copy">
-                        <Copy size={16} />
-                      </button>
-                      <button className="p-1.5 rounded-md hover:bg-gray-600 transition-colors" title="Edit">
-                        <Edit size={16} />
-                      </button>
-                      <button className="p-1.5 rounded-md hover:bg-gray-600 transition-colors" title="Pin">
-                        <Pin size={16} />
-                      </button>
-                      <button className="p-1.5 rounded-md hover:bg-red-500 transition-colors" title="Delete">
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-              
-              {isGenerating && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className={`rounded-2xl p-4 max-w-[85%] ${isDarkMode ? 'bg-gray-800' : 'bg-white shadow-sm'}`}
-                >
-                  <div className="flex items-center">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"></div>
-                      <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0.4s' }}></div>
-                    </div>
-                    <span className="ml-2 text-gray-400">Thinking...</span>
-                  </div>
-                </motion.div>
-              )}
-              
-              <div ref={messagesEndRef} />
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center p-4">
-              <div className="mb-6 w-24 h-24 rounded-full bg-gradient-to-r from-blue-600 to-indigo-700 flex items-center justify-center">
-                <div className="text-4xl font-bold text-white">AI</div>
-              </div>
-              <h2 className="text-3xl font-bold mb-4">How can I help you today?</h2>
-              <p className="text-lg max-w-md mx-auto mb-8">
-                Describe what you want to create and I'll generate the code for you.
-              </p>
-              <button
-                onClick={createNewConversation}
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-full font-medium hover:opacity-90 transition-opacity"
-              >
-                Start a Conversation
-              </button>
-            </div>
-          )}
-        </div>
-        
-        {/* Input Area */}
-        <div className={`sticky bottom-0 p-4 border-t ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          <div className="max-w-3xl mx-auto">
-            {activeConversation?.messages.length && !isGenerating && (
-              <div className="flex justify-center mb-3">
-                <button
-                  onClick={regenerateResponse}
-                  className="flex items-center gap-2 text-sm px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors"
-                >
-                  <RotateCw size={16} />
-                  <span>Regenerate Response</span>
-                </button>
-              </div>
-            )}
-            
-            <div className={`relative rounded-xl border ${isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'}`}>
-              <textarea
-                ref={textareaRef}
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    sendMessage()
-                  }
-                }}
-                placeholder="Message Code Assistant..."
-                className={`w-full py-3 pl-4 pr-12 resize-none focus:outline-none ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-900'}`}
-                rows={1}
-                style={{ minHeight: '56px' }}
-              />
-              <button
-                onClick={sendMessage}
-                disabled={!inputValue.trim() || isGenerating}
-                className={`absolute right-3 bottom-3 p-1.5 rounded-lg ${!inputValue.trim() || isGenerating 
-                  ? (isDarkMode ? 'text-gray-500' : 'text-gray-400') 
-                  : (isDarkMode ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-blue-500 text-white hover:bg-blue-600')} transition-colors`}
-              >
-                <Send size={20} />
-              </button>
-            </div>
-            
-            <div className="mt-2 text-center text-sm text-gray-500">
-              Press Enter to send, Shift+Enter for new line
-            </div>
+        )}
+
+        <div className="border-t border-gray-200/50 p-4 bg-white/80 backdrop-blur-sm">
+          <div className="flex space-x-3">
+            <Textarea
+              ref={textareaRef}
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              placeholder="Describe what you want to create..."
+              className="flex-1 bg-white/80 border-gray-200/50 text-gray-900 placeholder-gray-500 resize-none min-h-[44px] max-h-32 text-base"
+              style={{ fontSize: "16px" }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault()
+                  handleGenerateAI()
+                }
+              }}
+            />
+            <Button onClick={handleGenerateAI} disabled={!aiPrompt.trim() || isGenerating} className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200 h-11 w-11 p-0 flex-shrink-0">
+              <Send className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-      </div>
-    </div>
+
+        {showSavePopup && (
+          <div className="fixed inset-0 bg-white/95 backdrop-blur-xl flex items-center justify-center p-4 z-50">
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 w-full max-w-md border border-gray-200/50 shadow-lg">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Save Plugin</h3>
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  value={pluginName}
+                  onChange={(e) => setPluginName(e.target.value)}
+                  placeholder="Plugin Name"
+                  className="w-full p-3 border border-gray-200/50 rounded-lg bg-white/80 text-gray-900"
+                />
+                <div className="flex justify-end space-x-3">
+                  <Button variant="ghost" onClick={() => setShowSavePopup(false)} className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200">
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSaveAIFunction} disabled={isSaving} className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200">
+                    {isSaving ? "Saving..." : "Save"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }
