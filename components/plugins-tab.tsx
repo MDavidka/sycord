@@ -32,12 +32,6 @@ import {
   Send,
   Copy,
   Trash,
-  Home,
-  Shield,
-  LifeBuoy,
-  Zap,
-  LinkIcon,
-  Settings,
 } from "lucide-react"
 import Image from "next/image"
 import type { Plugin, UserPlugin } from "@/lib/types"
@@ -540,94 +534,6 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
 
   return (
     <div className="space-y-6">
-      {setActiveTab && (
-        <div className="glass-card border-b border-white/10">
-          <div className="px-4 py-2">
-            <nav className="flex space-x-1 overflow-x-auto">
-              <Button
-                variant={activeTab === "home" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("home")}
-                className={`${
-                  activeTab === "home" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
-              >
-                <Home className="h-4 w-4 mr-2" />
-                Home
-              </Button>
-              <Button
-                variant={activeTab === "sentinel" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("sentinel")}
-                className={`${
-                  activeTab === "sentinel" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
-              >
-                <Shield className="h-4 w-4 mr-2" />
-                Sentinel
-              </Button>
-              <Button
-                variant={activeTab === "support" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("support")}
-                className={`${
-                  activeTab === "support" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
-              >
-                <LifeBuoy className="h-4 w-4 mr-2" />
-                Support
-              </Button>
-              <Button
-                variant={activeTab === "events" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("events")}
-                className={`${
-                  activeTab === "events" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
-              >
-                <Zap className="h-4 w-4 mr-2" />
-                Functions
-              </Button>
-              <Button
-                variant={activeTab === "integrations" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("integrations")}
-                className={`${
-                  activeTab === "integrations"
-                    ? "bg-white text-black"
-                    : "text-white hover:bg-gray-100 hover:text-gray-900"
-                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
-              >
-                <LinkIcon className="h-4 w-4 mr-2" />
-                Integrations
-              </Button>
-              <Button
-                variant={activeTab === "plugins" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("plugins")}
-                className={`${
-                  activeTab === "plugins" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
-              >
-                <Package className="h-4 w-4 mr-2" />
-                Plugins
-              </Button>
-              <Button
-                variant={activeTab === "settings" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setActiveTab("settings")}
-                className={`${
-                  activeTab === "settings" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-                } transition-colors flex-shrink-0 text-sm px-4 h-10`}
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </Button>
-            </nav>
-          </div>
-        </div>
-      )}
-
       <div className="bg-black text-white">
         <div className="p-4 sm:p-6 border-b border-white/20 flex items-center justify-between">
           <h1 className="text-xl sm:text-2xl font-semibold text-white flex items-center">
