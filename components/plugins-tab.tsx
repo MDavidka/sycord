@@ -671,25 +671,23 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
                       </div>
                     )}
 
-                    {!isGenerating && generatedCode && (
-                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                        <Button
-                          onClick={() => setIsCodeModalOpen(true)}
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 bg-transparent border-white/20 text-white hover:bg-white/10 hover:border-white/30 h-8 text-xs sm:text-sm"
-                        >
-                          <Code className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                          Show Code
-                        </Button>
-                        <Button
-                          onClick={handleSaveAIFunction}
-                          size="sm"
-                          className="flex-1 bg-white text-black hover:bg-gray-200 h-8 text-xs sm:text-sm font-medium"
-                        >
-                          <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                          Save
-                        </Button>
+                    {(isGenerating || generatedCode) && (
+                      <div className="mb-4">
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => setIsCodeModalOpen(true)}
+                            variant="outline"
+                            className="flex-1 bg-transparent border-white/20 text-white hover:bg-white/10 hover:border-white/30 h-12 justify-center"
+                          >
+                            <Code className="h-5 w-5" />
+                          </Button>
+                          <Button
+                            onClick={handleSaveAIFunction}
+                            className="flex-1 bg-white text-black hover:bg-gray-200 h-12 justify-center font-medium"
+                          >
+                            <Save className="h-5 w-5" />
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -704,12 +702,12 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
                       value={aiPrompt}
                       onChange={(e) => setAiPrompt(e.target.value)}
                       onKeyDown={handleKeyDown}
-                      placeholder="Talk to S1"
-                      className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 resize-none min-h-[40px] max-h-32 text-sm sm:text-base w-full"
+                      placeholder="Describe the Discord bot you want to create..."
+                      className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 resize-none min-h-[44px] max-h-32 w-full"
                       style={{
-                        fontSize: "14px",
+                        fontSize: "16px",
                         lineHeight: "1.4",
-                        padding: "10px 12px",
+                        padding: "12px 14px",
                       }}
                       disabled={isGenerating}
                       rows={1}
@@ -722,7 +720,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
                     onClick={handleGeneratePlugin}
                     disabled={isGenerating || !aiPrompt.trim()}
                     size="sm"
-                    className="bg-white text-black hover:bg-gray-200 h-10 px-3 sm:px-6 flex-shrink-0 ml-2"
+                    className="bg-white text-black hover:bg-gray-200 h-11 px-3 sm:px-6 flex-shrink-0 ml-2"
                   >
                     <Send className="h-4 w-4" />
                   </Button>
