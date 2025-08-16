@@ -3,10 +3,17 @@ import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Send, Copy, ArrowLeft, X, Save, Code, CheckCircle, Clock, AlertCircle, Plus } from "lucide-react"
+import { Send, Copy, ArrowLeft, Plus, Eye, Save, CheckCircle } from "lucide-react"
 import Image from "next/image"
 import type { UserAIFunction } from "@/lib/types"
-import ReactMarkdown from "react-markdown"
+
+interface WorkPlan {
+  id: string
+  title: string
+  steps: string[]
+  estimatedTime: string
+  status: "pending" | "processing" | "completed" | "error"
+}
 
 interface ChatMessage {
   id: string
@@ -15,8 +22,7 @@ interface ChatMessage {
   isCode?: boolean
   timestamp?: Date
   codeVersionId?: string
-  workPlan?: string[]
-  status?: "processing" | "completed" | "error"
+  workPlan?: WorkPlan // Added work plan to messages
 }
 
 interface CodeVersion {
@@ -53,8 +59,11 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
   const [pluginThumbnailUrl, setPluginThumbnailUrl] = useState("")
   const [pluginProfileUrl, setPluginProfileUrl] = useState("")
   const [isSaving, setIsSaving] = useState(false)
+  const [codeViewerContent, setCodeViewerContent] = useState("")
+  const [editingMetadata, setEditingMetadata] = useState(false)
   const [showCodeViewer, setShowCodeViewer] = useState(false)
   const [usageInstructions, setUsageInstructions] = useState("")
+  const [isCodeModalOpen, setIsCodeModalOpen] = useState(false)
   const [hasError, setHasError] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
 
@@ -63,6 +72,10 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [codeVersions, setCodeVersions] = useState<CodeVersion[]>([])
   const [currentCodeVersion, setCurrentCodeVersion] = useState<CodeVersion | null>(null)
+
+  const [currentWorkPlan, setCurrentWorkPlan] = useState<WorkPlan | null>(null)
+  const [showCodeModal, setShowCodeModal] = useState(false)
+  const [processingStatus, setProcessingStatus] = useState<string>("")
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
@@ -81,6 +94,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
   useEffect(() => {
     if (currentAIFunction && isOpen) {
+      // Load existing chat sessions or create default one
       const sessions = currentAIFunction.chatSessions || []
       setChatSessions(sessions)
 
@@ -90,6 +104,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         setMessages(currentSession.messages || [])
         setCodeVersions(currentSession.codeVersions || [])
 
+        // Set current code version to latest
         if (currentSession.codeVersions && currentSession.codeVersions.length > 0) {
           const latestVersion = currentSession.codeVersions[currentSession.codeVersions.length - 1]
           setCurrentCodeVersion(latestVersion)
@@ -97,6 +112,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
           setUsageInstructions(latestVersion.usageInstructions)
         }
       } else {
+        // Create initial chat session
         const initialSession: ChatSession = {
           id: `chat_${Date.now()}`,
           name: "Main Chat",
@@ -137,24 +153,39 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     setIsGenerating(true)
     setGenerationProgress(0)
     setHasError(false)
+    setProcessingStatus("Creating work plan...")
+
+    const workPlan: WorkPlan = {
+      id: `plan_${Date.now()}`,
+      title: `Create: ${aiPrompt.substring(0, 50)}...`,
+      steps: [
+        "Analyze requirements",
+        "Design code structure",
+        "Generate Python code",
+        "Add error handling",
+        "Optimize and finalize",
+      ],
+      estimatedTime: "2-3 minutes",
+      status: "processing",
+    }
+    setCurrentWorkPlan(workPlan)
 
     const progressInterval = setInterval(() => {
       setGenerationProgress((prev) => Math.min(prev + Math.random() * 15, 95))
     }, 500)
 
     try {
-      let contextPrompt = `Please provide only raw Python code without explanations, comments about usage, or installation instructions. Just the pure code implementation.
+      const contextPrompt = `Generate only raw Python code. No explanations, no usage instructions, no comments about how to use it. Just pure Python code.
+
+${
+  currentCodeVersion
+    ? `Current code: <code>${currentCodeVersion.code}</code>
 
 User request: ${aiPrompt}`
+    : `User request: ${aiPrompt}`
+}`
 
-      if (currentCodeVersion && currentChatSession) {
-        const previousVersions = codeVersions.slice(-3)
-        const contextInfo = previousVersions
-          .map((v) => `Version ${v.version}: ${v.code.substring(0, 500)}...`)
-          .join("\n\n")
-
-        contextPrompt = `Previous code context:\n${contextInfo}\n\n${contextPrompt}`
-      }
+      setProcessingStatus("Generating code...")
 
       const response = await fetch("/api/ai/generate-plugin", {
         method: "POST",
@@ -178,6 +209,10 @@ User request: ${aiPrompt}`
 
       clearInterval(progressInterval)
       setGenerationProgress(100)
+      setProcessingStatus("Complete")
+
+      const completedWorkPlan = { ...workPlan, status: "completed" as const }
+      setCurrentWorkPlan(completedWorkPlan)
 
       const userMessage: ChatMessage = {
         id: `msg_${Date.now()}_user`,
@@ -189,11 +224,10 @@ User request: ${aiPrompt}`
       const aiMessage: ChatMessage = {
         id: `msg_${Date.now()}_ai`,
         role: "ai",
-        content: data.response || "Code generated successfully!",
+        content: "Code generated successfully based on your requirements.",
         isCode: true,
         timestamp: new Date(),
-        status: "completed",
-        workPlan: data.workPlan || [],
+        workPlan: completedWorkPlan,
       }
 
       const newMessages = [...messages, userMessage, aiMessage]
@@ -234,6 +268,10 @@ User request: ${aiPrompt}`
       setErrorMessage(error instanceof Error ? error.message : "An unknown error occurred")
       clearInterval(progressInterval)
       setGenerationProgress(0)
+      setProcessingStatus("Error occurred")
+      if (currentWorkPlan) {
+        setCurrentWorkPlan({ ...currentWorkPlan, status: "error" })
+      }
     } finally {
       setIsGenerating(false)
     }
@@ -274,25 +312,14 @@ User request: ${aiPrompt}`
     }
   }
 
-  const handleNewChat = () => {
-    const newSession: ChatSession = {
-      id: `chat_${Date.now()}`,
-      name: `Chat ${chatSessions.length + 1}`,
-      messages: [],
-      codeVersions: [],
-      created_at: new Date().toISOString(),
-      last_updated: new Date().toISOString(),
-    }
-
-    const updatedSessions = [...chatSessions, newSession]
-    setChatSessions(updatedSessions)
-    setCurrentChatSession(newSession)
+  const handleClearConversation = () => {
     setMessages([])
     setCodeVersions([])
     setCurrentCodeVersion(null)
     setGeneratedCode("")
     setUsageInstructions("")
     setAiPrompt("")
+    setCurrentWorkPlan(null)
   }
 
   const copyToClipboard = (text: string) => {
@@ -302,293 +329,228 @@ User request: ${aiPrompt}`
   if (!isOpen) return null
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-full h-full sm:w-[95vw] sm:max-w-7xl sm:h-[95vh] p-0 border-0 bg-transparent overflow-hidden">
-        <div className="glass-card w-full h-full flex flex-col overflow-hidden">
-          <DialogHeader className="border-b border-white/10 p-4 bg-black/30 backdrop-blur-sm flex-shrink-0">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onClose}
-                  className="h-9 w-9 p-0 text-gray-400 hover:text-white hover:bg-white/10"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <div className="w-8 h-8 relative">
-                  <Image src="/s1-logo.png" alt="S1 AI Lab" width={32} height={32} className="object-contain" />
-                </div>
-                <div>
-                  <DialogTitle className="text-white text-xl font-semibold">S1 AI Lab</DialogTitle>
-                  <DialogDescription className="text-gray-400 text-sm">
-                    Advanced Discord Bot Generator
-                  </DialogDescription>
-                </div>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="fixed inset-0 w-full h-full max-w-none max-h-none bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-black/95 backdrop-blur-xl border-0 text-white overflow-hidden p-0 m-0 rounded-none sm:rounded-lg sm:inset-4 sm:w-auto sm:h-auto sm:max-w-6xl sm:max-h-[90vh]">
+          <DialogHeader className="flex-row items-center justify-between border-b border-white/10 p-4 bg-white/5 backdrop-blur-md">
+            <div className="flex items-center space-x-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                className="h-9 w-9 p-0 text-gray-300 hover:text-white hover:bg-white/10 rounded-full"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="w-8 h-8 relative">
+                <Image src="/s1-logo.png" alt="S1" width={32} height={32} className="object-contain" />
               </div>
-              <div className="flex items-center space-x-2">
-                <Button onClick={handleNewChat} className="btn-secondary h-9 px-4 text-sm font-medium">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Chat
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onClose}
-                  className="h-9 w-9 p-0 text-gray-400 hover:text-white hover:bg-white/10"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+              <div>
+                <DialogTitle className="text-white text-lg font-semibold">S1 AI Lab</DialogTitle>
+                <DialogDescription className="text-gray-400 text-sm hidden sm:block">
+                  Python Code Generator
+                </DialogDescription>
               </div>
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearConversation}
+              className="h-9 w-9 p-0 text-gray-300 hover:text-white hover:bg-white/10 rounded-full"
+            >
+              <Plus className="h-5 w-5" />
+            </Button>
           </DialogHeader>
 
-          <div className="flex flex-1 overflow-hidden">
-            <div className="flex-1 flex flex-col min-w-0">
-              <div
-                ref={chatContainerRef}
-                className="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-black/10 to-black/20"
-              >
-                {messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
-                    <div className="w-16 h-16 relative mb-6 opacity-60">
-                      <Image src="/s1-logo.png" alt="S1" width={64} height={64} className="object-contain" />
-                    </div>
-                    <h2 className="text-center text-2xl font-semibold mb-3 text-white">Welcome to S1 AI Lab</h2>
-                    <p className="text-center text-lg opacity-75 max-w-md leading-relaxed">
-                      Describe your Discord bot functionality and I'll generate the complete Python code for you.
-                    </p>
+          <div className="flex flex-col h-full">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-transparent to-black/20">
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
+                  <div className="w-16 h-16 relative mb-6 opacity-60">
+                    <Image src="/s1-logo.png" alt="S1" width={64} height={64} className="object-contain" />
                   </div>
-                ) : (
-                  messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                    >
+                  <h2 className="text-xl font-semibold mb-2 text-white">Welcome to S1 AI Lab</h2>
+                  <p className="text-center opacity-75 max-w-md">
+                    Describe what you want to create and I'll generate Python code for you.
+                  </p>
+                </div>
+              ) : (
+                messages.map((message) => (
+                  <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[85%] sm:max-w-[70%] ${message.role === "user" ? "" : "space-y-3"}`}>
                       <div
-                        className={`max-w-[80%] ${message.role === "user" ? "chat-message-user" : "chat-message-ai"}`}
+                        className={`rounded-2xl px-4 py-3 ${
+                          message.role === "user"
+                            ? "bg-white text-black shadow-lg"
+                            : "bg-white/10 backdrop-blur-md text-white border border-white/20"
+                        }`}
                       >
-                        {message.isCode ? (
-                          <div className="space-y-4">
-                            <ReactMarkdown className="text-sm leading-relaxed prose prose-invert max-w-none">
-                              {message.content}
-                            </ReactMarkdown>
-
-                            {message.workPlan && message.workPlan.length > 0 && (
-                              <div className="glass-card p-4 space-y-2">
-                                <h4 className="text-sm font-semibold text-white flex items-center">
-                                  <CheckCircle className="h-4 w-4 mr-2 text-green-400" />
-                                  Work Plan
-                                </h4>
-                                <ul className="space-y-1">
-                                  {message.workPlan.map((step, index) => (
-                                    <li key={index} className="text-xs text-gray-300 flex items-center">
-                                      <div className="w-1.5 h-1.5 bg-green-400 rounded-full mr-2" />
-                                      {step}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            )}
-
-                            {generatedCode && (
-                              <div className="glass-card p-4 space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-2">
-                                    <Code className="h-4 w-4 text-blue-400" />
-                                    <span className="text-sm font-medium text-white">Generated Code</span>
-                                    <div
-                                      className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                        message.status === "completed"
-                                          ? "status-success"
-                                          : message.status === "processing"
-                                            ? "status-processing"
-                                            : "status-error"
-                                      }`}
-                                    >
-                                      {message.status === "completed"
-                                        ? "Ready"
-                                        : message.status === "processing"
-                                          ? "Processing"
-                                          : "Error"}
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center space-x-2">
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => copyToClipboard(generatedCode)}
-                                      className="h-8 w-8 p-0 text-gray-400 hover:text-white"
-                                    >
-                                      <Copy className="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      onClick={() => setShowCodeViewer(!showCodeViewer)}
-                                      className="btn-secondary h-8 px-3 text-xs"
-                                    >
-                                      {showCodeViewer ? "Hide Code" : "Show Code"}
-                                    </Button>
-                                  </div>
-                                </div>
-
-                                {showCodeViewer && (
-                                  <div className="bg-black/60 rounded-lg p-4 border border-white/10">
-                                    <pre className="text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">
-                                      {generatedCode}
-                                    </pre>
-                                  </div>
-                                )}
-
-                                <div className="flex space-x-2">
-                                  <Button
-                                    onClick={handleSaveAIFunction}
-                                    disabled={!pluginName.trim() || !generatedCode.trim() || isSaving}
-                                    className="btn-primary h-9 px-4 text-sm font-medium flex-1"
-                                  >
-                                    {isSaving ? (
-                                      <>
-                                        <Clock className="h-4 w-4 mr-2 animate-spin" />
-                                        Saving...
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Save className="h-4 w-4 mr-2" />
-                                        Save
-                                      </>
-                                    )}
-                                  </Button>
-                                  <Button
-                                    onClick={() => setShowCodeViewer(true)}
-                                    className="btn-secondary h-9 px-4 text-sm font-medium"
-                                  >
-                                    Check Code
-                                  </Button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-sm leading-relaxed">{message.content}</p>
-                        )}
+                        <p className="text-sm sm:text-base leading-relaxed">{message.content}</p>
                       </div>
+
+                      {message.role === "ai" && message.workPlan && (
+                        <div className="bg-white/5 backdrop-blur-md border border-white/20 rounded-xl p-4 space-y-4">
+                          {/* Work Plan */}
+                          <div className="space-y-2">
+                            <h4 className="text-sm font-medium text-white">Work Plan</h4>
+                            <div className="space-y-1">
+                              {message.workPlan.steps.map((step, index) => (
+                                <div key={index} className="flex items-center space-x-2 text-xs text-gray-300">
+                                  <CheckCircle className="h-3 w-3 text-green-400" />
+                                  <span>{step}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Status Bar */}
+                          {isGenerating && currentWorkPlan?.id === message.workPlan.id && (
+                            <div className="bg-black/40 rounded-lg p-3 border border-white/10">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs text-gray-300">{processingStatus}</span>
+                                <span className="text-xs text-gray-400">{Math.round(generationProgress)}%</span>
+                              </div>
+                              <div className="w-full bg-gray-700 rounded-full h-1">
+                                <div
+                                  className="bg-white h-1 rounded-full transition-all duration-300"
+                                  style={{ width: `${generationProgress}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Action Buttons */}
+                          <div className="flex space-x-2">
+                            <Button
+                              size="sm"
+                              onClick={() => setShowCodeModal(true)}
+                              className="bg-white text-black hover:bg-gray-200 h-8 px-3 text-xs"
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              Show Code
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={handleSaveAIFunction}
+                              disabled={!generatedCode.trim() || isSaving}
+                              className="bg-white text-black hover:bg-gray-200 h-8 px-3 text-xs"
+                            >
+                              <Save className="h-3 w-3 mr-1" />
+                              Save
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  ))
-                )}
-                <div ref={messagesEndRef} />
+                  </div>
+                ))
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="border-t border-white/10 p-4 bg-white/5 backdrop-blur-md">
+              {hasError && (
+                <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+                  <p className="text-red-400 text-sm">{errorMessage}</p>
+                </div>
+              )}
+
+              <div className="flex space-x-3">
+                <Textarea
+                  ref={textareaRef}
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  placeholder="Describe what you want to create..."
+                  className="flex-1 bg-white/10 backdrop-blur-md border-white/20 text-white placeholder-gray-400 resize-none min-h-[48px] max-h-32 text-base rounded-xl focus:ring-2 focus:ring-white/30 focus:border-transparent"
+                  style={{ fontSize: "16px" }} // Prevents mobile zoom
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault()
+                      handleGenerateAI()
+                    }
+                  }}
+                />
+                <Button
+                  onClick={handleGenerateAI}
+                  disabled={!aiPrompt.trim() || isGenerating}
+                  className="bg-white text-black hover:bg-gray-200 h-12 w-12 p-0 flex-shrink-0 rounded-xl"
+                >
+                  <Send className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {showCodeModal && (
+        <Dialog open={showCodeModal} onOpenChange={setShowCodeModal}>
+          <DialogContent className="fixed inset-0 w-full h-full max-w-none max-h-none bg-black/95 backdrop-blur-xl border-0 text-white overflow-hidden p-0 m-0 rounded-none sm:rounded-lg sm:inset-8 sm:w-auto sm:h-auto sm:max-w-4xl sm:max-h-[80vh]">
+            <DialogHeader className="border-b border-white/10 p-4 bg-white/5 backdrop-blur-md">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowCodeModal(false)}
+                    className="h-9 w-9 p-0 text-gray-300 hover:text-white hover:bg-white/10 rounded-full"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                  <DialogTitle className="text-white text-lg font-semibold">Generated Code</DialogTitle>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => copyToClipboard(generatedCode)}
+                  className="h-9 w-9 p-0 text-gray-300 hover:text-white hover:bg-white/10 rounded-full"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </DialogHeader>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="space-y-4 mb-4">
+                <input
+                  type="text"
+                  value={pluginName}
+                  onChange={(e) => setPluginName(e.target.value)}
+                  placeholder="Plugin name..."
+                  className="w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 text-base"
+                  style={{ fontSize: "16px" }}
+                />
+                <textarea
+                  value={pluginDescription}
+                  onChange={(e) => setPluginDescription(e.target.value)}
+                  placeholder="Plugin description..."
+                  className="w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 text-base resize-none h-20"
+                  style={{ fontSize: "16px" }}
+                />
               </div>
 
-              <div className="border-t border-white/10 bg-black/30 backdrop-blur-sm flex-shrink-0">
-                {isGenerating && (
-                  <div className="px-6 py-3 border-b border-white/10">
-                    <div className="glass-card p-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-6 h-6 relative">
-                          <Image
-                            src="/s1-logo.png"
-                            alt="S1"
-                            width={24}
-                            height={24}
-                            className="object-contain animate-pulse"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-white">Generating your Discord bot...</span>
-                            <span className="text-xs text-gray-400">{Math.round(generationProgress)}%</span>
-                          </div>
-                          <div className="w-full bg-gray-700/50 rounded-full h-2">
-                            <div
-                              className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-300 animate-pulse-glow"
-                              style={{ width: `${generationProgress}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {hasError && (
-                  <div className="px-6 py-3 border-b border-white/10">
-                    <div className="status-error rounded-lg p-3 flex items-center space-x-2">
-                      <AlertCircle className="h-4 w-4" />
-                      <p className="text-sm">{errorMessage}</p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="p-6">
-                  <div className="flex space-x-3">
-                    <Textarea
-                      ref={textareaRef}
-                      value={aiPrompt}
-                      onChange={(e) => setAiPrompt(e.target.value)}
-                      placeholder="Describe the Discord bot functionality you want to create..."
-                      className="flex-1 bg-black/60 border-white/20 text-white placeholder-gray-400 resize-none min-h-[52px] max-h-32 text-base rounded-xl backdrop-blur-sm"
-                      style={{ fontSize: "16px" }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault()
-                          handleGenerateAI()
-                        }
-                      }}
-                    />
-                    <Button
-                      onClick={handleGenerateAI}
-                      disabled={!aiPrompt.trim() || isGenerating}
-                      className="btn-primary h-[52px] w-[52px] p-0 flex-shrink-0 rounded-xl"
-                    >
-                      <Send className="h-5 w-5" />
-                    </Button>
-                  </div>
-                </div>
+              <div className="bg-black/60 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono leading-relaxed overflow-x-auto">
+                  {generatedCode}
+                </pre>
               </div>
             </div>
 
-            {generatedCode && (
-              <div className="w-80 border-l border-white/10 bg-black/20 backdrop-blur-sm flex flex-col">
-                <div className="border-b border-white/10 p-4">
-                  <h3 className="text-white font-semibold text-lg mb-4">Plugin Details</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-sm text-gray-400 mb-2 block">Plugin Name</label>
-                      <input
-                        type="text"
-                        value={pluginName}
-                        onChange={(e) => setPluginName(e.target.value)}
-                        placeholder="Enter plugin name..."
-                        className="w-full bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400 text-sm backdrop-blur-sm"
-                        style={{ fontSize: "16px" }}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-400 mb-2 block">Description</label>
-                      <textarea
-                        value={pluginDescription}
-                        onChange={(e) => setPluginDescription(e.target.value)}
-                        placeholder="Describe what this plugin does..."
-                        className="w-full bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400 text-sm resize-none h-20 backdrop-blur-sm"
-                        style={{ fontSize: "16px" }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-4">
-                  <h4 className="text-white font-medium mb-3">Code Preview</h4>
-                  <div className="glass-card p-4">
-                    <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono leading-relaxed max-h-96 overflow-y-auto">
-                      {generatedCode.substring(0, 1000)}
-                      {generatedCode.length > 1000 && "\n\n... (truncated)"}
-                    </pre>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+            <div className="border-t border-white/10 p-4 bg-white/5 backdrop-blur-md">
+              <Button
+                onClick={() => {
+                  handleSaveAIFunction()
+                  setShowCodeModal(false)
+                }}
+                disabled={!pluginName.trim() || !generatedCode.trim() || isSaving}
+                className="w-full bg-white text-black hover:bg-gray-200 h-12 font-medium rounded-xl"
+              >
+                {isSaving ? "Saving..." : "Save Function"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   )
 }
