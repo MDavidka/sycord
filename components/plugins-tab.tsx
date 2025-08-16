@@ -179,14 +179,12 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   }
 
   const handleGeneratePlugin = async () => {
-    if (!aiPrompt.trim()) return
+    if (!aiPrompt.trim() || isGenerating) return
+
     setIsGenerating(true)
     setGenerationProgress(0)
-    setShowCodeViewer(false)
-    setHasError(false)
-    setErrorMessage("")
-
-    setMessages((prev) => [...prev, { role: "user", content: aiPrompt, timestamp: new Date() }])
+    setGeneratedCode("")
+    setUsageInstructions("") // Clear previous usage instructions
 
     const progressInterval = setInterval(() => {
       setGenerationProgress((prev) => {
@@ -208,57 +206,54 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
         },
         body: JSON.stringify({
           message: currentPrompt,
-          context: generatedCode ? `Previous code:\n${generatedCode}` : undefined,
         }),
       })
-      if (response.ok) {
-        const data = await response.json()
-        const fullResponse = data.code
-        const parts = fullResponse.split(/\n\s*2\.\s*/)
-        const codeOnly = parts[0].trim()
-        const usageInstructions = parts.length > 1 ? parts[1].trim() : "No usage instructions provided."
 
-        setGeneratedCode(codeOnly)
-        setUsageInstructions(usageInstructions)
-
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "ai",
-            content: `Generated Discord bot for: "${currentPrompt}"`,
-            isCode: false,
-            timestamp: new Date(),
-          },
-        ])
-        const words = currentPrompt.split(" ").slice(0, 3).join(" ")
-        setPluginName(words.charAt(0).toUpperCase() + words.slice(1) + " Bot")
-        setPluginDescription(currentPrompt.length > 100 ? currentPrompt.substring(0, 100) + "..." : currentPrompt)
-        clearInterval(progressInterval)
-        setGenerationProgress(100)
-      } else {
-        const errorData = await response.json()
-        const errorMsg = errorData.error || "Failed to generate plugin code."
-        setHasError(true)
-        setErrorMessage(errorMsg)
-        setMessages((prev) => [
-          ...prev,
-          { role: "ai", content: `Error: ${errorMsg}`, isCode: false, timestamp: new Date() },
-        ])
-        clearInterval(progressInterval)
-        setGenerationProgress(0)
+      if (!response.ok) {
+        throw new Error("Failed to generate plugin")
       }
-    } catch (error) {
-      const errorMsg = "Failed to connect to AI service."
-      setHasError(true)
-      setErrorMessage(errorMsg)
+
+      const data = await response.json()
+      clearInterval(progressInterval)
+      setGenerationProgress(100)
+
+      const fullResponse = data.code
+      const parts = fullResponse.split(/2\.\s*/)
+
+      if (parts.length >= 2) {
+        const codeSection = parts[0].trim()
+        const usageSection = parts[1].trim()
+        setGeneratedCode(codeSection)
+        setUsageInstructions(usageSection)
+      } else {
+        setGeneratedCode(fullResponse)
+        setUsageInstructions("No usage instructions provided.")
+      }
+
       setMessages((prev) => [
         ...prev,
-        { role: "ai", content: `Error: ${errorMsg}`, isCode: false, timestamp: new Date() },
+        { role: "user", content: currentPrompt, timestamp: new Date() },
+        { role: "ai", content: "Discord bot generated successfully!", isCode: true, timestamp: new Date() },
       ])
+    } catch (error) {
+      console.error("Error generating plugin:", error)
       clearInterval(progressInterval)
       setGenerationProgress(0)
-    } finally {
       setIsGenerating(false)
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: currentPrompt, timestamp: new Date() },
+        {
+          role: "ai",
+          content: "Sorry, there was an error generating the bot. Please try again.",
+          timestamp: new Date(),
+        },
+      ])
+    } finally {
+      setTimeout(() => {
+        setIsGenerating(false)
+        setGenerationProgress(0)
+      }, 500)
     }
   }
 
@@ -275,6 +270,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
           name: pluginName,
           description: pluginDescription,
           code: generatedCode,
+          usageInstructions: usageInstructions,
           thumbnailUrl: pluginThumbnailUrl,
           profileUrl: pluginProfileUrl,
         }),
@@ -288,7 +284,10 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
         setPluginThumbnailUrl("")
         setPluginProfileUrl("")
         setGeneratedCode("")
+        setUsageInstructions("") // Clear usage instructions
         setMessages([])
+      } else {
+        throw new Error("Failed to save function")
       }
     } catch (error) {
       console.error("Error saving AI function:", error)
@@ -702,7 +701,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
                       value={aiPrompt}
                       onChange={(e) => setAiPrompt(e.target.value)}
                       onKeyDown={handleKeyDown}
-                      placeholder="Talk to S1"
+                      placeholder="Describe the Discord bot you want to create..."
                       className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 resize-none min-h-[44px] max-h-32 w-full"
                       style={{
                         fontSize: "16px",
