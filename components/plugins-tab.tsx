@@ -1,47 +1,67 @@
 "use client"
 import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { Card, CardContent, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Package, Download, Check, Code } from "lucide-react"
-import Image from "next/image"
-import type { Plugin, UserPlugin, UserAIFunction } from "@/lib/types"
+import { Plus, Download, Trash2, Settings, ExternalLink, Edit } from "lucide-react"
 import AIChat from "./ai-chat"
 
-interface PluginsTabProps {
-  serverId?: string
-  activeTab?: string
-  setActiveTab?: (tab: string) => void
+interface Plugin {
+  _id: string
+  name: string
+  description: string
+  iconUrl: string
+  thumbnailUrl: string
+  downloadCount: number
+  isInstalled?: boolean
+}
+
+interface UserPlugin {
+  _id: string
+  pluginId: string
+  plugin: Plugin
+  isEnabled: boolean
+  installedAt: string
+}
+
+interface UserAIFunction {
+  _id: string
+  name: string
+  description: string
+  code: string
+  usageInstructions: string
+  profileUrl?: string
+  thumbnailUrl?: string
+  chatSessions?: any[]
+  created_at: string
 }
 
 export default function PluginsTab() {
   const { data: session } = useSession()
-
-  // Plugin state
+  const [activeTab, setActiveTab] = useState("store")
   const [plugins, setPlugins] = useState<Plugin[]>([])
   const [userPlugins, setUserPlugins] = useState<UserPlugin[]>([])
   const [userAIFunctions, setUserAIFunctions] = useState<UserAIFunction[]>([])
   const [loading, setLoading] = useState(false)
-
-  // Dialog state
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-
-  // Create plugin form
   const [newPluginName, setNewPluginName] = useState("")
   const [newPluginDescription, setNewPluginDescription] = useState("")
   const [newPluginIconUrl, setNewPluginIconUrl] = useState("")
   const [newPluginThumbnailUrl, setNewPluginThumbnailUrl] = useState("")
-
-  // Edit plugin form
-  const [editPluginId, setEditPluginId] = useState("")
-  const [editPluginName, setEditPluginName] = useState("")
-  const [editPluginDescription, setEditPluginDescription] = useState("")
-  const [editPluginIconUrl, setEditPluginIconUrl] = useState("")
-  const [editPluginThumbnailUrl, setEditPluginThumbnailUrl] = useState("")
-
-  // AI Chat state
   const [isAICreatorOpen, setIsAICreatorOpen] = useState(false)
   const [currentAIFunction, setCurrentAIFunction] = useState<UserAIFunction | null>(null)
 
@@ -71,7 +91,7 @@ export default function PluginsTab() {
       const response = await fetch("/api/user-plugins")
       if (response.ok) {
         const data = await response.json()
-        setUserPlugins(data.userPlugins)
+        setUserPlugins(data.installedPlugins)
       }
     } catch (error) {
       console.error("Error fetching user plugins:", error)
@@ -132,6 +152,43 @@ export default function PluginsTab() {
     setCurrentAIFunction(null)
   }
 
+  const handleSaveFunction = async (functionData: any) => {
+    try {
+      const response = await fetch("/api/user-ai-functions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(functionData),
+      })
+
+      if (response.ok) {
+        fetchUserAIFunctions()
+        handleCloseAICreator()
+      }
+    } catch (error) {
+      console.error("Error saving function:", error)
+    }
+  }
+
+  const handleUpdateFunction = async (functionData: any) => {
+    try {
+      const response = await fetch("/api/user-ai-functions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...functionData,
+          action: "updateFunction",
+        }),
+      })
+
+      if (response.ok) {
+        fetchUserAIFunctions()
+        handleCloseAICreator()
+      }
+    } catch (error) {
+      console.error("Error updating function:", error)
+    }
+  }
+
   const handleInstallPlugin = async (pluginId: string) => {
     try {
       const response = await fetch("/api/user-plugins", {
@@ -139,10 +196,11 @@ export default function PluginsTab() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ pluginId }),
+        body: JSON.stringify({ pluginId, action: "install" }),
       })
       if (response.ok) {
         fetchUserPlugins()
+        fetchPlugins()
       }
     } catch (error) {
       console.error("Error installing plugin:", error)
@@ -160,9 +218,27 @@ export default function PluginsTab() {
       })
       if (response.ok) {
         fetchUserPlugins()
+        fetchPlugins()
       }
     } catch (error) {
       console.error("Error uninstalling plugin:", error)
+    }
+  }
+
+  const handleTogglePlugin = async (userPluginId: string, isEnabled: boolean) => {
+    try {
+      const response = await fetch("/api/user-plugins", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userPluginId, isEnabled }),
+      })
+      if (response.ok) {
+        fetchUserPlugins()
+      }
+    } catch (error) {
+      console.error("Error toggling plugin:", error)
     }
   }
 
@@ -184,112 +260,118 @@ export default function PluginsTab() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-800/50">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">Plugin Manager</h1>
-          <p className="text-gray-400 text-sm sm:text-base">Discover, install, and manage your Discord bot plugins</p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Plugins</h2>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleStartNewChat}
+            className="bg-white text-gray-900 border border-gray-200 hover:bg-gray-50"
+          >
+            <img src="/s1-logo.png" alt="S1" className="w-4 h-4 mr-2" />
+            S1 AI Lab
+          </Button>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Plugin
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create New Plugin</DialogTitle>
+                <DialogDescription>Create a new plugin for the community to use.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="name">Plugin Name</Label>
+                  <Input
+                    id="name"
+                    value={newPluginName}
+                    onChange={(e) => setNewPluginName(e.target.value)}
+                    placeholder="Enter plugin name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={newPluginDescription}
+                    onChange={(e) => setNewPluginDescription(e.target.value)}
+                    placeholder="Describe what your plugin does"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="iconUrl">Icon URL</Label>
+                  <Input
+                    id="iconUrl"
+                    value={newPluginIconUrl}
+                    onChange={(e) => setNewPluginIconUrl(e.target.value)}
+                    placeholder="https://example.com/icon.png"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="thumbnailUrl">Thumbnail URL</Label>
+                  <Input
+                    id="thumbnailUrl"
+                    value={newPluginThumbnailUrl}
+                    onChange={(e) => setNewPluginThumbnailUrl(e.target.value)}
+                    placeholder="https://example.com/thumbnail.png"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={handleCreatePlugin}>Create Plugin</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
-        <Button
-          onClick={handleStartNewChat}
-          className="bg-white hover:bg-gray-100 text-black font-medium px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2"
-        >
-          <Image src="/s1-logo.png" alt="S1" width={20} height={20} className="rounded" />
-          S1 AI Lab
-        </Button>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="store" className="flex-1 flex flex-col overflow-hidden">
-        <div className="px-4 sm:px-6 pt-4">
-          <TabsList className="grid w-full grid-cols-3 bg-gray-800/60 backdrop-blur-sm rounded-xl h-12">
-            <TabsTrigger
-              value="store"
-              className="text-white data-[state=active]:bg-white data-[state=active]:text-black py-3 text-sm sm:text-base font-medium rounded-lg transition-all"
-            >
-              <Package className="h-4 w-4 mr-2" />
-              Plugin Store
-            </TabsTrigger>
-            <TabsTrigger
-              value="created"
-              className="text-white data-[state=active]:bg-white data-[state=active]:text-black py-3 text-sm sm:text-base font-medium rounded-lg transition-all"
-            >
-              <Code className="h-4 w-4 mr-2" />
-              Created
-            </TabsTrigger>
-            <TabsTrigger
-              value="installed"
-              className="text-white data-[state=active]:bg-white data-[state=active]:text-black py-3 text-sm sm:text-base font-medium rounded-lg transition-all"
-            >
-              <Check className="h-4 w-4 mr-2" />
-              Installed
-            </TabsTrigger>
-          </TabsList>
-        </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="store">Plugin Store</TabsTrigger>
+          <TabsTrigger value="created">Created</TabsTrigger>
+          <TabsTrigger value="installed">Installed</TabsTrigger>
+        </TabsList>
 
-        {/* Plugin Store Tab */}
-        <TabsContent value="store" className="flex-1 overflow-auto p-4 sm:p-6 mt-2">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-            {plugins.map((plugin) => (
-              <Card key={plugin._id} className="glass-card flex flex-col h-full min-h-[280px] sm:min-h-[320px]">
-                {/* ... existing plugin card content ... */}
-                <CardContent className="flex-1 flex flex-col justify-between p-4 sm:p-5">
-                  <CardDescription className="text-gray-300 text-sm sm:text-base mb-4 line-clamp-3 leading-relaxed">
-                    {plugin.description}
-                  </CardDescription>
-                  <Button
-                    onClick={() => handleInstallPlugin(plugin._id)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 sm:py-3 rounded-lg transition-all duration-200"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Install Plugin
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* Created Tab */}
-        <TabsContent value="created" className="flex-1 overflow-auto p-4 sm:p-6 mt-2">
-          {userAIFunctions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
-              <Code className="h-16 w-16 mb-6 opacity-50" />
-              <p className="text-center text-base sm:text-lg font-medium mb-2">No AI functions created yet.</p>
-              <p className="text-center text-sm sm:text-base opacity-75 mb-6">
-                Use S1 AI Lab to create your first Discord bot!
-              </p>
-              <Button
-                onClick={handleStartNewChat}
-                className="bg-white hover:bg-gray-100 text-black font-medium px-6 py-3 rounded-lg transition-all duration-200 flex items-center gap-2"
-              >
-                <Image src="/s1-logo.png" alt="S1" width={20} height={20} className="rounded" />
-                Start Creating
-              </Button>
-            </div>
+        <TabsContent value="store" className="space-y-4">
+          {loading ? (
+            <div className="text-center py-8">Loading plugins...</div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-              {userAIFunctions.map((aiFunction) => (
-                <Card key={aiFunction._id} className="glass-card flex flex-col h-full min-h-[280px] sm:min-h-[320px]">
-                  {/* ... existing AI function card content ... */}
-                  <CardContent className="flex-1 flex flex-col justify-between p-4 sm:p-5">
-                    <CardDescription className="text-gray-300 text-sm sm:text-base mb-4 line-clamp-3 leading-relaxed">
-                      {aiFunction.description}
-                    </CardDescription>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {plugins.map((plugin) => (
+                <Card key={plugin._id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-3">
+                        <img
+                          src={plugin.iconUrl || "/placeholder.svg?height=40&width=40"}
+                          alt={plugin.name}
+                          className="w-10 h-10 rounded-lg object-cover"
+                        />
+                        <div>
+                          <CardTitle className="text-lg">{plugin.name}</CardTitle>
+                          <p className="text-sm text-muted-foreground">{plugin.downloadCount} downloads</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <CardDescription className="mb-4">{plugin.description}</CardDescription>
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditAIFunction(aiFunction)}
-                        className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                      <Button
+                        onClick={() => handleInstallPlugin(plugin._id)}
+                        disabled={plugin.isInstalled}
+                        className="flex-1"
                       >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteAIFunction(aiFunction._id?.toString() || "")}
-                        className="bg-red-600 text-white px-3 py-2 rounded-lg text-sm hover:bg-red-700 transition-colors"
-                      >
-                        Delete
-                      </button>
+                        <Download className="mr-2 h-4 w-4" />
+                        {plugin.isInstalled ? "Installed" : "Install"}
+                      </Button>
+                      <Button variant="outline" size="icon">
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -298,21 +380,104 @@ export default function PluginsTab() {
           )}
         </TabsContent>
 
-        {/* Installed Tab */}
-        <TabsContent value="installed" className="flex-1 overflow-auto p-4 sm:p-6 mt-2">
-          {/* ... existing installed plugins content ... */}
+        <TabsContent value="created" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {userAIFunctions.map((aiFunction) => (
+              <Card key={aiFunction._id} className="hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-3">
+                      <img
+                        src={aiFunction.profileUrl || "/placeholder.svg?height=40&width=40"}
+                        alt={aiFunction.name}
+                        className="w-10 h-10 rounded-lg object-cover"
+                      />
+                      <div>
+                        <CardTitle className="text-lg">{aiFunction.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          Created {new Date(aiFunction.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <CardDescription className="mb-4">{aiFunction.description}</CardDescription>
+                  <div className="flex gap-2">
+                    <Button onClick={() => handleEditAIFunction(aiFunction)} variant="outline" className="flex-1">
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit
+                    </Button>
+                    <Button
+                      onClick={() => handleDeleteAIFunction(aiFunction._id)}
+                      variant="outline"
+                      size="icon"
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="installed" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {userPlugins.map((userPlugin) => (
+              <Card key={userPlugin._id} className="hover:shadow-lg transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-3">
+                      <img
+                        src={userPlugin.plugin.iconUrl || "/placeholder.svg?height=40&width=40"}
+                        alt={userPlugin.plugin.name}
+                        className="w-10 h-10 rounded-lg object-cover"
+                      />
+                      <div>
+                        <CardTitle className="text-lg">{userPlugin.plugin.name}</CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          Installed {new Date(userPlugin.installedAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={userPlugin.isEnabled}
+                      onCheckedChange={(checked) => handleTogglePlugin(userPlugin._id, checked)}
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <CardDescription className="mb-4">{userPlugin.plugin.description}</CardDescription>
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1 bg-transparent">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Configure
+                    </Button>
+                    <Button
+                      onClick={() => handleUninstallPlugin(userPlugin.plugin._id)}
+                      variant="outline"
+                      size="icon"
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </TabsContent>
       </Tabs>
 
-      {/* AI Chat Component */}
       <AIChat
         isOpen={isAICreatorOpen}
         onClose={handleCloseAICreator}
         currentAIFunction={currentAIFunction}
-        onSave={fetchUserAIFunctions}
+        onSaveFunction={handleSaveFunction}
+        onUpdateFunction={handleUpdateFunction}
       />
-
-      {/* ... existing dialogs ... */}
     </div>
   )
 }
