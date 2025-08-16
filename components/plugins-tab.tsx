@@ -704,7 +704,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
                       value={aiPrompt}
                       onChange={(e) => setAiPrompt(e.target.value)}
                       onKeyDown={handleKeyDown}
-                      placeholder="Describe the Discord bot you want to create..."
+                      placeholder="Talk to S1"
                       className="bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 resize-none min-h-[40px] max-h-32 text-sm sm:text-base w-full"
                       style={{
                         fontSize: "14px",
