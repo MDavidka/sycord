@@ -18,6 +18,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Progress } from "@/components/ui/progress"
 import {
   Package,
   Plus,
@@ -27,16 +28,15 @@ import {
   Edit,
   Trash2,
   ImageIcon,
-  ArrowLeft,
   Save,
   Send,
   Copy,
-  Trash,
   Beaker,
   Code,
 } from "lucide-react"
 import Image from "next/image"
 import type { Plugin, UserPlugin, UserAIFunction } from "@/lib/types"
+import ReactMarkdown from "react-markdown"
 
 interface PluginsTabProps {
   serverId?: string
@@ -400,16 +400,17 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
     setGeneratedCode(aiFunction.code)
     setPluginThumbnailUrl(aiFunction.thumbnailUrl || "")
     setPluginProfileUrl(aiFunction.profileUrl || "")
+    // Include full code context for editing/follow-up requests
     setMessages([
       {
-        role: "ai",
-        content: `Editing: ${aiFunction.name}`,
+        role: "system",
+        content: `Current code context:\n${aiFunction.code}`,
         isCode: false,
       },
       {
         role: "ai",
-        content: aiFunction.code,
-        isCode: true,
+        content: `Ready to edit: ${aiFunction.name}. You can now request modifications or additions to this Discord bot.`,
+        isCode: false,
       },
     ])
   }
@@ -429,156 +430,112 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
 
   if (isAICreatorOpen) {
     return (
-      <div className="fixed inset-0 bg-black flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-white/20">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setIsAICreatorOpen(false)
-              setAiPrompt("")
-              setPluginName("")
-              setPluginDescription("")
-              setPluginThumbnailUrl("")
-              setPluginProfileUrl("")
-              setGeneratedCode("")
-              setMessages([])
-              setGenerationProgress(0)
-              setShowCodeViewer(false)
-            }}
-            className="text-white hover:bg-white/10 p-2 min-w-[44px] min-h-[44px]"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center space-x-2 flex-1 mx-4">
-            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0">
-              <Beaker className="h-4 w-4 text-black" />
-            </div>
-            {editingMetadata ? (
-              <Input
-                value={pluginName}
-                onChange={(e) => setPluginName(e.target.value)}
-                className="text-center bg-transparent border-none focus:ring-0 text-white font-semibold text-base sm:text-lg flex-1 min-w-0"
-                placeholder="Function Name"
-              />
-            ) : (
-              <h1 className="text-base sm:text-lg font-semibold text-white truncate flex-1 min-w-0">
-                {pluginName || "S1 AI Lab"}
-              </h1>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setEditingMetadata(!editingMetadata)}
-              className="text-white hover:bg-white/10 p-2 min-w-[44px] min-h-[44px] flex-shrink-0"
-            >
-              <Save className="h-5 w-5" />
-            </Button>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleClearChat}
-            className="text-gray-400 hover:text-white p-2 min-w-[44px] min-h-[44px]"
-          >
-            <Trash className="h-5 w-5" />
-          </Button>
-        </div>
-
-        <div className="flex-1 overflow-auto p-3 sm:p-4" ref={chatContainerRef}>
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
-              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 mb-4 opacity-50">
-                <Beaker className="h-4 w-4 text-black" />
+      <Dialog open={isAICreatorOpen} onOpenChange={setIsAICreatorOpen}>
+        <DialogContent className="w-[95vw] max-w-4xl h-[90vh] bg-black/95 backdrop-blur-xl border border-white/10 text-white overflow-hidden">
+          <DialogHeader className="border-b border-white/10 pb-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 relative">
+                <Image src="/s1-logo.png" alt="S1 AI Lab" width={32} height={32} className="object-contain" />
               </div>
-              <p className="text-center text-base sm:text-lg font-medium mb-2">
-                Describe your function to generate code.
-              </p>
-              <p className="text-center text-sm sm:text-base opacity-75">
-                Use the AI Lab to create your first function!
-              </p>
+              <DialogTitle className="text-white text-xl font-semibold">S1 AI Lab</DialogTitle>
             </div>
-          ) : (
-            <>
-              {messages.map((msg, i) => (
-                <div key={i} className={`mb-4 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                  {msg.role === "ai" && !msg.isCode && (
-                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 mr-2 sm:mr-3 self-end">
-                      <Beaker className="h-4 w-4 text-black" />
+            <DialogDescription className="text-gray-400">Generate Discord bots with AI assistance</DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {messages.map((message, index) => (
+                <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                  {message.role !== "system" && (
+                    <div
+                      className={`max-w-[80%] p-3 rounded-lg ${
+                        message.role === "user"
+                          ? "bg-white text-black"
+                          : "bg-gray-800/50 text-white border border-gray-700/50"
+                      }`}
+                    >
+                      {message.content}
                     </div>
                   )}
-                  <div
-                    className={`max-w-[85%] sm:max-w-[80%] p-3 sm:p-4 rounded-lg ${
-                      msg.role === "user"
-                        ? "bg-[#4A90E2] text-white rounded-br-none"
-                        : "bg-gray-800 text-gray-200 rounded-bl-none"
-                    }`}
-                  >
-                    <span className="text-sm sm:text-base">{msg.content}</span>
-                  </div>
-                  {msg.role === "user" && <div className="w-2 sm:w-6 flex-shrink-0"></div>}
                 </div>
               ))}
+            </div>
 
-              {/* Function Generation Card */}
-              {(isGenerating || generatedCode) && (
-                <div className="mt-4 bg-gray-900 border border-gray-800 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 rounded bg-white flex items-center justify-center">
-                        <Beaker className="h-3 w-3 text-black" />
+            {(isGenerating || generatedCode) && (
+              <div className="p-4 border-t border-white/10">
+                <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-6 shadow-2xl">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-6 h-6 relative">
+                        <Image src="/s1-logo.png" alt="S1" width={24} height={24} className="object-contain" />
                       </div>
-                      <span className="text-white text-sm font-medium">{pluginName || "Discord Bot"}</span>
+                      <h3 className="text-white font-medium text-lg">{pluginName}</h3>
                     </div>
-                    {isGenerating && <span className="text-gray-400 text-xs">{Math.round(generationProgress)}%</span>}
+                    {!isGenerating && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setGeneratedCode("")
+                          setUsageInstructions("")
+                          setGenerationProgress(0)
+                        }}
+                        className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
 
                   {isGenerating && (
-                    <div className="mb-4">
-                      <div className="w-full bg-gray-800 rounded-full h-1">
-                        <div
-                          className="bg-white h-1 rounded-full transition-all duration-300"
-                          style={{ width: `${generationProgress}%` }}
-                        />
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2 text-sm text-gray-300">
+                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                        <span>Generating Discord bot...</span>
                       </div>
+                      <Progress value={generationProgress} className="h-2 bg-white/10" />
                     </div>
                   )}
 
                   {!isGenerating && usageInstructions && (
-                    <div className="mb-4 p-3 bg-gray-800 rounded border border-gray-700">
-                      <h4 className="text-white text-sm font-medium mb-2">How to use:</h4>
-                      <div className="text-gray-300 text-sm whitespace-pre-wrap">{usageInstructions}</div>
-                    </div>
-                  )}
+                    <div className="space-y-4">
+                      <div className="bg-black/20 rounded-lg p-4 border border-white/5">
+                        <h4 className="text-white font-medium mb-2 text-sm">How to use:</h4>
+                        <div className="text-gray-300 text-sm prose prose-invert max-w-none">
+                          <ReactMarkdown>{usageInstructions}</ReactMarkdown>
+                        </div>
+                      </div>
 
-                  {!isGenerating && generatedCode && (
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-3 border-gray-600 bg-transparent text-white hover:bg-gray-800 hover:border-gray-500 text-sm"
-                        onClick={() => setShowCodeViewer(!showCodeViewer)}
-                      >
-                        <Code className="h-3 w-3 mr-1" />
-                        {showCodeViewer ? "Hide Code" : "Show Code"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="h-8 px-3 bg-white text-gray-900 hover:bg-gray-200 text-sm font-medium transition-all"
-                        onClick={handleSaveAIFunction}
-                        disabled={isSaving}
-                      >
-                        <Save className="h-3 w-3 mr-1" />
-                        {isSaving ? "Saving..." : "Save"}
-                      </Button>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-3 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:border-white/30 text-xs backdrop-blur-sm"
+                          onClick={() => setShowCodeViewer(!showCodeViewer)}
+                        >
+                          <Code className="h-3 w-3 mr-1" />
+                          {showCodeViewer ? "Hide Code" : "Show Code"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-7 px-3 bg-white/90 text-black hover:bg-white text-xs font-medium transition-all backdrop-blur-sm"
+                          onClick={handleSaveAIFunction}
+                          disabled={isSaving}
+                        >
+                          <Save className="h-3 w-3 mr-1" />
+                          {isSaving ? "Saving..." : "Save"}
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Code Viewer Section - Only shown when user clicks Show Code */}
-              {showCodeViewer && generatedCode && (
-                <div className="mt-4 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+            {showCodeViewer && generatedCode && !isGenerating && (
+              <div className="p-4 border-t border-white/10">
+                <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-700/50 rounded-lg overflow-hidden">
                   <div className="p-4">
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-gray-400 text-sm">Generated Code</span>
@@ -592,70 +549,39 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
                         Copy
                       </Button>
                     </div>
-                    <div className="bg-black rounded border border-gray-700 overflow-hidden">
-                      <pre className="text-sm font-mono text-gray-200 p-3 overflow-x-auto whitespace-pre-wrap break-words max-h-80 overflow-y-auto">
+                    <div className="bg-black/50 rounded border border-gray-700/50 overflow-hidden backdrop-blur-sm">
+                      <pre className="p-4 text-sm text-gray-300 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">
                         {generatedCode}
                       </pre>
                     </div>
                   </div>
                 </div>
-              )}
-            </>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+              </div>
+            )}
 
-        <div className="p-3 sm:p-4 border-t border-white/20 bg-black">
-          {editingMetadata && (
-            <div className="mb-3 space-y-2">
-              <Textarea
-                value={pluginDescription}
-                onChange={(e) => setPluginDescription(e.target.value)}
-                placeholder="Function description..."
-                className="bg-black/60 border-white/20 text-white w-full text-sm sm:text-base"
-                rows={2}
-              />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {/* Input Area */}
+            <div className="p-4 border-t border-white/10 bg-black/20 backdrop-blur-sm">
+              <div className="flex space-x-2">
                 <Input
-                  value={pluginThumbnailUrl}
-                  onChange={(e) => setPluginThumbnailUrl(e.target.value)}
-                  placeholder="Thumbnail URL (optional)"
-                  className="bg-black/60 border-white/20 text-white text-sm"
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  placeholder="Describe the Discord bot you want to create..."
+                  className="flex-1 bg-white/5 border-white/10 text-white placeholder-gray-400 backdrop-blur-sm"
+                  onKeyPress={(e) => e.key === "Enter" && !isGenerating && handleGeneratePlugin()}
+                  disabled={isGenerating}
                 />
-                <Input
-                  value={pluginProfileUrl}
-                  onChange={(e) => setPluginProfileUrl(e.target.value)}
-                  placeholder="Profile URL (optional)"
-                  className="bg-black/60 border-white/20 text-white text-sm"
-                />
+                <Button
+                  onClick={handleGeneratePlugin}
+                  disabled={!aiPrompt.trim() || isGenerating}
+                  className="bg-white text-black hover:bg-gray-200 px-4"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
               </div>
             </div>
-          )}
-          <div className="relative">
-            <Textarea
-              placeholder="Describe your function..."
-              value={aiPrompt}
-              onChange={(e) => setAiPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault()
-                  handleGeneratePlugin()
-                }
-              }}
-              className="bg-black/60 border-white/20 text-white placeholder-gray-400 min-h-[60px] sm:min-h-[50px] resize-none pr-12 sm:pr-10 w-full rounded-lg text-sm sm:text-base"
-              disabled={isGenerating}
-            />
-            <Button
-              size="sm"
-              className="absolute right-2 bottom-2 h-10 w-10 sm:h-8 sm:w-8 p-0 rounded-full"
-              onClick={handleGeneratePlugin}
-              disabled={isGenerating || !aiPrompt.trim()}
-            >
-              <Send className="h-4 w-4" />
-            </Button>
           </div>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
     )
   }
 
@@ -722,11 +648,14 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
             )}
             <Button
               onClick={() => setIsAICreatorOpen(true)}
-              className="bg-white text-black hover:bg-gray-200 h-11 px-4 sm:px-6 text-sm sm:text-base font-medium"
+              className="w-full bg-white text-black hover:bg-gray-100 transition-all duration-200 h-12 font-medium shadow-lg"
             >
-              <Beaker className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">S1 AI Lab</span>
-              <span className="sm:hidden ml-1">S1 AI</span>
+              <div className="flex items-center space-x-2">
+                <div className="w-5 h-5 relative">
+                  <Image src="/s1-logo.png" alt="S1" width={20} height={20} className="object-contain" />
+                </div>
+                <span>S1 AI Lab</span>
+              </div>
             </Button>
           </div>
         </div>
