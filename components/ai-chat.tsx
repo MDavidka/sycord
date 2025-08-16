@@ -2,11 +2,10 @@
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Send, Copy, ArrowLeft, Plus, Eye, EyeOff, Save, CheckCircle, Loader2 } from "lucide-react"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Send, Copy, ArrowLeft, Plus, Eye, EyeOff, Save, Code } from "lucide-react"
 import Image from "next/image"
 import type { UserAIFunction } from "@/lib/types"
-import ReactMarkdown from "react-markdown"
 
 interface ChatMessage {
   id: string
@@ -15,8 +14,8 @@ interface ChatMessage {
   isCode?: boolean
   timestamp?: Date
   codeVersionId?: string
-  workPlan?: string[]
-  hasWorkPlan?: boolean
+  workPlan?: string
+  showCode?: boolean
 }
 
 interface CodeVersion {
@@ -47,17 +46,16 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
   const [aiPrompt, setAiPrompt] = useState("")
   const [generatedCode, setGeneratedCode] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generationStep, setGenerationStep] = useState<"plan" | "code" | "complete">("plan")
   const [generationProgress, setGenerationProgress] = useState(0)
-  const [generationStep, setGenerationStep] = useState("")
   const [pluginName, setPluginName] = useState("")
   const [pluginDescription, setPluginDescription] = useState("")
   const [pluginThumbnailUrl, setPluginThumbnailUrl] = useState("")
   const [pluginProfileUrl, setPluginProfileUrl] = useState("")
   const [isSaving, setIsSaving] = useState(false)
-  const [usageInstructions, setUsageInstructions] = useState("")
   const [hasError, setHasError] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
-  const [showCodeInMessage, setShowCodeInMessage] = useState<{ [key: string]: boolean }>({})
+  const [workPlan, setWorkPlan] = useState("")
 
   const [currentChatSession, setCurrentChatSession] = useState<ChatSession | null>(null)
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([])
@@ -66,7 +64,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
   const [currentCodeVersion, setCurrentCodeVersion] = useState<CodeVersion | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const chatContainerRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -95,7 +92,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
           const latestVersion = currentSession.codeVersions[currentSession.codeVersions.length - 1]
           setCurrentCodeVersion(latestVersion)
           setGeneratedCode(latestVersion.code)
-          setUsageInstructions(latestVersion.usageInstructions)
         }
       } else {
         const initialSession: ChatSession = {
@@ -122,7 +118,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         setCodeVersions(initialSession.codeVersions)
         setCurrentCodeVersion(initialSession.codeVersions[0])
         setGeneratedCode(currentAIFunction.code)
-        setUsageInstructions(currentAIFunction.usageInstructions || "")
       }
 
       setPluginName(currentAIFunction.name)
@@ -137,8 +132,8 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
     setIsGenerating(true)
     setGenerationProgress(0)
+    setGenerationStep("plan")
     setHasError(false)
-    setGenerationStep("Creating work plan...")
 
     const progressInterval = setInterval(() => {
       setGenerationProgress((prev) => Math.min(prev + Math.random() * 10, 90))
@@ -146,61 +141,48 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
     try {
       // Step 1: Generate work plan
-      setGenerationStep("Analyzing requirements...")
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      setGenerationStep("plan")
+      const planResponse = await fetch("/api/ai/generate-plugin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: `Create a detailed work plan for: ${aiPrompt}. Only provide the plan, no code yet.`,
+          generatePlan: true,
+        }),
+      })
 
-      setGenerationStep("Creating work plan...")
-      setGenerationProgress(30)
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      if (!planResponse.ok) throw new Error(`HTTP error! status: ${planResponse.status}`)
+      const planData = await planResponse.json()
 
-      let contextPrompt = `Create a Discord bot plugin with the following request: ${aiPrompt}`
+      setWorkPlan(planData.response || "")
+      setGenerationProgress(50)
+
+      // Step 2: Generate code based on plan
+      setGenerationStep("code")
+      let contextPrompt = `Work Plan:\n${planData.response}\n\nUser Request: ${aiPrompt}`
+
       if (currentCodeVersion && currentChatSession) {
         const previousVersions = codeVersions.slice(-2)
         const contextInfo = previousVersions
           .map((v) => `Version ${v.version}: ${v.code.substring(0, 300)}...`)
           .join("\n\n")
-
-        contextPrompt = `Current code context:\n${contextInfo}\n\nUser modification request: ${aiPrompt}\n\nPlease modify the existing code according to the request. Only provide raw Python code without explanations.`
+        contextPrompt = `Previous code context:\n${contextInfo}\n\n${contextPrompt}\n\nProvide only raw Python code, no explanations.`
       }
 
-      // Step 2: Generate code
-      setGenerationStep("Generating code...")
-      setGenerationProgress(60)
-
-      const response = await fetch("/api/ai/generate-plugin", {
+      const codeResponse = await fetch("/api/ai/generate-plugin", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: contextPrompt,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: contextPrompt }),
       })
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-
-      if (data.error) {
-        throw new Error(data.error)
-      }
+      if (!codeResponse.ok) throw new Error(`HTTP error! status: ${codeResponse.status}`)
+      const codeData = await codeResponse.json()
 
       clearInterval(progressInterval)
       setGenerationProgress(100)
-      setGenerationStep("Complete!")
+      setGenerationStep("complete")
 
-      // Create work plan
-      const workPlan = [
-        "Analyze user requirements",
-        "Design bot architecture",
-        "Implement core functionality",
-        "Add error handling",
-        "Test and validate code",
-      ]
-
-      // Add user message
+      // Add messages to chat
       const userMessage: ChatMessage = {
         id: `msg_${Date.now()}_user`,
         role: "user",
@@ -208,15 +190,14 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         timestamp: new Date(),
       }
 
-      // Add AI response with work plan
       const aiMessage: ChatMessage = {
         id: `msg_${Date.now()}_ai`,
         role: "ai",
-        content: "I've created a work plan and generated the code for your Discord bot plugin.",
+        content: "Code generated successfully based on work plan.",
         isCode: true,
         timestamp: new Date(),
-        workPlan,
-        hasWorkPlan: true,
+        workPlan: planData.response,
+        showCode: false,
       }
 
       const newMessages = [...messages, userMessage, aiMessage]
@@ -225,8 +206,8 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       // Create new code version
       const newCodeVersion: CodeVersion = {
         id: `version_${Date.now()}`,
-        code: data.code || "",
-        usageInstructions: data.usageInstructions || "",
+        code: codeData.code || "",
+        usageInstructions: codeData.usageInstructions || "",
         version: codeVersions.length + 1,
         created_at: new Date().toISOString(),
         prompt: aiPrompt,
@@ -235,10 +216,9 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       const newCodeVersions = [...codeVersions, newCodeVersion]
       setCodeVersions(newCodeVersions)
       setCurrentCodeVersion(newCodeVersion)
-      setGeneratedCode(data.code || "")
-      setUsageInstructions(data.usageInstructions || "")
+      setGeneratedCode(codeData.code || "")
 
-      // Update current chat session
+      // Update chat session
       if (currentChatSession) {
         const updatedSession = {
           ...currentChatSession,
@@ -247,7 +227,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
           last_updated: new Date().toISOString(),
         }
         setCurrentChatSession(updatedSession)
-
         const updatedSessions = chatSessions.map((s) => (s.id === currentChatSession.id ? updatedSession : s))
         setChatSessions(updatedSessions)
       }
@@ -261,7 +240,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       setGenerationProgress(0)
     } finally {
       setIsGenerating(false)
-      setGenerationStep("")
     }
   }
 
@@ -275,14 +253,12 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
       const response = await fetch(url, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: pluginName,
           description: pluginDescription,
           code: generatedCode,
-          usageInstructions,
+          usageInstructions: currentCodeVersion?.usageInstructions || "",
           thumbnailUrl: pluginThumbnailUrl,
           profileUrl: pluginProfileUrl,
           chatSessions,
@@ -301,26 +277,15 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
   }
 
   const handleNewChat = () => {
-    const newSession: ChatSession = {
-      id: `chat_${Date.now()}`,
-      name: `Chat ${chatSessions.length + 1}`,
-      messages: [],
-      codeVersions: currentCodeVersion ? [currentCodeVersion] : [],
-      created_at: new Date().toISOString(),
-      last_updated: new Date().toISOString(),
-    }
-
-    const updatedSessions = [...chatSessions, newSession]
-    setChatSessions(updatedSessions)
-    setCurrentChatSession(newSession)
     setMessages([])
+    setCodeVersions([])
+    setCurrentCodeVersion(null)
+    setGeneratedCode("")
+    setAiPrompt("")
   }
 
   const toggleCodeVisibility = (messageId: string) => {
-    setShowCodeInMessage((prev) => ({
-      ...prev,
-      [messageId]: !prev[messageId],
-    }))
+    setMessages(messages.map((msg) => (msg.id === messageId ? { ...msg, showCode: !msg.showCode } : msg)))
   }
 
   const copyToClipboard = (text: string) => {
@@ -331,153 +296,139 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-full h-full max-w-none max-h-none bg-background/95 backdrop-blur-xl border-0 text-foreground overflow-hidden p-0 sm:rounded-none md:w-[95vw] md:max-w-6xl md:h-[90vh] md:rounded-xl md:border md:border-border">
-        <DialogHeader className="frosted-glass border-b border-border p-4 sticky top-0 z-10">
+      <DialogContent className="w-full h-full max-w-none bg-white/95 backdrop-blur-xl border-0 text-gray-900 overflow-hidden p-0 sm:rounded-none">
+        <div className="bg-white/80 backdrop-blur-md border-b border-gray-200/50 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onClose}
-                className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground hover:bg-accent/10"
+                className="h-9 w-9 p-0 text-gray-600 hover:text-gray-900 hover:bg-gray-100/50"
               >
-                <ArrowLeft className="h-4 w-4" />
+                <ArrowLeft className="h-5 w-5" />
               </Button>
-              <div className="w-8 h-8 relative">
-                <Image src="/s1-logo.png" alt="S1" width={32} height={32} className="object-contain" />
-              </div>
-              <div>
-                <DialogTitle className="text-foreground text-xl font-semibold">S1 AI Lab</DialogTitle>
-                <DialogDescription className="text-muted-foreground text-sm">
-                  Discord Bot Plugin Creator
-                </DialogDescription>
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 relative">
+                  <Image src="/s1-logo.png" alt="S1" width={32} height={32} className="object-contain" />
+                </div>
+                <span className="text-xl font-semibold text-gray-900">S1 AI Lab</span>
               </div>
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleNewChat}
-              className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground hover:bg-accent/10"
+              className="h-9 w-9 p-0 text-gray-600 hover:text-gray-900 hover:bg-gray-100/50"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-5 w-5" />
             </Button>
           </div>
-        </DialogHeader>
+        </div>
 
         <div className="flex flex-1 overflow-hidden">
-          <div className="flex-1 flex flex-col">
-            <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 flex flex-col bg-gray-50/30">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground px-4">
+                <div className="flex flex-col items-center justify-center h-full text-gray-500">
                   <div className="w-16 h-16 relative mb-4 opacity-50">
                     <Image src="/s1-logo.png" alt="S1" width={64} height={64} className="object-contain" />
                   </div>
-                  <p className="text-center text-lg font-medium mb-2 text-foreground">Welcome to S1 AI Lab</p>
+                  <p className="text-center text-lg font-medium mb-2">Welcome to S1 AI Lab</p>
                   <p className="text-center text-base opacity-75 max-w-md">
-                    Describe what Discord bot functionality you want to create and I'll generate the code for you.
+                    Describe what you want to create and I'll generate Discord bot code for you.
                   </p>
                 </div>
               ) : (
                 messages.map((message) => (
                   <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                    <div className="max-w-[85%] space-y-3">
-                      <div className={message.role === "user" ? "chat-message-user" : "chat-message-ai"}>
-                        <ReactMarkdown className="text-sm leading-relaxed">{message.content}</ReactMarkdown>
-                      </div>
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                        message.role === "user"
+                          ? "bg-gray-900 text-white"
+                          : "bg-white/70 backdrop-blur-sm text-gray-900 border border-gray-200/50"
+                      }`}
+                    >
+                      {message.isCode ? (
+                        <div className="space-y-3">
+                          <p className="text-base leading-relaxed">{message.content}</p>
 
-                      {message.hasWorkPlan && message.workPlan && (
-                        <div className="work-plan-card animate-fade-in">
-                          <div className="flex items-center space-x-2 mb-3">
-                            <CheckCircle className="h-4 w-4 text-accent" />
-                            <span className="text-sm font-medium text-foreground">Work Plan</span>
-                          </div>
-                          <div className="space-y-2">
-                            {message.workPlan.map((step, index) => (
-                              <div key={index} className="flex items-center space-x-2 text-sm">
-                                <div className="w-1.5 h-1.5 rounded-full bg-accent" />
-                                <span className="text-muted-foreground">{step}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {message.isCode && generatedCode && (
-                        <div className="code-card animate-fade-in">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-xs font-mono text-muted-foreground">Generated Code</span>
-                              <span className="text-xs bg-accent/10 text-accent px-2 py-1 rounded">
-                                Version {codeVersions.length}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => toggleCodeVisibility(message.id)}
-                                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-                              >
-                                {showCodeInMessage[message.id] ? (
-                                  <>
-                                    <EyeOff className="h-3 w-3 mr-1" />
-                                    Hide Code
-                                  </>
-                                ) : (
-                                  <>
-                                    <Eye className="h-3 w-3 mr-1" />
-                                    Show Code
-                                  </>
-                                )}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => copyToClipboard(generatedCode)}
-                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-
-                          {showCodeInMessage[message.id] && (
-                            <div className="bg-muted/30 rounded-lg p-3 border border-border/50">
-                              <pre className="text-xs text-foreground overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">
-                                {generatedCode}
-                              </pre>
+                          {message.workPlan && (
+                            <div className="bg-blue-50/80 backdrop-blur-sm rounded-lg p-3 border border-blue-200/50">
+                              <div className="text-sm font-medium text-blue-900 mb-2">Work Plan:</div>
+                              <div className="text-sm text-blue-800 whitespace-pre-wrap">{message.workPlan}</div>
                             </div>
                           )}
 
-                          <div className="flex items-center space-x-2 mt-3 pt-3 border-t border-border/50">
-                            <Button
-                              size="sm"
-                              onClick={handleSaveAIFunction}
-                              disabled={!pluginName.trim() || !generatedCode.trim() || isSaving}
-                              className="bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3 text-xs"
-                            >
-                              {isSaving ? (
-                                <>
-                                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                  Saving...
-                                </>
-                              ) : (
-                                <>
-                                  <Save className="h-3 w-3 mr-1" />
-                                  Save
-                                </>
+                          {generatedCode && (
+                            <div className="bg-gray-100/80 backdrop-blur-sm rounded-lg border border-gray-200/50 overflow-hidden">
+                              <div className="flex items-center justify-between p-3 border-b border-gray-200/50">
+                                <div className="flex items-center space-x-2">
+                                  <Code className="h-4 w-4 text-gray-600" />
+                                  <span className="text-sm font-medium text-gray-700">Generated Code</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => toggleCodeVisibility(message.id)}
+                                    className="h-8 px-3 text-gray-600 hover:text-gray-900 hover:bg-gray-200/50 bg-white"
+                                  >
+                                    {message.showCode ? (
+                                      <>
+                                        <EyeOff className="h-3 w-3 mr-1" />
+                                        Hide Code
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Eye className="h-3 w-3 mr-1" />
+                                        Show Code
+                                      </>
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => copyToClipboard(generatedCode)}
+                                    className="h-8 w-8 p-0 text-gray-600 hover:text-gray-900 hover:bg-gray-200/50 bg-white"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {message.showCode && (
+                                <div className="p-3 bg-gray-50/50">
+                                  <pre className="text-xs text-gray-800 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">
+                                    {generatedCode}
+                                  </pre>
+                                </div>
                               )}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setShowCodeInMessage((prev) => ({ ...prev, [message.id]: true }))}
-                              className="h-8 px-3 text-xs"
-                            >
-                              Check Code
-                            </Button>
-                          </div>
+
+                              <div className="flex items-center justify-between p-3 bg-gray-50/50 border-t border-gray-200/50">
+                                <Button
+                                  size="sm"
+                                  onClick={handleSaveAIFunction}
+                                  disabled={!pluginName.trim() || !generatedCode.trim() || isSaving}
+                                  className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200"
+                                >
+                                  <Save className="h-3 w-3 mr-1" />
+                                  {isSaving ? "Saving..." : "Save"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => toggleCodeVisibility(message.id)}
+                                  className="text-gray-600 hover:text-gray-900 hover:bg-gray-200/50 bg-white"
+                                >
+                                  Check Code
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
+                      ) : (
+                        <p className="text-base leading-relaxed">{message.content}</p>
                       )}
                     </div>
                   </div>
@@ -486,43 +437,47 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="frosted-glass border-t border-border p-4 sticky bottom-0">
-              {isGenerating && (
-                <div className="status-processing rounded-lg p-3 mb-4 animate-pulse-glow">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-4 h-4 relative">
-                      <Loader2 className="h-4 w-4 animate-spin" />
+            {isGenerating && (
+              <div className="border-t border-gray-200/50 p-4 bg-white/60 backdrop-blur-sm">
+                <div className="flex items-center space-x-3">
+                  <div className="w-6 h-6 relative">
+                    <Image src="/s1-logo.png" alt="S1" width={24} height={24} className="object-contain" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-gray-700">
+                        {generationStep === "plan" && "Creating work plan..."}
+                        {generationStep === "code" && "Generating code..."}
+                        {generationStep === "complete" && "Complete!"}
+                      </span>
+                      <span className="text-xs text-gray-500">{Math.round(generationProgress)}%</span>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">{generationStep}</span>
-                        <span className="text-xs">{Math.round(generationProgress)}%</span>
-                      </div>
-                      <div className="w-full bg-accent/20 rounded-full h-1.5">
-                        <div
-                          className="bg-accent h-1.5 rounded-full transition-all duration-500"
-                          style={{ width: `${generationProgress}%` }}
-                        />
-                      </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-gray-900 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${generationProgress}%` }}
+                      />
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {hasError && (
-                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-4">
-                  <p className="text-destructive text-sm">{errorMessage}</p>
-                </div>
-              )}
+            {hasError && (
+              <div className="border-t border-red-200/50 p-4 bg-red-50/60 backdrop-blur-sm">
+                <p className="text-red-700 text-sm">{errorMessage}</p>
+              </div>
+            )}
 
+            <div className="border-t border-gray-200/50 p-4 bg-white/80 backdrop-blur-md">
               <div className="flex space-x-3">
                 <Textarea
                   ref={textareaRef}
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
-                  placeholder="Describe the Discord bot functionality you want to create..."
-                  className="flex-1 bg-input border-border text-foreground placeholder-muted-foreground resize-none min-h-[44px] max-h-32 text-base"
-                  style={{ fontSize: "16px" }} // Prevent mobile zoom
+                  placeholder="Describe what you want to create..."
+                  className="flex-1 bg-white/70 backdrop-blur-sm border-gray-200/50 text-gray-900 placeholder-gray-500 resize-none min-h-[44px] max-h-32 text-base"
+                  style={{ fontSize: "16px" }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault()
@@ -533,43 +488,13 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                 <Button
                   onClick={handleGenerateAI}
                   disabled={!aiPrompt.trim() || isGenerating}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 h-11 w-11 p-0 flex-shrink-0"
+                  className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200 h-11 w-11 p-0 flex-shrink-0"
                 >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
             </div>
           </div>
-
-          {generatedCode && (
-            <div className="w-80 frosted-glass border-l border-border flex flex-col">
-              <div className="border-b border-border p-4">
-                <h3 className="text-foreground font-semibold text-base mb-3">Plugin Details</h3>
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    value={pluginName}
-                    onChange={(e) => setPluginName(e.target.value)}
-                    placeholder="Plugin name..."
-                    className="w-full bg-input border border-border rounded-lg px-3 py-2 text-foreground placeholder-muted-foreground text-sm"
-                  />
-                  <textarea
-                    value={pluginDescription}
-                    onChange={(e) => setPluginDescription(e.target.value)}
-                    placeholder="Plugin description..."
-                    className="w-full bg-input border border-border rounded-lg px-3 py-2 text-foreground placeholder-muted-foreground text-sm resize-none h-20"
-                  />
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="text-xs text-muted-foreground font-mono leading-relaxed">
-                  <div className="mb-2 text-foreground font-medium">Code Preview:</div>
-                  {generatedCode.substring(0, 500)}
-                  {generatedCode.length > 500 && "..."}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </DialogContent>
     </Dialog>
