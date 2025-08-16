@@ -7,8 +7,6 @@ import { Send, Copy, Plus, Loader2 } from "lucide-react"
 import Image from "next/image"
 import type { UserAIFunction } from "@/lib/types"
 import ReactMarkdown from "react-markdown"
-import { Prism as SyntaxHighlighter } from "prism-react-renderer"
-import { motion, AnimatePresence } from "framer-motion"
 
 interface ChatMessage {
   id: string
@@ -144,6 +142,15 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     setExpandedCodeBlocks((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
+  // Inline syntax highlighting for code blocks
+  const highlightCode = (code: string) => {
+    return code
+      .replace(/(\bfunction\b|\breturn\b|\bconst\b|\blet\b|\bif\b|\belse\b|\bfor\b|\bwhile\b)/g, '<span class="text-blue-400">$1</span>')
+      .replace(/(\/\/.*)/g, '<span class="text-gray-500">$1</span>')
+      .replace(/(".*?")/g, '<span class="text-green-400">$1</span>')
+      .replace(/(\b\d+\b)/g, '<span class="text-purple-400">$1</span>')
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-full h-full sm:w-[95vw] sm:max-w-4xl sm:h-[95vh] bg-gray-900 text-white overflow-hidden p-0 rounded-lg">
@@ -200,69 +207,71 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                 </div>
               ) : (
                 messages.map((message) => (
-                  <AnimatePresence key={message.id}>
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+                  <div
+                    key={message.id}
+                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} transition-all duration-200`}
+                    style={{ opacity: 1, transform: "translateY(0)" }}
+                  >
+                    <div
+                      className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+                        message.role === "user"
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-700/80 text-gray-100 border border-gray-600/50"
+                      }`}
                     >
-                      <div
-                        className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                          message.role === "user"
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-700/80 text-gray-100 border border-gray-600/50"
-                        }`}
-                      >
-                        {message.isCode ? (
-                          <div className="space-y-2">
-                            <ReactMarkdown className="prose prose-invert text-sm leading-relaxed">
-                              {message.content}
-                            </ReactMarkdown>
-                            {generatedCode && (
-                              <div className="bg-gray-700/50 rounded-lg border border-gray-600/50 overflow-hidden">
-                                <div className="flex items-center justify-between p-2 border-b border-gray-600/50">
-                                  <span className="text-xs text-gray-400 font-mono">Generated Code</span>
-                                  <div className="flex space-x-1">
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => copyToClipboard(generatedCode)}
-                                      className="h-6 w-6 p-0 text-gray-400 hover:text-white"
-                                    >
-                                      <Copy className="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => toggleCodeBlock(message.id)}
-                                      className="h-6 w-6 p-0 text-gray-400 hover:text-white"
-                                    >
-                                      <span className="text-xs">{expandedCodeBlocks[message.id] ? "−" : "+"}</span>
-                                    </Button>
-                                  </div>
-                                </div>
-                                <div className={`overflow-x-auto ${expandedCodeBlocks[message.id] ? "max-h-96" : "max-h-40"}`}>
-                                  <SyntaxHighlighter
-                                    language="javascript"
-                                    theme={undefined}
-                                    customStyle={{ margin: 0, background: "transparent" }}
+                      {message.isCode ? (
+                        <div className="space-y-2">
+                          <ReactMarkdown className="prose prose-invert text-sm leading-relaxed">
+                            {message.content}
+                          </ReactMarkdown>
+                          {generatedCode && (
+                            <div className="bg-gray-700/50 rounded-lg border border-gray-600/50 overflow-hidden">
+                              <div className="flex items-center justify-between p-2 border-b border-gray-600/50">
+                                <span className="text-xs text-gray-400 font-mono">Generated Code</span>
+                                <div className="flex space-x-1">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => copyToClipboard(generatedCode)}
+                                    className="h-6 w-6 p-0 text-gray-400 hover:text-white"
                                   >
-                                    {expandedCodeBlocks[message.id] ? generatedCode : generatedCode.substring(0, 500)}
-                                  </SyntaxHighlighter>
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => toggleCodeBlock(message.id)}
+                                    className="h-6 w-6 p-0 text-gray-400 hover:text-white"
+                                  >
+                                    <span className="text-xs">{expandedCodeBlocks[message.id] ? "−" : "+"}</span>
+                                  </Button>
                                 </div>
                               </div>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-sm leading-relaxed">{message.content}</p>
-                        )}
-                        <p className={`text-xs mt-1 ${message.role === "user" ? "text-blue-100" : "text-gray-400"}`}>
-                          {message.timestamp?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </p>
-                      </div>
-                    </motion.div>
-                  </AnimatePresence>
+                              <div
+                                className={`overflow-x-auto ${
+                                  expandedCodeBlocks[message.id] ? "max-h-96" : "max-h-40"
+                                }`}
+                              >
+                                <pre
+                                  className="text-xs text-gray-300 p-3 font-mono"
+                                  dangerouslySetInnerHTML={{
+                                    __html: highlightCode(
+                                      expandedCodeBlocks[message.id] ? generatedCode : generatedCode.substring(0, 500)
+                                    ),
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm leading-relaxed">{message.content}</p>
+                      )}
+                      <p className={`text-xs mt-1 ${message.role === "user" ? "text-blue-100" : "text-gray-400"}`}>
+                        {message.timestamp?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                  </div>
                 ))
               )}
               <div ref={messagesEndRef} />
@@ -301,7 +310,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                 <Button
                   onClick={handleGenerateAI}
                   disabled={!aiPrompt.trim() || isGenerating}
-                  className="bg-blue-600 text-white hover:bg-blue-700 h-10 w-10 p-0 flex-shrink-0 rounded-lg"
+                  className="bg-blue-600 text-white hover:bg-blue-700 h-10 w-10 p-0 flex-shrink-0 rounded-lg active:scale-95 transition-transform"
                 >
                   {isGenerating ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -331,13 +340,10 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                   </Button>
                 </div>
                 <div className="overflow-x-auto max-h-[80vh]">
-                  <SyntaxHighlighter
-                    language="javascript"
-                    theme={undefined}
-                    customStyle={{ margin: 0, background: "transparent", padding: "1rem" }}
-                  >
-                    {generatedCode}
-                  </SyntaxHighlighter>
+                  <pre
+                    className="text-xs text-gray-300 p-3 font-mono"
+                    dangerouslySetInnerHTML={{ __html: highlightCode(generatedCode) }}
+                  />
                 </div>
               </div>
             </div>
