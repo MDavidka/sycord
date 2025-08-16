@@ -32,9 +32,11 @@ import {
   Send,
   Copy,
   Trash,
+  Beaker,
+  Code,
 } from "lucide-react"
 import Image from "next/image"
-import type { Plugin, UserPlugin } from "@/lib/types"
+import type { Plugin, UserPlugin, UserAIFunction } from "@/lib/types"
 
 interface PluginsTabProps {
   serverId?: string
@@ -48,6 +50,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
 
   const [plugins, setPlugins] = useState<Plugin[]>([])
   const [userPlugins, setUserPlugins] = useState<UserPlugin[]>([])
+  const [userAIFunctions, setUserAIFunctions] = useState<UserAIFunction[]>([])
   const [loading, setLoading] = useState(true)
   const [newPluginName, setNewPluginName] = useState("")
   const [newPluginDescription, setNewPluginDescription] = useState("")
@@ -59,12 +62,15 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   const [aiPrompt, setAiPrompt] = useState("")
   const [generatedCode, setGeneratedCode] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generationProgress, setGenerationProgress] = useState(0)
   const [pluginName, setPluginName] = useState("")
   const [pluginDescription, setPluginDescription] = useState("")
+  const [pluginThumbnailUrl, setPluginThumbnailUrl] = useState("")
+  const [pluginProfileUrl, setPluginProfileUrl] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [messages, setMessages] = useState<{ role: "user" | "ai"; content: string; isCode?: boolean }[]>([])
   const [editingMetadata, setEditingMetadata] = useState(false)
-  const [showCode, setShowCode] = useState(false)
+  const [showCodeViewer, setShowCodeViewer] = useState(false)
 
   const [editPluginId, setEditPluginId] = useState<string | null>(null)
   const [editPluginName, setEditPluginName] = useState("")
@@ -80,6 +86,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   useEffect(() => {
     fetchPlugins()
     fetchUserPlugins()
+    fetchUserAIFunctions()
   }, [])
 
   useEffect(() => {
@@ -113,6 +120,18 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
     }
   }
 
+  const fetchUserAIFunctions = async () => {
+    try {
+      const response = await fetch("/api/user-ai-functions")
+      if (response.ok) {
+        const data = await response.json()
+        setUserAIFunctions(data.functions)
+      }
+    } catch (error) {
+      console.error("Error fetching user AI functions:", error)
+    }
+  }
+
   const handleCreatePlugin = async () => {
     try {
       const response = await fetch("/api/plugins", {
@@ -143,7 +162,21 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   const handleGeneratePlugin = async () => {
     if (!aiPrompt.trim()) return
     setIsGenerating(true)
+    setGenerationProgress(0)
+    setShowCodeViewer(false)
     setMessages((prev) => [...prev, { role: "user", content: aiPrompt }])
+
+    const progressInterval = setInterval(() => {
+      setGenerationProgress((prev) => {
+        if (prev >= 90) {
+          clearInterval(progressInterval)
+          return 90
+        }
+        return prev + Math.random() * 15
+      })
+    }, 200)
+
+    const currentPrompt = aiPrompt
     setAiPrompt("")
     try {
       const response = await fetch("/api/ai/generate-plugin", {
@@ -151,41 +184,47 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message: aiPrompt }),
+        body: JSON.stringify({ message: currentPrompt }),
       })
       if (response.ok) {
         const data = await response.json()
         setGeneratedCode(data.code)
         setMessages((prev) => [
           ...prev,
-          { role: "ai", content: `Generated plugin code for: "${aiPrompt}"`, isCode: false },
+          { role: "ai", content: `Generated plugin code for: "${currentPrompt}"`, isCode: false },
           { role: "ai", content: data.code, isCode: true },
         ])
-        const words = aiPrompt.split(" ").slice(0, 3).join(" ")
+        const words = currentPrompt.split(" ").slice(0, 3).join(" ")
         setPluginName(words.charAt(0).toUpperCase() + words.slice(1) + " Plugin")
-        setPluginDescription(aiPrompt.length > 100 ? aiPrompt.substring(0, 100) + "..." : aiPrompt)
+        setPluginDescription(currentPrompt.length > 100 ? currentPrompt.substring(0, 100) + "..." : currentPrompt)
+        clearInterval(progressInterval)
+        setGenerationProgress(100)
       } else {
         const errorData = await response.json()
         setMessages((prev) => [
           ...prev,
           { role: "ai", content: `Error: ${errorData.error || "Failed to generate plugin code."}`, isCode: false },
         ])
+        clearInterval(progressInterval)
+        setGenerationProgress(0)
       }
     } catch (error) {
       setMessages((prev) => [
         ...prev,
         { role: "ai", content: "Error: Failed to connect to AI service.", isCode: false },
       ])
+      clearInterval(progressInterval)
+      setGenerationProgress(0)
     } finally {
       setIsGenerating(false)
     }
   }
 
-  const handleSavePlugin = async () => {
+  const handleSaveAIFunction = async () => {
     if (!generatedCode || !pluginName.trim()) return
     setIsSaving(true)
     try {
-      const createResponse = await fetch("/api/plugins", {
+      const response = await fetch("/api/user-ai-functions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -193,36 +232,24 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
         body: JSON.stringify({
           name: pluginName,
           description: pluginDescription,
-          iconUrl: "https://i.ibb.co/RLVF1Rj/IMG-0362.png",
-          thumbnailUrl: "",
           code: generatedCode,
-          aiGenerated: true,
+          thumbnailUrl: pluginThumbnailUrl,
+          profileUrl: pluginProfileUrl,
         }),
       })
-      if (createResponse.ok) {
-        const newPlugin = await createResponse.json()
-        const installResponse = await fetch("/api/user-plugins", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            pluginId: newPlugin.plugin._id,
-            action: "install",
-          }),
-        })
-        if (installResponse.ok) {
-          await fetchPlugins()
-          await fetchUserPlugins()
-          setIsAICreatorOpen(false)
-          setAiPrompt("")
-          setPluginName("")
-          setPluginDescription("")
-          setMessages([])
-        }
+      if (response.ok) {
+        await fetchUserAIFunctions()
+        setIsAICreatorOpen(false)
+        setAiPrompt("")
+        setPluginName("")
+        setPluginDescription("")
+        setPluginThumbnailUrl("")
+        setPluginProfileUrl("")
+        setGeneratedCode("")
+        setMessages([])
       }
     } catch (error) {
-      console.error("Error saving plugin:", error)
+      console.error("Error saving AI function:", error)
     } finally {
       setIsSaving(false)
     }
@@ -341,6 +368,45 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
     }
   }
 
+  const handleDeleteAIFunction = async (functionId: string) => {
+    if (!window.confirm("Are you sure you want to delete this AI function?")) return
+    try {
+      const response = await fetch("/api/user-ai-functions", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ _id: functionId }),
+      })
+      if (response.ok) {
+        fetchUserAIFunctions()
+      }
+    } catch (error) {
+      console.error("Error deleting AI function:", error)
+    }
+  }
+
+  const handleEditAIFunction = (aiFunction: UserAIFunction) => {
+    setIsAICreatorOpen(true)
+    setPluginName(aiFunction.name)
+    setPluginDescription(aiFunction.description)
+    setGeneratedCode(aiFunction.code)
+    setPluginThumbnailUrl(aiFunction.thumbnailUrl || "")
+    setPluginProfileUrl(aiFunction.profileUrl || "")
+    setMessages([
+      {
+        role: "ai",
+        content: `Editing: ${aiFunction.name}`,
+        isCode: false,
+      },
+      {
+        role: "ai",
+        content: aiFunction.code,
+        isCode: true,
+      },
+    ])
+  }
+
   const isPluginInstalled = (pluginId: string) => userPlugins.some((p) => p.pluginId === pluginId)
 
   if (loading) {
@@ -366,30 +432,31 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
               setAiPrompt("")
               setPluginName("")
               setPluginDescription("")
+              setPluginThumbnailUrl("")
+              setPluginProfileUrl("")
+              setGeneratedCode("")
               setMessages([])
+              setGenerationProgress(0)
+              setShowCodeViewer(false)
             }}
             className="text-white hover:bg-white/10 p-2 min-w-[44px] min-h-[44px]"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex items-center space-x-2 flex-1 mx-4">
-            <Image
-              src="https://i.ibb.co/RLVF1Rj/IMG-0362.png"
-              alt="AI Logo"
-              width={32}
-              height={32}
-              className="rounded flex-shrink-0"
-            />
+            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+              <Beaker className="h-4 w-4 text-black" />
+            </div>
             {editingMetadata ? (
               <Input
                 value={pluginName}
                 onChange={(e) => setPluginName(e.target.value)}
                 className="text-center bg-transparent border-none focus:ring-0 text-white font-semibold text-base sm:text-lg flex-1 min-w-0"
-                placeholder="Plugin Name"
+                placeholder="Function Name"
               />
             ) : (
               <h1 className="text-base sm:text-lg font-semibold text-white truncate flex-1 min-w-0">
-                {pluginName || "New Plugin"}
+                {pluginName || "S1 AI Lab"}
               </h1>
             )}
             <Button
@@ -414,190 +481,196 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
         <div className="flex-1 overflow-auto p-3 sm:p-4" ref={chatContainerRef}>
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
-              <Image
-                src="https://i.ibb.co/RLVF1Rj/IMG-0362.png"
-                alt="AI Logo"
-                width={64}
-                height={64}
-                className="mb-4 opacity-50"
-              />
-              <p className="text-center text-sm sm:text-base">Describe your plugin to generate code.</p>
+              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 mb-4 opacity-50">
+                <Beaker className="h-4 w-4 text-black" />
+              </div>
+              <p className="text-center text-base sm:text-lg font-medium mb-2">
+                Describe your function to generate code.
+              </p>
+              <p className="text-center text-sm sm:text-base opacity-75">
+                Use the AI Lab to create your first function!
+              </p>
             </div>
           ) : (
-            messages.map((msg, i) => (
-              <div key={i} className={`mb-4 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                {msg.role === "ai" && !msg.isCode && (
-                  <Image
-                    src="https://i.ibb.co/RLVF1Rj/IMG-0362.png"
-                    alt="AI"
-                    width={24}
-                    height={24}
-                    className="mr-2 sm:mr-3 self-end flex-shrink-0"
-                  />
-                )}
-                <div
-                  className={`max-w-[85%] sm:max-w-[80%] ${
-                    msg.role === "user"
-                      ? "bg-[#4A90E2] text-white rounded-2xl rounded-br-md p-3 sm:p-4"
-                      : msg.isCode
-                        ? "w-full max-w-full"
-                        : "bg-gray-800/80 backdrop-blur-sm text-gray-200 rounded-2xl rounded-bl-md p-3 sm:p-4 border border-white/10"
-                  }`}
-                >
-                  {msg.isCode ? (
-                    <div className="bg-gradient-to-br from-gray-900/90 to-gray-800/90 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-2xl">
-                      <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                            <Package className="h-6 w-6 text-white" />
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-semibold text-white">{pluginName || "New Plugin"}</h3>
-                            <p className="text-sm text-gray-400">AI Generated Plugin</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <div className="px-3 py-1 bg-green-500/20 text-green-400 text-xs font-medium rounded-full border border-green-500/30">
-                            ✓ Generated
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mb-6">
-                        <p className="text-gray-300 text-sm leading-relaxed">
-                          {pluginDescription || "AI-generated Discord bot plugin ready for deployment."}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap gap-3 mb-6">
+            <>
+              {messages.map((msg, i) => (
+                <div key={i} className={`mb-4 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  {msg.role === "ai" && !msg.isCode && (
+                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 mr-2 sm:mr-3 self-end">
+                      <Beaker className="h-4 w-4 text-black" />
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-[85%] sm:max-w-[80%] p-3 sm:p-4 rounded-lg ${
+                      msg.role === "user"
+                        ? "bg-[#4A90E2] text-white rounded-br-none"
+                        : msg.isCode
+                          ? "bg-gray-800 text-gray-200 w-full max-w-full"
+                          : "bg-gray-800 text-gray-200 rounded-bl-none"
+                    }`}
+                  >
+                    {msg.isCode ? (
+                      <div className="relative">
+                        <pre className="text-xs sm:text-sm overflow-x-auto font-mono whitespace-pre-wrap break-words">
+                          {msg.content}
+                        </pre>
                         <Button
                           size="sm"
-                          variant="outline"
-                          onClick={() => setShowCode(!showCode)}
-                          className="h-10 px-4 border-white/20 text-white hover:bg-white/10 hover:border-white/40 transition-all"
-                        >
-                          {showCode ? (
-                            <>
-                              <X className="h-4 w-4 mr-2" />
-                              Hide Code
-                            </>
-                          ) : (
-                            <>
-                              <Package className="h-4 w-4 mr-2" />
-                              Show Code
-                            </>
-                          )}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
+                          variant="ghost"
+                          className="absolute top-2 right-2 h-8 w-8 p-0 text-gray-400 hover:text-white"
                           onClick={handleCopyCode}
-                          className="h-10 px-4 border-white/20 text-white hover:bg-white/10 hover:border-white/40 transition-all bg-transparent"
                         >
-                          <Copy className="h-4 w-4 mr-2" />
-                          Copy Code
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={handleDownloadCode}
-                          className="h-10 px-4 border-white/20 text-white hover:bg-white/10 hover:border-white/40 transition-all bg-transparent"
-                        >
-                          <Download className="h-4 w-4 mr-2" />
-                          Download
+                          <Copy className="h-4 w-4" />
                         </Button>
                       </div>
+                    ) : (
+                      <span className="text-sm sm:text-base">{msg.content}</span>
+                    )}
+                  </div>
+                  {msg.role === "user" && <div className="w-2 sm:w-6 flex-shrink-0"></div>}
+                </div>
+              ))}
 
-                      {showCode && (
+              {(isGenerating || generatedCode) && (
+                <div className="mb-6">
+                  <div className="bg-white/[0.02] backdrop-blur-xl rounded-2xl border border-white/[0.08] shadow-2xl shadow-black/20 overflow-hidden">
+                    {/* Header Section */}
+                    <div className="p-6 border-b border-white/[0.06]">
+                      <div className="flex items-center space-x-4">
                         <div className="relative">
-                          <div className="bg-black/60 rounded-xl border border-white/10 overflow-hidden">
-                            <div className="flex items-center justify-between px-4 py-3 bg-gray-800/50 border-b border-white/10">
-                              <div className="flex items-center space-x-2">
-                                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                              </div>
-                              <span className="text-xs text-gray-400 font-mono">
-                                {pluginName.replace(/\s+/g, "_").toLowerCase()}.py
-                              </span>
-                            </div>
-                            <div className="p-4 max-h-80 overflow-y-auto">
-                              <pre className="text-xs sm:text-sm font-mono text-gray-200 whitespace-pre-wrap break-words leading-relaxed">
-                                {msg.content}
-                              </pre>
-                            </div>
+                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-white to-gray-100 flex items-center justify-center shadow-lg">
+                            <Beaker className="h-6 w-6 text-gray-800" />
                           </div>
+                          {isGenerating && (
+                            <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 opacity-20 animate-pulse"></div>
+                          )}
                         </div>
-                      )}
-
-                      <div className="mt-6 pt-6 border-t border-white/10">
-                        <div className="grid grid-cols-3 gap-4 text-center">
-                          <div>
-                            <div className="text-lg font-semibold text-white">Ready</div>
-                            <div className="text-xs text-gray-400">Status</div>
-                          </div>
-                          <div>
-                            <div className="text-lg font-semibold text-white">Python</div>
-                            <div className="text-xs text-gray-400">Language</div>
-                          </div>
-                          <div>
-                            <div className="text-lg font-semibold text-white">Discord.py</div>
-                            <div className="text-xs text-gray-400">Framework</div>
-                          </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white font-semibold text-lg tracking-tight">
+                            {pluginName || "Generating Function..."}
+                          </h3>
+                          <p className="text-gray-400 text-sm font-medium mt-1">
+                            {isGenerating ? "AI is crafting your function" : "Function ready to use"}
+                          </p>
                         </div>
+                        {generationProgress === 100 && (
+                          <div className="flex items-center space-x-2 text-green-400">
+                            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                            <span className="text-sm font-medium">Ready</span>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ) : (
-                    <span className="text-sm sm:text-base">{msg.content}</span>
-                  )}
+
+                    {/* Progress Section */}
+                    {isGenerating && (
+                      <div className="px-6 py-4 bg-black/10">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="text-gray-300 text-sm font-medium">Generation Progress</span>
+                          <span className="text-white text-sm font-mono font-semibold">
+                            {Math.round(generationProgress)}%
+                          </span>
+                        </div>
+                        <div className="relative w-full h-2 bg-gray-800/60 rounded-full overflow-hidden">
+                          <div
+                            className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-500 ease-out shadow-lg shadow-blue-500/20"
+                            style={{ width: `${generationProgress}%` }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse"></div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    {generatedCode && generationProgress === 100 && (
+                      <div className="p-6 bg-gradient-to-b from-transparent to-black/5">
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <Button
+                            variant="outline"
+                            className="flex-1 h-12 border-white/10 bg-white/[0.02] text-white hover:bg-white/[0.06] hover:border-white/20 transition-all duration-200 font-medium backdrop-blur-sm"
+                            onClick={() => setShowCodeViewer(!showCodeViewer)}
+                          >
+                            <Code className="h-4 w-4 mr-2" />
+                            {showCodeViewer ? "Hide Code" : "Show Code"}
+                          </Button>
+                          <Button
+                            className="flex-1 h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-medium shadow-lg shadow-blue-500/25 transition-all duration-200"
+                            onClick={handleSaveAIFunction}
+                            disabled={isSaving}
+                          >
+                            <Save className="h-4 w-4 mr-2" />
+                            {isSaving ? "Saving..." : "Save Function"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Code Viewer Section */}
+                    {showCodeViewer && generatedCode && (
+                      <div className="border-t border-white/[0.06] bg-black/20">
+                        <div className="p-6">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                              <span className="text-gray-400 text-sm font-medium ml-3">Generated Code</span>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={handleCopyCode}
+                              className="text-gray-400 hover:text-white hover:bg-white/10 h-8 px-3 font-medium transition-all duration-200"
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copy
+                            </Button>
+                          </div>
+                          <div className="bg-black/40 rounded-xl border border-white/[0.08] overflow-hidden">
+                            <pre className="text-sm font-mono text-gray-200 p-4 overflow-x-auto whitespace-pre-wrap break-words max-h-80 overflow-y-auto leading-relaxed">
+                              {generatedCode}
+                            </pre>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                {msg.role === "user" && <div className="w-2 sm:w-6 flex-shrink-0"></div>}
-              </div>
-            ))
-          )}
-          {isGenerating && (
-            <div className="flex justify-start mb-4">
-              <Image
-                src="https://i.ibb.co/RLVF1Rj/IMG-0362.png"
-                alt="AI"
-                width={24}
-                height={24}
-                className="mr-2 sm:mr-3 flex-shrink-0"
-              />
-              <div className="max-w-[85%] sm:max-w-[80%] p-3 sm:p-4 rounded-2xl rounded-bl-md bg-gray-800/80 backdrop-blur-sm text-gray-200 border border-white/10 animate-pulse">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
-                  <div
-                    className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
-                    style={{ animationDelay: "0.1s" }}
-                  ></div>
-                  <div
-                    className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
-                    style={{ animationDelay: "0.2s" }}
-                  ></div>
-                  <span className="text-sm sm:text-base ml-2">AI is generating your plugin...</span>
-                </div>
-              </div>
-            </div>
+              )}
+            </>
           )}
           <div ref={messagesEndRef} />
         </div>
 
         <div className="p-3 sm:p-4 border-t border-white/20 bg-black">
           {editingMetadata && (
-            <div className="mb-3">
+            <div className="mb-3 space-y-2">
               <Textarea
                 value={pluginDescription}
                 onChange={(e) => setPluginDescription(e.target.value)}
-                placeholder="Plugin description..."
-                className="bg-black/60 border-white/20 text-white w-full mb-2 text-sm sm:text-base"
+                placeholder="Function description..."
+                className="bg-black/60 border-white/20 text-white w-full text-sm sm:text-base"
                 rows={2}
               />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Input
+                  value={pluginThumbnailUrl}
+                  onChange={(e) => setPluginThumbnailUrl(e.target.value)}
+                  placeholder="Thumbnail URL (optional)"
+                  className="bg-black/60 border-white/20 text-white text-sm"
+                />
+                <Input
+                  value={pluginProfileUrl}
+                  onChange={(e) => setPluginProfileUrl(e.target.value)}
+                  placeholder="Profile URL (optional)"
+                  className="bg-black/60 border-white/20 text-white text-sm"
+                />
+              </div>
             </div>
           )}
           <div className="relative">
             <Textarea
-              placeholder="Describe your plugin..."
+              placeholder="Describe your function..."
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
               onKeyDown={(e) => {
@@ -616,16 +689,6 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
               disabled={isGenerating || !aiPrompt.trim()}
             >
               <Send className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="flex justify-end mt-3">
-            <Button
-              size="sm"
-              className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white h-10 px-4 text-sm sm:text-base"
-              onClick={handleSavePlugin}
-              disabled={!generatedCode || isSaving}
-            >
-              {isSaving ? "Saving..." : "Save Plugin"}
             </Button>
           </div>
         </div>
@@ -696,24 +759,31 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
             )}
             <Button
               onClick={() => setIsAICreatorOpen(true)}
-              className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90 h-11 px-4 sm:px-6 text-sm sm:text-base font-medium"
+              className="bg-white text-black hover:bg-gray-200 h-11 px-4 sm:px-6 text-sm sm:text-base font-medium"
             >
-              <Image src="https://i.ibb.co/RLVF1Rj/IMG-0362.png" alt="AI" width={18} height={18} className="sm:mr-2" />
-              <span className="hidden sm:inline">AI Lab</span>
-              <span className="sm:hidden ml-1">AI</span>
+              <Beaker className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">S1 AI Lab</span>
+              <span className="sm:hidden ml-1">S1 AI</span>
             </Button>
           </div>
         </div>
 
         <Tabs defaultValue="store" className="flex-1 flex flex-col overflow-hidden">
           <div className="px-4 sm:px-6 pt-4">
-            <TabsList className="grid w-full grid-cols-2 bg-gray-800/60 backdrop-blur-sm rounded-xl h-12">
+            <TabsList className="grid w-full grid-cols-3 bg-gray-800/60 backdrop-blur-sm rounded-xl h-12">
               <TabsTrigger
                 value="store"
                 className="text-white data-[state=active]:bg-white data-[state=active]:text-black py-3 text-sm sm:text-base font-medium rounded-lg transition-all"
               >
                 <Package className="h-4 w-4 mr-2" />
                 Plugin Store
+              </TabsTrigger>
+              <TabsTrigger
+                value="created"
+                className="text-white data-[state=active]:bg-white data-[state=active]:text-black py-3 text-sm sm:text-base font-medium rounded-lg transition-all"
+              >
+                <Code className="h-4 w-4 mr-2" />
+                Created
               </TabsTrigger>
               <TabsTrigger
                 value="installed"
@@ -820,6 +890,87 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
             </div>
           </TabsContent>
 
+          <TabsContent value="created" className="flex-1 overflow-auto p-4 sm:p-6 mt-2">
+            {userAIFunctions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
+                <Beaker className="h-16 w-16 mb-6 opacity-50" />
+                <p className="text-center text-base sm:text-lg font-medium mb-2">No AI functions created yet.</p>
+                <p className="text-center text-sm sm:text-base opacity-75">
+                  Use S1 AI Lab to create your first function!
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                {userAIFunctions.map((aiFunction) => (
+                  <Card key={aiFunction._id} className="glass-card flex flex-col h-full min-h-[280px] sm:min-h-[320px]">
+                    {aiFunction.thumbnailUrl ? (
+                      <div className="relative w-full h-32 sm:h-36 rounded-t-lg overflow-hidden">
+                        <Image
+                          src={aiFunction.thumbnailUrl || "/placeholder.svg"}
+                          alt={`${aiFunction.name} thumbnail`}
+                          layout="fill"
+                          objectFit="cover"
+                          className="rounded-t-lg"
+                        />
+                      </div>
+                    ) : (
+                      <div className="relative w-full h-32 sm:h-36 rounded-t-lg overflow-hidden bg-gray-800 flex items-center justify-center">
+                        <Beaker className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />
+                      </div>
+                    )}
+                    <CardHeader className="flex-row items-center space-x-3 pb-3 p-4 sm:p-5">
+                      {aiFunction.profileUrl ? (
+                        <Image
+                          src={aiFunction.profileUrl || "/placeholder.svg"}
+                          alt={`${aiFunction.name} profile`}
+                          width={36}
+                          height={36}
+                          className="rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+                          <Beaker className="h-5 w-5 text-black" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <CardTitle className="text-white text-base sm:text-lg truncate font-semibold">
+                          {aiFunction.name}
+                        </CardTitle>
+                        <CardDescription className="text-gray-400 text-sm truncate">
+                          Created {new Date(aiFunction.created_at).toLocaleDateString()}
+                        </CardDescription>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0 pb-4 px-4 sm:px-5 flex-1 flex flex-col">
+                      <p className="text-gray-300 text-sm sm:text-base mb-4 line-clamp-3 flex-1 leading-relaxed">
+                        {aiFunction.description}
+                      </p>
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditAIFunction(aiFunction)}
+                          className="h-10 w-10 p-0 border-white/20 text-white hover:bg-white/10 hover:border-white/40 transition-all"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteAIFunction(aiFunction._id as string)}
+                          className="h-10 px-4 text-sm font-medium transition-all"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
           <TabsContent value="installed" className="flex-1 overflow-auto p-4 sm:p-6 mt-2">
             {userPlugins.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
@@ -859,8 +1010,8 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
                           className="rounded-full object-cover flex-shrink-0"
                         />
                       ) : (
-                        <div className="w-9 h-9 rounded-full bg-gray-600 flex items-center justify-center flex-shrink-0">
-                          <ImageIcon className="h-5 w-5 text-gray-400" />
+                        <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+                          <Beaker className="h-5 w-5 text-black" />
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
@@ -895,7 +1046,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
                           }}
                           className="h-10 w-10 p-0 border-white/20 text-white hover:bg-white/10 hover:border-white/40 transition-all"
                         >
-                          <Image src="https://i.ibb.co/RLVF1Rj/IMG-0362.png" alt="AI" width={16} height={16} />
+                          <Beaker className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="destructive"
