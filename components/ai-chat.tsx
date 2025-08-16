@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Send, Copy, ArrowLeft, Plus, Eye, EyeOff, Save, CheckCircle } from "lucide-react"
+import { Send, Copy, ArrowLeft, Plus, Eye, EyeOff, Save, CheckCircle, Loader2 } from "lucide-react"
 import Image from "next/image"
 import type { UserAIFunction } from "@/lib/types"
 import ReactMarkdown from "react-markdown"
@@ -315,82 +315,81 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl">
-      <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-md border-b border-white/10">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center space-x-3">
+    <div className="fixed inset-0 z-50 bg-white/95 backdrop-blur-xl animate-fade-in">
+      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-black/10 shadow-sm">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center space-x-4">
             <Button
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="h-9 w-9 p-0 text-white hover:bg-white/10 rounded-full"
+              className="h-10 w-10 p-0 text-foreground hover:bg-black/5 rounded-full transition-all duration-200"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3">
               <div className="w-8 h-8 relative">
                 <Image src="/s1-logo.png" alt="S1" width={32} height={32} className="object-contain" />
               </div>
-              <span className="text-white font-semibold text-lg">S1 AI Lab</span>
+              <span className="text-foreground font-semibold text-lg tracking-tight">S1 AI Lab</span>
             </div>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={createNewChat}
-            className="h-9 w-9 p-0 text-white hover:bg-white/10 rounded-full"
+            className="h-10 w-10 p-0 text-foreground hover:bg-black/5 rounded-full transition-all duration-200"
           >
             <Plus className="h-5 w-5" />
           </Button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-32" ref={chatContainerRef}>
-        <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <div className="flex-1 overflow-y-auto pb-32 smooth-scroll" ref={chatContainerRef}>
+        <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center animate-fade-in">
               <div className="w-16 h-16 relative mb-6 opacity-60">
                 <Image src="/s1-logo.png" alt="S1" width={64} height={64} className="object-contain" />
               </div>
-              <h2 className="text-white text-2xl font-semibold mb-3">Welcome to S1 AI Lab</h2>
-              <p className="text-gray-400 text-lg max-w-md">
+              <h2 className="text-foreground text-2xl font-semibold mb-3 tracking-tight">Welcome to S1 AI Lab</h2>
+              <p className="text-muted-foreground text-lg max-w-md leading-relaxed">
                 Describe what Discord bot you want to create and I'll generate the code for you.
               </p>
             </div>
           ) : (
             messages.map((message) => (
-              <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div
+                key={message.id}
+                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-slide-up`}
+              >
                 <div className={`max-w-[85%] ${message.role === "user" ? "" : "w-full"}`}>
-                  <div
-                    className={`rounded-2xl px-5 py-4 ${
-                      message.role === "user"
-                        ? "bg-white text-black ml-auto max-w-md"
-                        : "bg-gray-900/60 backdrop-blur-sm text-white border border-white/10"
-                    }`}
-                  >
+                  <div className={message.role === "user" ? "chat-bubble-user max-w-md ml-auto" : "chat-bubble-ai"}>
                     {message.isCode ? (
                       <div className="space-y-4">
                         <ReactMarkdown className="text-base leading-relaxed">{message.content}</ReactMarkdown>
 
                         {message.workPlan && (
-                          <div className="bg-blue-900/20 border border-blue-500/30 rounded-xl p-4">
-                            <h4 className="text-blue-300 font-semibold mb-2">Work Plan</h4>
-                            <ReactMarkdown className="text-blue-100 text-sm leading-relaxed">
+                          <div className="glass-card p-4 border-l-4 border-l-primary">
+                            <h4 className="text-primary font-semibold mb-2 flex items-center">
+                              <div className="w-2 h-2 bg-primary rounded-full mr-2"></div>
+                              Work Plan
+                            </h4>
+                            <ReactMarkdown className="text-foreground text-sm leading-relaxed">
                               {message.workPlan}
                             </ReactMarkdown>
                           </div>
                         )}
 
                         {generatedCode && (
-                          <div className="bg-black/40 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden">
-                            <div className="flex items-center justify-between p-4 border-b border-white/10">
-                              <span className="text-gray-300 font-medium">Generated Code</span>
+                          <div className="glass-card overflow-hidden animate-scale-in">
+                            <div className="flex items-center justify-between p-4 border-b border-black/10 bg-white/30">
+                              <span className="text-foreground font-medium">Generated Code</span>
                               <div className="flex items-center space-x-2">
                                 <Button
                                   size="sm"
-                                  variant="ghost"
                                   onClick={() => toggleCodeVisibility(message.id)}
-                                  className="h-8 px-3 text-white bg-white/10 hover:bg-white/20 rounded-lg"
+                                  className="modern-button h-8 px-3 text-sm"
                                 >
                                   {message.showCode ? (
                                     <>
@@ -406,9 +405,8 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                                 </Button>
                                 <Button
                                   size="sm"
-                                  variant="ghost"
                                   onClick={() => copyToClipboard(generatedCode)}
-                                  className="h-8 w-8 p-0 text-white hover:bg-white/10 rounded-lg"
+                                  className="modern-button h-8 w-8 p-0"
                                 >
                                   <Copy className="h-4 w-4" />
                                 </Button>
@@ -416,22 +414,25 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                             </div>
 
                             {message.showCode && (
-                              <div className="p-4">
-                                <pre className="text-sm text-gray-300 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">
+                              <div className="p-4 bg-white/20">
+                                <pre className="text-sm text-foreground overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed bg-white/50 rounded-lg p-4 border border-black/10">
                                   {generatedCode}
                                 </pre>
                               </div>
                             )}
 
-                            <div className="flex items-center justify-between p-4 border-t border-white/10 bg-black/20">
+                            <div className="flex items-center justify-between p-4 border-t border-black/10 bg-white/30">
                               <div className="flex items-center space-x-3">
                                 <Button
                                   onClick={handleSaveAIFunction}
                                   disabled={!pluginName.trim() || !generatedCode.trim() || isSaving}
-                                  className="bg-white text-black hover:bg-gray-200 h-9 px-4 rounded-lg font-medium"
+                                  className="modern-button-primary h-9 px-4"
                                 >
                                   {isSaving ? (
-                                    "Saving..."
+                                    <>
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      Saving...
+                                    </>
                                   ) : (
                                     <>
                                       <Save className="h-4 w-4 mr-2" />
@@ -439,18 +440,15 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                                     </>
                                   )}
                                 </Button>
-                                <Button
-                                  variant="ghost"
-                                  className="h-9 px-4 text-white bg-white/10 hover:bg-white/20 rounded-lg"
-                                >
+                                <Button className="modern-button h-9 px-4">
                                   <CheckCircle className="h-4 w-4 mr-2" />
                                   Check Code
                                 </Button>
                               </div>
 
                               {isGenerating && (
-                                <div className="flex items-center space-x-2 text-sm text-gray-400">
-                                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
                                   <span>{generationStep}</span>
                                 </div>
                               )}
@@ -471,20 +469,20 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       </div>
 
       {isGenerating && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-20">
-          <div className="bg-gray-900/90 backdrop-blur-md rounded-2xl p-6 border border-white/10 max-w-sm mx-4">
+        <div className="status-overlay animate-fade-in">
+          <div className="glass-overlay p-6 max-w-sm mx-4 animate-scale-in">
             <div className="flex items-center space-x-4">
               <div className="w-8 h-8 relative">
                 <Image src="/s1-logo.png" alt="S1" width={32} height={32} className="object-contain animate-pulse" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-medium">{generationStep}</span>
-                  <span className="text-gray-400 text-sm">{Math.round(generationProgress)}%</span>
+                  <span className="text-foreground font-medium">{generationStep}</span>
+                  <span className="text-muted-foreground text-sm">{Math.round(generationProgress)}%</span>
                 </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
+                <div className="w-full bg-secondary rounded-full h-2">
                   <div
-                    className="bg-white h-2 rounded-full transition-all duration-500"
+                    className="bg-primary h-2 rounded-full transition-all duration-500"
                     style={{ width: `${generationProgress}%` }}
                   />
                 </div>
@@ -494,11 +492,11 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         </div>
       )}
 
-      <div className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-md border-t border-white/10 p-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-black/10 p-6 shadow-lg">
         <div className="max-w-4xl mx-auto">
           {hasError && (
-            <div className="mb-4 bg-red-900/20 border border-red-500/30 rounded-xl p-3">
-              <p className="text-red-400 text-sm">{errorMessage}</p>
+            <div className="mb-4 glass-card p-3 border-l-4 border-l-destructive animate-slide-up">
+              <p className="text-destructive text-sm">{errorMessage}</p>
             </div>
           )}
 
@@ -508,8 +506,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
               placeholder="Describe what you want to create..."
-              className="flex-1 bg-gray-900/60 backdrop-blur-sm border-white/20 text-white placeholder-gray-400 resize-none min-h-[48px] max-h-32 text-base rounded-xl px-4 py-3"
-              style={{ fontSize: "16px" }} // Prevent mobile zoom
+              className="modern-input mobile-safe-input flex-1 resize-none min-h-[48px] max-h-32"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault()
@@ -520,7 +517,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
             <Button
               onClick={handleGenerateAI}
               disabled={!aiPrompt.trim() || isGenerating}
-              className="bg-white text-black hover:bg-gray-200 h-12 w-12 p-0 flex-shrink-0 rounded-xl"
+              className="modern-button-primary h-12 w-12 p-0 flex-shrink-0"
             >
               <Send className="h-5 w-5" />
             </Button>
