@@ -62,6 +62,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
   const [currentCodeVersion, setCurrentCodeVersion] = useState<CodeVersion | null>(null)
   const [showCodePopup, setShowCodePopup] = useState(false)
   const [showSavePopup, setShowSavePopup] = useState(false)
+  const [activeMessageId, setActiveMessageId] = useState<string | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -255,14 +256,18 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       console.error("Error saving AI function:", error)
     } finally {
       setIsSaving(false)
+      setShowSavePopup(false)
     }
   }
 
   const toggleCodeVisibility = (messageId: string) => {
-    setMessages(messages.map((msg) => (msg.id === messageId ? { ...msg, showCode: !msg.showCode } : msg)))
+    setActiveMessageId(activeMessageId === messageId ? null : messageId)
+    setShowCodePopup(activeMessageId === messageId ? false : true)
   }
 
-  const copyToClipboard = (text: string) => { navigator.clipboard.writeText(text) }
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+  }
 
   const createNewChat = () => {
     const newSession: ChatSession = {
@@ -296,66 +301,61 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
             <div className="w-8 h-8 relative">
               <Image src="/s1-logo.png" alt="S1 AI Lab" width={32} height={32} className="object-contain" />
             </div>
-            <span className="text-gray-900 text-xl font-semibold">S1 AI Lab</span>
+            <span className="text-gray-900 text-lg font-semibold">S1 AI Lab</span>
           </div>
           <Button variant="ghost" size="sm" onClick={createNewChat} className="h-9 w-9 p-0 text-gray-600 hover:text-gray-900 hover:bg-gray-100/50">
             <Plus className="h-5 w-5" />
           </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/30">
+        <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-gray-50/30">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-500 px-4">
               <div className="w-16 h-16 relative mb-4 opacity-50">
                 <Image src="/s1-logo.png" alt="S1" width={64} height={64} className="object-contain" />
               </div>
-              <p className="text-center text-lg font-medium mb-2">Welcome to S1 AI Lab</p>
-              <p className="text-center text-base opacity-75 max-w-md">Describe what you want to create.</p>
+              <p className="text-center text-base font-medium mb-2">Welcome to S1 AI Lab</p>
+              <p className="text-center text-sm opacity-75 max-w-xs">Describe what you want to create.</p>
             </div>
           ) : (
             messages.map((message) => (
-              <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${message.role === "user" ? "bg-gray-900 text-white" : "bg-white/80 backdrop-blur-sm text-gray-900 border border-gray-200/50 shadow-sm"}`}>
+              <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} px-2`}>
+                <div className={`max-w-[90%] rounded-xl px-3 py-2 ${message.role === "user" ? "bg-gray-900 text-white" : "bg-white/80 backdrop-blur-sm text-gray-900 border border-gray-200/50 shadow-sm"}`}>
                   {message.isCode ? (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {message.workPlan && (
-                        <div className="bg-blue-50/80 rounded-lg p-3 border border-blue-200/50">
-                          <h4 className="text-sm font-medium text-blue-900 mb-2">Work Plan</h4>
+                        <div className="bg-blue-50/80 rounded-lg p-2 border border-blue-200/50">
+                          <h4 className="text-xs font-medium text-blue-900 mb-1">Work Plan</h4>
                           <pre className="text-xs text-blue-800 whitespace-pre-wrap">{message.workPlan}</pre>
                         </div>
                       )}
-                      <ReactMarkdown className="text-base leading-relaxed">{message.content}</ReactMarkdown>
+                      <ReactMarkdown className="text-sm leading-relaxed">{message.content}</ReactMarkdown>
                       {generatedCode && (
                         <div className="bg-gray-50/80 rounded-lg border border-gray-200/50 overflow-hidden">
-                          <div className="flex items-center justify-between p-3 border-b border-gray-200/50">
-                            <span className="text-sm font-medium text-gray-700">Generated Code</span>
-                            <div className="flex items-center space-x-2">
-                              <Button size="sm" variant="ghost" onClick={() => toggleCodeVisibility(message.id)} className="h-8 px-3 text-gray-600 hover:text-gray-900 bg-white hover:bg-gray-100">
-                                {message.showCode ? <><EyeOff className="h-4 w-4 mr-1" /> Hide Code</> : <><Eye className="h-4 w-4 mr-1" /> Show Code</>}
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={() => copyToClipboard(generatedCode)} className="h-8 w-8 p-0 text-gray-600 hover:text-gray-900 bg-white hover:bg-gray-100">
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                            </div>
+                          <div className="flex items-center justify-between p-2 border-b border-gray-200/50">
+                            <span className="text-xs font-medium text-gray-700">Generated Code</span>
+                            <Button size="sm" variant="ghost" onClick={() => toggleCodeVisibility(message.id)} className="h-7 px-2 text-gray-600 hover:text-gray-900 bg-white hover:bg-gray-100 text-xs">
+                              {activeMessageId === message.id ? <><EyeOff className="h-3 w-3 mr-1" /> Hide</> : <><Eye className="h-3 w-3 mr-1" /> Show</>}
+                            </Button>
                           </div>
-                          {message.showCode && (
-                            <div className="p-3">
-                              <pre className="text-sm text-gray-800 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">{generatedCode}</pre>
+                          {activeMessageId === message.id && (
+                            <div className="p-2 max-h-40 overflow-y-auto">
+                              <pre className="text-xs text-gray-800 whitespace-pre-wrap font-mono leading-relaxed">{generatedCode}</pre>
                             </div>
                           )}
-                          <div className="flex items-center justify-between p-3 border-t border-gray-200/50 bg-white/50">
-                            <div className="flex items-center space-x-2">
-                              <Button size="sm" onClick={() => setShowSavePopup(true)} disabled={!pluginName.trim() || !generatedCode.trim() || isSaving} className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200">
-                                <Save className="h-4 w-4 mr-1" /> Save
+                          <div className="flex items-center justify-between p-2 border-t border-gray-200/50 bg-white/50">
+                            <div className="flex space-x-1">
+                              <Button size="sm" onClick={() => setShowSavePopup(true)} disabled={isSaving} className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200 h-7 px-2 text-xs">
+                                <Save className="h-3 w-3 mr-1" /> Save
                               </Button>
-                              <Button size="sm" variant="ghost" className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200">
-                                <CheckCircle className="h-4 w-4 mr-1" /> Check Code
+                              <Button size="sm" variant="ghost" className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200 h-7 px-2 text-xs">
+                                <CheckCircle className="h-3 w-3 mr-1" /> Check
                               </Button>
                             </div>
                             {isGenerating && (
-                              <div className="flex items-center space-x-2">
-                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                <span className="text-xs text-gray-600">Processing...</span>
+                              <div className="flex items-center space-x-1">
+                                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
+                                <span className="text-xs text-gray-600">Processing</span>
                               </div>
                             )}
                           </div>
@@ -363,7 +363,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                       )}
                     </div>
                   ) : (
-                    <p className="text-base leading-relaxed">{message.content}</p>
+                    <p className="text-sm leading-relaxed">{message.content}</p>
                   )}
                 </div>
               </div>
@@ -373,19 +373,19 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         </div>
 
         {isGenerating && (
-          <div className="border-t border-gray-200/50 p-4 bg-white/80 backdrop-blur-sm">
-            <div className="bg-blue-50/80 rounded-lg p-3 border border-blue-200/50">
-              <div className="flex items-center space-x-3">
-                <div className="w-4 h-4 relative">
-                  <Image src="/s1-logo.png" alt="S1" width={16} height={16} className="object-contain" />
+          <div className="border-t border-gray-200/50 p-2 bg-white/80 backdrop-blur-sm">
+            <div className="bg-blue-50/80 rounded-lg p-2 border border-blue-200/50">
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 relative">
+                  <Image src="/s1-logo.png" alt="S1" width={12} height={12} className="object-contain" />
                 </div>
                 <div className="flex-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-blue-900 font-medium">{generationStep}</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-blue-900 font-medium">{generationStep}</span>
                     <span className="text-xs text-blue-700">{Math.round(generationProgress)}%</span>
                   </div>
-                  <div className="w-full bg-blue-200/50 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full transition-all duration-300" style={{ width: `${generationProgress}%` }} />
+                  <div className="w-full bg-blue-200/50 rounded-full h-1.5">
+                    <div className="bg-blue-500 h-1.5 rounded-full transition-all duration-300" style={{ width: `${generationProgress}%` }} />
                   </div>
                 </div>
               </div>
@@ -394,22 +394,22 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         )}
 
         {hasError && (
-          <div className="border-t border-red-200/50 p-4 bg-red-50/80">
-            <div className="bg-red-100/80 border border-red-200/50 rounded-lg p-3">
-              <p className="text-red-800 text-sm">{errorMessage}</p>
+          <div className="border-t border-red-200/50 p-2 bg-red-50/80">
+            <div className="bg-red-100/80 border border-red-200/50 rounded-lg p-2">
+              <p className="text-red-800 text-xs">{errorMessage}</p>
             </div>
           </div>
         )}
 
-        <div className="border-t border-gray-200/50 p-4 bg-white/80 backdrop-blur-sm">
-          <div className="flex space-x-3">
+        <div className="border-t border-gray-200/50 p-2 bg-white/80 backdrop-blur-sm">
+          <div className="flex space-x-1.5">
             <Textarea
               ref={textareaRef}
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
-              placeholder="Describe what you want to create..."
-              className="flex-1 bg-white/80 border-gray-200/50 text-gray-900 placeholder-gray-500 resize-none min-h-[44px] max-h-32 text-base"
-              style={{ fontSize: "16px" }}
+              placeholder="Describe what you want..."
+              className="flex-1 bg-white/80 border-gray-200/50 text-gray-900 placeholder-gray-500 resize-none min-h-[36px] max-h-24 text-sm p-2"
+              style={{ fontSize: "14px" }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault()
@@ -417,29 +417,29 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                 }
               }}
             />
-            <Button onClick={handleGenerateAI} disabled={!aiPrompt.trim() || isGenerating} className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200 h-11 w-11 p-0 flex-shrink-0">
+            <Button onClick={handleGenerateAI} disabled={!aiPrompt.trim() || isGenerating} className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200 h-9 w-9 p-0 flex-shrink-0">
               <Send className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
         {showSavePopup && (
-          <div className="fixed inset-0 bg-white/95 backdrop-blur-xl flex items-center justify-center p-4 z-50">
-            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 w-full max-w-md border border-gray-200/50 shadow-lg">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Save Plugin</h3>
-              <div className="space-y-4">
+          <div className="fixed inset-0 bg-white/95 backdrop-blur-xl flex items-end justify-center p-4 z-50">
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 w-full max-w-md border border-gray-200/50 shadow-lg">
+              <h3 className="text-base font-medium text-gray-900 mb-3">Save Plugin</h3>
+              <div className="space-y-3">
                 <input
                   type="text"
                   value={pluginName}
                   onChange={(e) => setPluginName(e.target.value)}
                   placeholder="Plugin Name"
-                  className="w-full p-3 border border-gray-200/50 rounded-lg bg-white/80 text-gray-900"
+                  className="w-full p-2 border border-gray-200/50 rounded-lg bg-white/80 text-gray-900 text-sm"
                 />
-                <div className="flex justify-end space-x-3">
-                  <Button variant="ghost" onClick={() => setShowSavePopup(false)} className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200">
+                <div className="flex justify-end space-x-2">
+                  <Button variant="ghost" onClick={() => setShowSavePopup(false)} className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200 h-8 px-3 text-xs">
                     Cancel
                   </Button>
-                  <Button onClick={handleSaveAIFunction} disabled={isSaving} className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200">
+                  <Button onClick={handleSaveAIFunction} disabled={isSaving} className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200 h-8 px-3 text-xs">
                     {isSaving ? "Saving..." : "Save"}
                   </Button>
                 </div>
