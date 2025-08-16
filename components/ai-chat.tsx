@@ -2,18 +2,11 @@
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Send, Copy, ArrowLeft, Plus, Eye, Save, CheckCircle } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Send, Copy, ArrowLeft, Plus, Eye, Save, Check } from "lucide-react"
 import Image from "next/image"
 import type { UserAIFunction } from "@/lib/types"
-
-interface WorkPlan {
-  id: string
-  title: string
-  steps: string[]
-  estimatedTime: string
-  status: "pending" | "processing" | "completed" | "error"
-}
+import ReactMarkdown from "react-markdown"
 
 interface ChatMessage {
   id: string
@@ -22,7 +15,6 @@ interface ChatMessage {
   isCode?: boolean
   timestamp?: Date
   codeVersionId?: string
-  workPlan?: WorkPlan // Added work plan to messages
 }
 
 interface CodeVersion {
@@ -73,9 +65,10 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
   const [codeVersions, setCodeVersions] = useState<CodeVersion[]>([])
   const [currentCodeVersion, setCurrentCodeVersion] = useState<CodeVersion | null>(null)
 
-  const [currentWorkPlan, setCurrentWorkPlan] = useState<WorkPlan | null>(null)
-  const [showCodeModal, setShowCodeModal] = useState(false)
-  const [processingStatus, setProcessingStatus] = useState<string>("")
+  const [showWorkPlan, setShowWorkPlan] = useState(false)
+  const [workPlan, setWorkPlan] = useState("")
+  const [showCodeInCard, setShowCodeInCard] = useState<{ [key: string]: boolean }>({})
+  const [processingStatus, setProcessingStatus] = useState("")
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
@@ -155,37 +148,33 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     setHasError(false)
     setProcessingStatus("Creating work plan...")
 
-    const workPlan: WorkPlan = {
-      id: `plan_${Date.now()}`,
-      title: `Create: ${aiPrompt.substring(0, 50)}...`,
-      steps: [
-        "Analyze requirements",
-        "Design code structure",
-        "Generate Python code",
-        "Add error handling",
-        "Optimize and finalize",
-      ],
-      estimatedTime: "2-3 minutes",
-      status: "processing",
-    }
-    setCurrentWorkPlan(workPlan)
-
-    const progressInterval = setInterval(() => {
-      setGenerationProgress((prev) => Math.min(prev + Math.random() * 15, 95))
-    }, 500)
-
     try {
-      const contextPrompt = `Generate only raw Python code. No explanations, no usage instructions, no comments about how to use it. Just pure Python code.
+      const workPlanResponse = await fetch("/api/ai/generate-plugin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: `Create a detailed work plan for: ${aiPrompt}. Only provide the work plan, no code yet.`,
+          generateWorkPlan: true,
+        }),
+      })
 
-${
-  currentCodeVersion
-    ? `Current code: <code>${currentCodeVersion.code}</code>
-
-User request: ${aiPrompt}`
-    : `User request: ${aiPrompt}`
-}`
-
+      const workPlanData = await workPlanResponse.json()
+      setWorkPlan(workPlanData.workPlan || "")
+      setShowWorkPlan(true)
       setProcessingStatus("Generating code...")
+
+      // Continue with code generation
+      let contextPrompt = aiPrompt
+      if (currentCodeVersion && currentChatSession) {
+        const previousVersions = codeVersions.slice(-3)
+        const contextInfo = previousVersions
+          .map((v) => `Version ${v.version}: ${v.code.substring(0, 500)}...`)
+          .join("\n\n")
+
+        contextPrompt = `<current_code>${currentCodeVersion.code}</current_code>\n\nUser request: ${aiPrompt}`
+      }
 
       const response = await fetch("/api/ai/generate-plugin", {
         method: "POST",
@@ -193,7 +182,7 @@ User request: ${aiPrompt}`
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          message: contextPrompt,
+          message: contextPrompt + "\n\nProvide only raw Python code, no explanations or usage notes.",
         }),
       })
 
@@ -207,12 +196,8 @@ User request: ${aiPrompt}`
         throw new Error(data.error)
       }
 
-      clearInterval(progressInterval)
       setGenerationProgress(100)
       setProcessingStatus("Complete")
-
-      const completedWorkPlan = { ...workPlan, status: "completed" as const }
-      setCurrentWorkPlan(completedWorkPlan)
 
       const userMessage: ChatMessage = {
         id: `msg_${Date.now()}_user`,
@@ -224,15 +209,16 @@ User request: ${aiPrompt}`
       const aiMessage: ChatMessage = {
         id: `msg_${Date.now()}_ai`,
         role: "ai",
-        content: "Code generated successfully based on your requirements.",
+        content: "Code generated successfully!",
         isCode: true,
         timestamp: new Date(),
-        workPlan: completedWorkPlan,
+        codeVersionId: `version_${Date.now()}`,
       }
 
       const newMessages = [...messages, userMessage, aiMessage]
       setMessages(newMessages)
 
+      // Create new code version
       const newCodeVersion: CodeVersion = {
         id: `version_${Date.now()}`,
         code: data.code || "",
@@ -248,6 +234,7 @@ User request: ${aiPrompt}`
       setGeneratedCode(data.code || "")
       setUsageInstructions(data.usageInstructions || "")
 
+      // Update current chat session
       if (currentChatSession) {
         const updatedSession = {
           ...currentChatSession,
@@ -257,6 +244,7 @@ User request: ${aiPrompt}`
         }
         setCurrentChatSession(updatedSession)
 
+        // Update sessions array
         const updatedSessions = chatSessions.map((s) => (s.id === currentChatSession.id ? updatedSession : s))
         setChatSessions(updatedSessions)
       }
@@ -266,14 +254,9 @@ User request: ${aiPrompt}`
       console.error("Error generating AI response:", error)
       setHasError(true)
       setErrorMessage(error instanceof Error ? error.message : "An unknown error occurred")
-      clearInterval(progressInterval)
-      setGenerationProgress(0)
-      setProcessingStatus("Error occurred")
-      if (currentWorkPlan) {
-        setCurrentWorkPlan({ ...currentWorkPlan, status: "error" })
-      }
     } finally {
       setIsGenerating(false)
+      setProcessingStatus("")
     }
   }
 
@@ -319,26 +302,32 @@ User request: ${aiPrompt}`
     setGeneratedCode("")
     setUsageInstructions("")
     setAiPrompt("")
-    setCurrentWorkPlan(null)
   }
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
   }
 
+  const toggleCodeVisibility = (messageId: string) => {
+    setShowCodeInCard((prev) => ({
+      ...prev,
+      [messageId]: !prev[messageId],
+    }))
+  }
+
   if (!isOpen) return null
 
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="fixed inset-0 w-full h-full max-w-none max-h-none bg-gradient-to-br from-slate-900/95 via-gray-900/95 to-black/95 backdrop-blur-xl border-0 text-white overflow-hidden p-0 m-0 rounded-none sm:rounded-lg sm:inset-4 sm:w-auto sm:h-auto sm:max-w-6xl sm:max-h-[90vh]">
-          <DialogHeader className="flex-row items-center justify-between border-b border-white/10 p-4 bg-white/5 backdrop-blur-md">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="w-full h-full max-w-none bg-white/95 backdrop-blur-xl border-0 text-gray-900 overflow-hidden p-0 sm:rounded-none">
+        <DialogHeader className="border-b border-gray-200/50 p-4 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onClose}
-                className="h-9 w-9 p-0 text-gray-300 hover:text-white hover:bg-white/10 rounded-full"
+                className="h-10 w-10 p-0 text-gray-600 hover:text-gray-900 hover:bg-gray-100/50 rounded-full"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
@@ -346,211 +335,174 @@ User request: ${aiPrompt}`
                 <Image src="/s1-logo.png" alt="S1" width={32} height={32} className="object-contain" />
               </div>
               <div>
-                <DialogTitle className="text-white text-lg font-semibold">S1 AI Lab</DialogTitle>
-                <DialogDescription className="text-gray-400 text-sm hidden sm:block">
-                  Python Code Generator
-                </DialogDescription>
+                <DialogTitle className="text-gray-900 text-xl font-semibold">S1 AI Lab</DialogTitle>
               </div>
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleClearConversation}
-              className="h-9 w-9 p-0 text-gray-300 hover:text-white hover:bg-white/10 rounded-full"
+              className="h-10 w-10 p-0 text-gray-600 hover:text-gray-900 hover:bg-gray-100/50 rounded-full"
             >
               <Plus className="h-5 w-5" />
             </Button>
-          </DialogHeader>
+          </div>
+        </DialogHeader>
 
-          <div className="flex flex-col h-full">
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-transparent to-black/20">
-              {messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
-                  <div className="w-16 h-16 relative mb-6 opacity-60">
-                    <Image src="/s1-logo.png" alt="S1" width={64} height={64} className="object-contain" />
-                  </div>
-                  <h2 className="text-xl font-semibold mb-2 text-white">Welcome to S1 AI Lab</h2>
-                  <p className="text-center opacity-75 max-w-md">
-                    Describe what you want to create and I'll generate Python code for you.
-                  </p>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-gray-50/50 to-white/50">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-500 px-4">
+                <div className="w-16 h-16 relative mb-6 opacity-60">
+                  <Image src="/s1-logo.png" alt="S1" width={64} height={64} className="object-contain" />
                 </div>
-              ) : (
-                messages.map((message) => (
-                  <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[85%] sm:max-w-[70%] ${message.role === "user" ? "" : "space-y-3"}`}>
-                      <div
-                        className={`rounded-2xl px-4 py-3 ${
-                          message.role === "user"
-                            ? "bg-white text-black shadow-lg"
-                            : "bg-white/10 backdrop-blur-md text-white border border-white/20"
-                        }`}
-                      >
-                        <p className="text-sm sm:text-base leading-relaxed">{message.content}</p>
-                      </div>
+                <p className="text-center text-xl font-medium mb-3 text-gray-700">Welcome to S1 AI Lab</p>
+                <p className="text-center text-base opacity-75 max-w-md">
+                  Describe what you want to create and I'll generate a work plan and Python code for you.
+                </p>
+              </div>
+            ) : (
+              messages.map((message) => (
+                <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div
+                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                      message.role === "user"
+                        ? "bg-gray-900 text-white"
+                        : "bg-white/70 backdrop-blur-md text-gray-900 border border-gray-200/50 shadow-sm"
+                    }`}
+                  >
+                    {message.isCode ? (
+                      <div className="space-y-4">
+                        <ReactMarkdown className="text-base leading-relaxed">{message.content}</ReactMarkdown>
 
-                      {message.role === "ai" && message.workPlan && (
-                        <div className="bg-white/5 backdrop-blur-md border border-white/20 rounded-xl p-4 space-y-4">
-                          {/* Work Plan */}
-                          <div className="space-y-2">
-                            <h4 className="text-sm font-medium text-white">Work Plan</h4>
-                            <div className="space-y-1">
-                              {message.workPlan.steps.map((step, index) => (
-                                <div key={index} className="flex items-center space-x-2 text-xs text-gray-300">
-                                  <CheckCircle className="h-3 w-3 text-green-400" />
-                                  <span>{step}</span>
+                        {workPlan && showWorkPlan && (
+                          <div className="bg-blue-50/80 backdrop-blur-sm rounded-xl p-4 border border-blue-200/50">
+                            <h4 className="font-semibold text-blue-900 mb-2">Work Plan</h4>
+                            <ReactMarkdown className="text-sm text-blue-800 leading-relaxed">{workPlan}</ReactMarkdown>
+                          </div>
+                        )}
+
+                        {generatedCode && (
+                          <div className="bg-gray-50/80 backdrop-blur-sm rounded-xl p-4 border border-gray-200/50">
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="text-sm font-medium text-gray-700">Generated Code</span>
+                              <div className="flex space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => toggleCodeVisibility(message.id)}
+                                  className="h-8 px-3 bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+                                >
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  {showCodeInCard[message.id] ? "Hide Code" : "Show Code"}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => copyToClipboard(generatedCode)}
+                                  className="h-8 px-3 bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+                                >
+                                  <Copy className="h-4 w-4 mr-1" />
+                                  Copy
+                                </Button>
+                              </div>
+                            </div>
+
+                            {showCodeInCard[message.id] && (
+                              <pre className="text-sm text-gray-800 overflow-x-auto whitespace-pre-wrap font-mono bg-white/50 rounded-lg p-3 border border-gray-200/50">
+                                {generatedCode}
+                              </pre>
+                            )}
+
+                            <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-200/50">
+                              <div className="flex space-x-2">
+                                <Button
+                                  size="sm"
+                                  onClick={handleSaveAIFunction}
+                                  disabled={!pluginName.trim() || !generatedCode.trim() || isSaving}
+                                  className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200"
+                                >
+                                  <Save className="h-4 w-4 mr-1" />
+                                  Save
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200"
+                                >
+                                  <Check className="h-4 w-4 mr-1" />
+                                  Check Code
+                                </Button>
+                              </div>
+
+                              {(isGenerating || processingStatus) && (
+                                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                  <span>{processingStatus || "Processing..."}</span>
                                 </div>
-                              ))}
+                              )}
                             </div>
                           </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-base leading-relaxed">{message.content}</p>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
 
-                          {/* Status Bar */}
-                          {isGenerating && currentWorkPlan?.id === message.workPlan.id && (
-                            <div className="bg-black/40 rounded-lg p-3 border border-white/10">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs text-gray-300">{processingStatus}</span>
-                                <span className="text-xs text-gray-400">{Math.round(generationProgress)}%</span>
-                              </div>
-                              <div className="w-full bg-gray-700 rounded-full h-1">
-                                <div
-                                  className="bg-white h-1 rounded-full transition-all duration-300"
-                                  style={{ width: `${generationProgress}%` }}
-                                />
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Action Buttons */}
-                          <div className="flex space-x-2">
-                            <Button
-                              size="sm"
-                              onClick={() => setShowCodeModal(true)}
-                              className="bg-white text-black hover:bg-gray-200 h-8 px-3 text-xs"
-                            >
-                              <Eye className="h-3 w-3 mr-1" />
-                              Show Code
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={handleSaveAIFunction}
-                              disabled={!generatedCode.trim() || isSaving}
-                              className="bg-white text-black hover:bg-gray-200 h-8 px-3 text-xs"
-                            >
-                              <Save className="h-3 w-3 mr-1" />
-                              Save
-                            </Button>
-                          </div>
-                        </div>
-                      )}
+          <div className="border-t border-gray-200/50 p-4 bg-white/80 backdrop-blur-md sticky bottom-0">
+            {isGenerating && (
+              <div className="mb-4 bg-blue-50/80 backdrop-blur-sm rounded-xl p-4 border border-blue-200/50">
+                <div className="flex items-center space-x-3">
+                  <div className="w-5 h-5 relative">
+                    <Image src="/s1-logo.png" alt="S1" width={20} height={20} className="object-contain" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-blue-800 font-medium">{processingStatus}</span>
+                      <span className="text-xs text-blue-600">{Math.round(generationProgress)}%</span>
+                    </div>
+                    <div className="w-full bg-blue-200/50 rounded-full h-2">
+                      <div
+                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${generationProgress}%` }}
+                      />
                     </div>
                   </div>
-                ))
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            <div className="border-t border-white/10 p-4 bg-white/5 backdrop-blur-md">
-              {hasError && (
-                <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg p-3">
-                  <p className="text-red-400 text-sm">{errorMessage}</p>
                 </div>
-              )}
-
-              <div className="flex space-x-3">
-                <Textarea
-                  ref={textareaRef}
-                  value={aiPrompt}
-                  onChange={(e) => setAiPrompt(e.target.value)}
-                  placeholder="Describe what you want to create..."
-                  className="flex-1 bg-white/10 backdrop-blur-md border-white/20 text-white placeholder-gray-400 resize-none min-h-[48px] max-h-32 text-base rounded-xl focus:ring-2 focus:ring-white/30 focus:border-transparent"
-                  style={{ fontSize: "16px" }} // Prevents mobile zoom
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault()
-                      handleGenerateAI()
-                    }
-                  }}
-                />
-                <Button
-                  onClick={handleGenerateAI}
-                  disabled={!aiPrompt.trim() || isGenerating}
-                  className="bg-white text-black hover:bg-gray-200 h-12 w-12 p-0 flex-shrink-0 rounded-xl"
-                >
-                  <Send className="h-5 w-5" />
-                </Button>
               </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+            )}
 
-      {showCodeModal && (
-        <Dialog open={showCodeModal} onOpenChange={setShowCodeModal}>
-          <DialogContent className="fixed inset-0 w-full h-full max-w-none max-h-none bg-black/95 backdrop-blur-xl border-0 text-white overflow-hidden p-0 m-0 rounded-none sm:rounded-lg sm:inset-8 sm:w-auto sm:h-auto sm:max-w-4xl sm:max-h-[80vh]">
-            <DialogHeader className="border-b border-white/10 p-4 bg-white/5 backdrop-blur-md">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowCodeModal(false)}
-                    className="h-9 w-9 p-0 text-gray-300 hover:text-white hover:bg-white/10 rounded-full"
-                  >
-                    <ArrowLeft className="h-5 w-5" />
-                  </Button>
-                  <DialogTitle className="text-white text-lg font-semibold">Generated Code</DialogTitle>
-                </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => copyToClipboard(generatedCode)}
-                  className="h-9 w-9 p-0 text-gray-300 hover:text-white hover:bg-white/10 rounded-full"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-            </DialogHeader>
-
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="space-y-4 mb-4">
-                <input
-                  type="text"
-                  value={pluginName}
-                  onChange={(e) => setPluginName(e.target.value)}
-                  placeholder="Plugin name..."
-                  className="w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 text-base"
-                  style={{ fontSize: "16px" }}
-                />
-                <textarea
-                  value={pluginDescription}
-                  onChange={(e) => setPluginDescription(e.target.value)}
-                  placeholder="Plugin description..."
-                  className="w-full bg-white/10 backdrop-blur-md border border-white/20 rounded-lg px-4 py-3 text-white placeholder-gray-400 text-base resize-none h-20"
-                  style={{ fontSize: "16px" }}
-                />
-              </div>
-
-              <div className="bg-black/60 backdrop-blur-md rounded-xl p-4 border border-white/20">
-                <pre className="text-sm text-gray-300 whitespace-pre-wrap font-mono leading-relaxed overflow-x-auto">
-                  {generatedCode}
-                </pre>
-              </div>
-            </div>
-
-            <div className="border-t border-white/10 p-4 bg-white/5 backdrop-blur-md">
-              <Button
-                onClick={() => {
-                  handleSaveAIFunction()
-                  setShowCodeModal(false)
+            <div className="flex space-x-3">
+              <Textarea
+                ref={textareaRef}
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="Describe what you want to create..."
+                className="flex-1 bg-white/70 backdrop-blur-sm border-gray-200 text-gray-900 placeholder-gray-500 resize-none min-h-[48px] max-h-32 text-base rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-300"
+                style={{ fontSize: "16px" }} // Prevent mobile zoom
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    handleGenerateAI()
+                  }
                 }}
-                disabled={!pluginName.trim() || !generatedCode.trim() || isSaving}
-                className="w-full bg-white text-black hover:bg-gray-200 h-12 font-medium rounded-xl"
+              />
+              <Button
+                onClick={handleGenerateAI}
+                disabled={!aiPrompt.trim() || isGenerating}
+                className="bg-white text-gray-900 hover:bg-gray-100 border border-gray-200 h-12 w-12 p-0 flex-shrink-0 rounded-xl"
               >
-                {isSaving ? "Saving..." : "Save Function"}
+                <Send className="h-5 w-5" />
               </Button>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
-    </>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
