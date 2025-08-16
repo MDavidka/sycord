@@ -32,9 +32,11 @@ import {
   Send,
   Copy,
   Trash,
+  Beaker,
+  Code,
 } from "lucide-react"
 import Image from "next/image"
-import type { Plugin, UserPlugin } from "@/lib/types"
+import type { Plugin, UserPlugin, UserAIFunction } from "@/lib/types"
 
 interface PluginsTabProps {
   serverId?: string
@@ -48,6 +50,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
 
   const [plugins, setPlugins] = useState<Plugin[]>([])
   const [userPlugins, setUserPlugins] = useState<UserPlugin[]>([])
+  const [userAIFunctions, setUserAIFunctions] = useState<UserAIFunction[]>([])
   const [loading, setLoading] = useState(true)
   const [newPluginName, setNewPluginName] = useState("")
   const [newPluginDescription, setNewPluginDescription] = useState("")
@@ -61,6 +64,8 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   const [isGenerating, setIsGenerating] = useState(false)
   const [pluginName, setPluginName] = useState("")
   const [pluginDescription, setPluginDescription] = useState("")
+  const [pluginThumbnailUrl, setPluginThumbnailUrl] = useState("")
+  const [pluginProfileUrl, setPluginProfileUrl] = useState("")
   const [isSaving, setIsSaving] = useState(false)
   const [messages, setMessages] = useState<{ role: "user" | "ai"; content: string; isCode?: boolean }[]>([])
   const [editingMetadata, setEditingMetadata] = useState(false)
@@ -79,6 +84,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   useEffect(() => {
     fetchPlugins()
     fetchUserPlugins()
+    fetchUserAIFunctions()
   }, [])
 
   useEffect(() => {
@@ -109,6 +115,18 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
       }
     } catch (error) {
       console.error("Error fetching user plugins:", error)
+    }
+  }
+
+  const fetchUserAIFunctions = async () => {
+    try {
+      const response = await fetch("/api/user-ai-functions")
+      if (response.ok) {
+        const data = await response.json()
+        setUserAIFunctions(data.functions)
+      }
+    } catch (error) {
+      console.error("Error fetching user AI functions:", error)
     }
   }
 
@@ -180,11 +198,11 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
     }
   }
 
-  const handleSavePlugin = async () => {
+  const handleSaveAIFunction = async () => {
     if (!generatedCode || !pluginName.trim()) return
     setIsSaving(true)
     try {
-      const createResponse = await fetch("/api/plugins", {
+      const response = await fetch("/api/user-ai-functions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -192,36 +210,24 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
         body: JSON.stringify({
           name: pluginName,
           description: pluginDescription,
-          iconUrl: "https://i.ibb.co/RLVF1Rj/IMG-0362.png",
-          thumbnailUrl: "",
           code: generatedCode,
-          aiGenerated: true,
+          thumbnailUrl: pluginThumbnailUrl,
+          profileUrl: pluginProfileUrl,
         }),
       })
-      if (createResponse.ok) {
-        const newPlugin = await createResponse.json()
-        const installResponse = await fetch("/api/user-plugins", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            pluginId: newPlugin.plugin._id,
-            action: "install",
-          }),
-        })
-        if (installResponse.ok) {
-          await fetchPlugins()
-          await fetchUserPlugins()
-          setIsAICreatorOpen(false)
-          setAiPrompt("")
-          setPluginName("")
-          setPluginDescription("")
-          setMessages([])
-        }
+      if (response.ok) {
+        await fetchUserAIFunctions()
+        setIsAICreatorOpen(false)
+        setAiPrompt("")
+        setPluginName("")
+        setPluginDescription("")
+        setPluginThumbnailUrl("")
+        setPluginProfileUrl("")
+        setGeneratedCode("")
+        setMessages([])
       }
     } catch (error) {
-      console.error("Error saving plugin:", error)
+      console.error("Error saving AI function:", error)
     } finally {
       setIsSaving(false)
     }
@@ -340,6 +346,45 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
     }
   }
 
+  const handleDeleteAIFunction = async (functionId: string) => {
+    if (!window.confirm("Are you sure you want to delete this AI function?")) return
+    try {
+      const response = await fetch("/api/user-ai-functions", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ _id: functionId }),
+      })
+      if (response.ok) {
+        fetchUserAIFunctions()
+      }
+    } catch (error) {
+      console.error("Error deleting AI function:", error)
+    }
+  }
+
+  const handleEditAIFunction = (aiFunction: UserAIFunction) => {
+    setIsAICreatorOpen(true)
+    setPluginName(aiFunction.name)
+    setPluginDescription(aiFunction.description)
+    setGeneratedCode(aiFunction.code)
+    setPluginThumbnailUrl(aiFunction.thumbnailUrl || "")
+    setPluginProfileUrl(aiFunction.profileUrl || "")
+    setMessages([
+      {
+        role: "ai",
+        content: `Editing: ${aiFunction.name}`,
+        isCode: false,
+      },
+      {
+        role: "ai",
+        content: aiFunction.code,
+        isCode: true,
+      },
+    ])
+  }
+
   const isPluginInstalled = (pluginId: string) => userPlugins.some((p) => p.pluginId === pluginId)
 
   if (loading) {
@@ -365,6 +410,9 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
               setAiPrompt("")
               setPluginName("")
               setPluginDescription("")
+              setPluginThumbnailUrl("")
+              setPluginProfileUrl("")
+              setGeneratedCode("")
               setMessages([])
             }}
             className="text-white hover:bg-white/10 p-2 min-w-[44px] min-h-[44px]"
@@ -372,23 +420,19 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex items-center space-x-2 flex-1 mx-4">
-            <Image
-              src="https://i.ibb.co/RLVF1Rj/IMG-0362.png"
-              alt="AI Logo"
-              width={32}
-              height={32}
-              className="rounded flex-shrink-0"
-            />
+            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+              <Beaker className="h-4 w-4 text-black" />
+            </div>
             {editingMetadata ? (
               <Input
                 value={pluginName}
                 onChange={(e) => setPluginName(e.target.value)}
                 className="text-center bg-transparent border-none focus:ring-0 text-white font-semibold text-base sm:text-lg flex-1 min-w-0"
-                placeholder="Plugin Name"
+                placeholder="Function Name"
               />
             ) : (
               <h1 className="text-base sm:text-lg font-semibold text-white truncate flex-1 min-w-0">
-                {pluginName || "New Plugin"}
+                {pluginName || "S1 AI Lab"}
               </h1>
             )}
             <Button
@@ -413,26 +457,23 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
         <div className="flex-1 overflow-auto p-3 sm:p-4" ref={chatContainerRef}>
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
-              <Image
-                src="https://i.ibb.co/RLVF1Rj/IMG-0362.png"
-                alt="AI Logo"
-                width={64}
-                height={64}
-                className="mb-4 opacity-50"
-              />
-              <p className="text-center text-sm sm:text-base">Describe your plugin to generate code.</p>
+              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 mb-4 opacity-50">
+                <Beaker className="h-4 w-4 text-black" />
+              </div>
+              <p className="text-center text-base sm:text-lg font-medium mb-2">
+                Describe your function to generate code.
+              </p>
+              <p className="text-center text-sm sm:text-base opacity-75">
+                Use the AI Lab to create your first function!
+              </p>
             </div>
           ) : (
             messages.map((msg, i) => (
               <div key={i} className={`mb-4 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 {msg.role === "ai" && !msg.isCode && (
-                  <Image
-                    src="https://i.ibb.co/RLVF1Rj/IMG-0362.png"
-                    alt="AI"
-                    width={24}
-                    height={24}
-                    className="mr-2 sm:mr-3 self-end flex-shrink-0"
-                  />
+                  <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 mr-2 sm:mr-3 self-end">
+                    <Beaker className="h-4 w-4 text-black" />
+                  </div>
                 )}
                 <div
                   className={`max-w-[85%] sm:max-w-[80%] p-3 sm:p-4 rounded-lg ${
@@ -467,13 +508,9 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
           )}
           {isGenerating && (
             <div className="flex justify-start mb-4">
-              <Image
-                src="https://i.ibb.co/RLVF1Rj/IMG-0362.png"
-                alt="AI"
-                width={24}
-                height={24}
-                className="mr-2 sm:mr-3 flex-shrink-0"
-              />
+              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0 mr-2 sm:mr-3">
+                <Beaker className="h-4 w-4 text-black" />
+              </div>
               <div className="max-w-[85%] sm:max-w-[80%] p-3 sm:p-4 rounded-lg bg-gray-800 text-gray-200 rounded-bl-none animate-pulse">
                 <span className="text-sm sm:text-base">AI is thinking...</span>
               </div>
@@ -484,19 +521,33 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
 
         <div className="p-3 sm:p-4 border-t border-white/20 bg-black">
           {editingMetadata && (
-            <div className="mb-3">
+            <div className="mb-3 space-y-2">
               <Textarea
                 value={pluginDescription}
                 onChange={(e) => setPluginDescription(e.target.value)}
-                placeholder="Plugin description..."
-                className="bg-black/60 border-white/20 text-white w-full mb-2 text-sm sm:text-base"
+                placeholder="Function description..."
+                className="bg-black/60 border-white/20 text-white w-full text-sm sm:text-base"
                 rows={2}
               />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Input
+                  value={pluginThumbnailUrl}
+                  onChange={(e) => setPluginThumbnailUrl(e.target.value)}
+                  placeholder="Thumbnail URL (optional)"
+                  className="bg-black/60 border-white/20 text-white text-sm"
+                />
+                <Input
+                  value={pluginProfileUrl}
+                  onChange={(e) => setPluginProfileUrl(e.target.value)}
+                  placeholder="Profile URL (optional)"
+                  className="bg-black/60 border-white/20 text-white text-sm"
+                />
+              </div>
             </div>
           )}
           <div className="relative">
             <Textarea
-              placeholder="Describe your plugin..."
+              placeholder="Describe your function..."
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
               onKeyDown={(e) => {
@@ -520,11 +571,11 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
           <div className="flex justify-end mt-3">
             <Button
               size="sm"
-              className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white h-10 px-4 text-sm sm:text-base"
-              onClick={handleSavePlugin}
+              className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white h-10 px-4 text-sm sm:text-base font-medium"
+              onClick={handleSaveAIFunction}
               disabled={!generatedCode || isSaving}
             >
-              {isSaving ? "Saving..." : "Save Plugin"}
+              {isSaving ? "Saving..." : "Save Function"}
             </Button>
           </div>
         </div>
@@ -595,24 +646,31 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
             )}
             <Button
               onClick={() => setIsAICreatorOpen(true)}
-              className="bg-gradient-to-r from-[#0D2C54] to-[#4A90E2] text-white hover:opacity-90 h-11 px-4 sm:px-6 text-sm sm:text-base font-medium"
+              className="bg-white text-black hover:bg-gray-200 h-11 px-4 sm:px-6 text-sm sm:text-base font-medium"
             >
-              <Image src="https://i.ibb.co/RLVF1Rj/IMG-0362.png" alt="AI" width={18} height={18} className="sm:mr-2" />
-              <span className="hidden sm:inline">AI Lab</span>
-              <span className="sm:hidden ml-1">AI</span>
+              <Beaker className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">S1 AI Lab</span>
+              <span className="sm:hidden ml-1">S1 AI</span>
             </Button>
           </div>
         </div>
 
         <Tabs defaultValue="store" className="flex-1 flex flex-col overflow-hidden">
           <div className="px-4 sm:px-6 pt-4">
-            <TabsList className="grid w-full grid-cols-2 bg-gray-800/60 backdrop-blur-sm rounded-xl h-12">
+            <TabsList className="grid w-full grid-cols-3 bg-gray-800/60 backdrop-blur-sm rounded-xl h-12">
               <TabsTrigger
                 value="store"
                 className="text-white data-[state=active]:bg-white data-[state=active]:text-black py-3 text-sm sm:text-base font-medium rounded-lg transition-all"
               >
                 <Package className="h-4 w-4 mr-2" />
                 Plugin Store
+              </TabsTrigger>
+              <TabsTrigger
+                value="created"
+                className="text-white data-[state=active]:bg-white data-[state=active]:text-black py-3 text-sm sm:text-base font-medium rounded-lg transition-all"
+              >
+                <Code className="h-4 w-4 mr-2" />
+                Created
               </TabsTrigger>
               <TabsTrigger
                 value="installed"
@@ -719,6 +777,87 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
             </div>
           </TabsContent>
 
+          <TabsContent value="created" className="flex-1 overflow-auto p-4 sm:p-6 mt-2">
+            {userAIFunctions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
+                <Beaker className="h-16 w-16 mb-6 opacity-50" />
+                <p className="text-center text-base sm:text-lg font-medium mb-2">No AI functions created yet.</p>
+                <p className="text-center text-sm sm:text-base opacity-75">
+                  Use S1 AI Lab to create your first function!
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                {userAIFunctions.map((aiFunction) => (
+                  <Card key={aiFunction._id} className="glass-card flex flex-col h-full min-h-[280px] sm:min-h-[320px]">
+                    {aiFunction.thumbnailUrl ? (
+                      <div className="relative w-full h-32 sm:h-36 rounded-t-lg overflow-hidden">
+                        <Image
+                          src={aiFunction.thumbnailUrl || "/placeholder.svg"}
+                          alt={`${aiFunction.name} thumbnail`}
+                          layout="fill"
+                          objectFit="cover"
+                          className="rounded-t-lg"
+                        />
+                      </div>
+                    ) : (
+                      <div className="relative w-full h-32 sm:h-36 rounded-t-lg overflow-hidden bg-gray-800 flex items-center justify-center">
+                        <Beaker className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />
+                      </div>
+                    )}
+                    <CardHeader className="flex-row items-center space-x-3 pb-3 p-4 sm:p-5">
+                      {aiFunction.profileUrl ? (
+                        <Image
+                          src={aiFunction.profileUrl || "/placeholder.svg"}
+                          alt={`${aiFunction.name} profile`}
+                          width={36}
+                          height={36}
+                          className="rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+                          <Beaker className="h-5 w-5 text-black" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <CardTitle className="text-white text-base sm:text-lg truncate font-semibold">
+                          {aiFunction.name}
+                        </CardTitle>
+                        <CardDescription className="text-gray-400 text-sm truncate">
+                          Created {new Date(aiFunction.created_at).toLocaleDateString()}
+                        </CardDescription>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0 pb-4 px-4 sm:px-5 flex-1 flex flex-col">
+                      <p className="text-gray-300 text-sm sm:text-base mb-4 line-clamp-3 flex-1 leading-relaxed">
+                        {aiFunction.description}
+                      </p>
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditAIFunction(aiFunction)}
+                          className="h-10 w-10 p-0 border-white/20 text-white hover:bg-white/10 hover:border-white/40 transition-all"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteAIFunction(aiFunction._id as string)}
+                          className="h-10 px-4 text-sm font-medium transition-all"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
           <TabsContent value="installed" className="flex-1 overflow-auto p-4 sm:p-6 mt-2">
             {userPlugins.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
@@ -758,8 +897,8 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
                           className="rounded-full object-cover flex-shrink-0"
                         />
                       ) : (
-                        <div className="w-9 h-9 rounded-full bg-gray-600 flex items-center justify-center flex-shrink-0">
-                          <ImageIcon className="h-5 w-5 text-gray-400" />
+                        <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+                          <Beaker className="h-5 w-5 text-black" />
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
@@ -794,7 +933,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
                           }}
                           className="h-10 w-10 p-0 border-white/20 text-white hover:bg-white/10 hover:border-white/40 transition-all"
                         >
-                          <Image src="https://i.ibb.co/RLVF1Rj/IMG-0362.png" alt="AI" width={16} height={16} />
+                          <Beaker className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="destructive"
