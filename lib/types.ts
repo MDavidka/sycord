@@ -169,17 +169,6 @@ export interface ServerConfig {
   botToken?: string
 }
 
-export interface UserAIFunction {
-  _id?: ObjectId | string
-  name: string
-  description: string
-  code: string
-  created_by: string
-  created_at: string
-  thumbnailUrl?: string
-  profileUrl?: string
-}
-
 export interface DiscordRole {
   id: string
   name: string
