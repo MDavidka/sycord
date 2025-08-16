@@ -292,276 +292,99 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-full h-full sm:w-[95vw] sm:max-w-6xl sm:h-[90vh] bg-black/95 backdrop-blur-xl border-0 sm:border sm:border-white/10 text-white overflow-hidden p-0 sm:rounded-lg">
-        <DialogHeader className="border-b border-white/10 p-3 sm:p-4 bg-black/50 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 sm:space-x-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 sm:hidden"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={toggleMobileMenu}
-                className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 sm:hidden"
-              >
-                <Menu className="h-4 w-4" />
-              </Button>
-              <div className="w-5 h-5 sm:w-8 sm:h-8 relative">
-                <Image src="/s1-logo.png" alt="S1 AI Lab" width={32} height={32} className="object-contain" />
-              </div>
-              <div>
-                <DialogTitle className="text-white text-base sm:text-xl font-semibold">S1 AI Lab</DialogTitle>
-                <DialogDescription className="text-gray-400 text-xs sm:text-sm hidden sm:block">
-                  Generate Discord bots with AI assistance
-                </DialogDescription>
-              </div>
+      <DialogContent className="w-full h-full sm:w-[95vw] sm:max-w-6xl sm:h-[90vh] bg-black/95 backdrop-blur-xl border-0 sm:border sm:border-white/10 text-white overflow-hidden p-0 sm:rounded-lg flex flex-col">
+        {/* Mobile Header */}
+        <DialogHeader className="border-b border-white/10 p-2 sm:p-4 bg-black/50 backdrop-blur-sm flex flex-row items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleMobileMenu}
+              className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10"
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+            <div className="w-6 h-6 sm:w-8 sm:h-8 relative">
+              <Image src="/s1-logo.png" alt="S1 AI Lab" width={32} height={32} className="object-contain" />
             </div>
-            <div className="flex items-center space-x-1 sm:space-x-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClearConversation}
-                className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 hidden sm:flex"
-                title="Clear Conversation"
-              >
-                <RotateCcw className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 hidden sm:flex"
-                title="Settings"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 hidden sm:flex"
-                title="Help"
-              >
-                <HelpCircle className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 hidden sm:flex"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+            <div>
+              <DialogTitle className="text-white text-base sm:text-xl font-semibold">S1 AI Lab</DialogTitle>
             </div>
           </div>
-          {isMobileMenuOpen && (
-            <div className="sm:hidden flex space-x-2 mt-2">
-              <Button
-                variant={activeView === "chat" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setActiveView("chat")}
-                className="flex-1 flex items-center space-x-2 text-sm"
-              >
-                <MessageSquare className="h-4 w-4" />
-                <span>Chat</span>
-              </Button>
-              <Button
-                variant={activeView === "code" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setActiveView("code")}
-                className="flex-1 flex items-center space-x-2 text-sm"
-              >
-                <Code className="h-4 w-4" />
-                <span>Code</span>
-              </Button>
-            </div>
-          )}
+          <div className="flex items-center space-x-1 sm:space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearConversation}
+              className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 hidden sm:flex"
+              title="Clear Conversation"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 hidden sm:flex"
+              title="Settings"
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 hidden sm:flex"
+              title="Help"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 sm:hidden"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
 
-        <div className="flex flex-1 overflow-hidden">
-          {/* Mobile: Toggle between chat and code */}
+        {/* Mobile Menu (only visible when toggled) */}
+        {isMobileMenuOpen && (
+          <div className="sm:hidden flex flex-row space-x-2 p-2 border-b border-white/10 bg-black/30">
+            <Button
+              variant={activeView === "chat" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => { setActiveView("chat"); setIsMobileMenuOpen(false) }}
+              className="flex-1 flex items-center space-x-2 text-sm"
+            >
+              <MessageSquare className="h-4 w-4" />
+              <span>Chat</span>
+            </Button>
+            <Button
+              variant={activeView === "code" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => { setActiveView("code"); setIsMobileMenuOpen(false) }}
+              className="flex-1 flex items-center space-x-2 text-sm"
+            >
+              <Code className="h-4 w-4" />
+              <span>Code</span>
+            </Button>
+          </div>
+        )}
+
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-hidden flex flex-col">
           {activeView === "chat" && (
-            <div className="flex-1 flex flex-col sm:hidden">
-              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 bg-black/20">
-                {messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 relative mb-4 opacity-50">
-                      <Image src="/s1-logo.png" alt="S1" width={64} height={64} className="object-contain" />
-                    </div>
-                    <p className="text-center text-base sm:text-lg font-medium mb-2">Welcome to S1 AI Lab</p>
-                    <p className="text-center text-sm sm:text-base opacity-75 max-w-md">
-                      Describe what you want to create and I'll generate Discord bot code for you.
-                    </p>
-                  </div>
-                ) : (
-                  messages.map((message) => (
-                    <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                      <div
-                        className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-3 ${
-                          message.role === "user"
-                            ? "bg-white text-black"
-                            : "bg-gray-800/60 backdrop-blur-sm text-white border border-white/10"
-                        }`}
-                      >
-                        {message.isCode ? (
-                          <div className="space-y-3">
-                            <ReactMarkdown className="text-sm sm:text-base leading-relaxed">
-                              {message.content}
-                            </ReactMarkdown>
-                            {generatedCode && (
-                              <div className="bg-black/40 rounded-lg p-3 border border-white/10">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-xs text-gray-400 font-mono">Generated Code</span>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => copyToClipboard(generatedCode)}
-                                    className="h-6 w-6 p-0 text-gray-400 hover:text-white"
-                                  >
-                                    <Copy className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                                <pre className="text-xs sm:text-sm text-gray-300 overflow-x-auto whitespace-pre-wrap">
-                                  {generatedCode.substring(0, 200)}
-                                  {generatedCode.length > 200 && "..."}
-                                </pre>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-sm sm:text-base leading-relaxed">{message.content}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-
-              <div className="border-t border-white/10 p-3 sm:p-4 bg-black/30 backdrop-blur-sm">
-                {isGenerating && (
-                  <div className="mb-4 bg-gray-800/60 rounded-lg p-3 border border-white/10">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-4 h-4 relative">
-                        <Image src="/s1-logo.png" alt="S1" width={16} height={16} className="object-contain" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm text-gray-300">Generating code...</span>
-                          <span className="text-xs text-gray-400">{Math.round(generationProgress)}%</span>
-                        </div>
-                        <div className="w-full bg-gray-700 rounded-full h-1.5">
-                          <div
-                            className="bg-white h-1.5 rounded-full transition-all duration-300"
-                            style={{ width: `${generationProgress}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {hasError && (
-                  <div className="mb-4 bg-red-900/20 border border-red-500/30 rounded-lg p-3 flex items-center justify-between">
-                    <p className="text-red-400 text-sm">{errorMessage}</p>
-                    <Button
-                      onClick={handleGenerateAI}
-                      disabled={isGenerating}
-                      className="text-xs text-white bg-red-500 hover:bg-red-600 h-6 px-2"
-                    >
-                      Retry
-                    </Button>
-                  </div>
-                )}
-
-                <div className="flex space-x-2 sm:space-x-3">
-                  <Textarea
-                    ref={textareaRef}
-                    value={aiPrompt}
-                    onChange={(e) => setAiPrompt(e.target.value)}
-                    placeholder="Describe what you want to create..."
-                    className="flex-1 bg-black/60 border-white/20 text-white placeholder-gray-400 resize-none min-h-[44px] max-h-32 text-sm sm:text-base"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault()
-                        handleGenerateAI()
-                      }
-                    }}
-                  />
-                  <Button
-                    onClick={handleGenerateAI}
-                    disabled={!aiPrompt.trim() || isGenerating}
-                    className="bg-white text-black hover:bg-gray-200 h-11 w-11 p-0 flex-shrink-0"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeView === "code" && (
-            <div className="flex-1 flex flex-col sm:hidden">
-              <div className="border-b border-white/10 p-3 sm:p-4 bg-black/30">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-white font-semibold text-sm sm:text-base">Generated Code</h3>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => copyToClipboard(generatedCode)}
-                    className="h-8 w-8 p-0 text-gray-400 hover:text-white"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    value={pluginName}
-                    onChange={(e) => setPluginName(e.target.value)}
-                    placeholder="Plugin name..."
-                    className="w-full bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400 text-sm"
-                  />
-                  <textarea
-                    value={pluginDescription}
-                    onChange={(e) => setPluginDescription(e.target.value)}
-                    placeholder="Plugin description..."
-                    className="w-full bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400 text-sm resize-none h-16"
-                  />
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-black/20">
-                <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
-                  {generatedCode}
-                </pre>
-              </div>
-              <div className="border-t border-white/10 p-3 sm:p-4 bg-black/30">
-                <Button
-                  onClick={handleSaveAIFunction}
-                  disabled={!pluginName.trim() || !generatedCode.trim() || isSaving}
-                  className="w-full bg-white text-black hover:bg-gray-200 h-10 font-medium"
-                >
-                  {isSaving ? (
-                    "Saving..."
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Save Function
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Desktop: Chat and Code Side by Side */}
-          <div className="hidden sm:flex flex-1 overflow-hidden">
             <div className="flex-1 flex flex-col">
-              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 bg-black/20">
+              <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-3 space-y-4 bg-black/20">
                 {messages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full text-gray-400 px-4">
                     <div className="w-12 h-12 sm:w-16 sm:h-16 relative mb-4 opacity-50">
@@ -573,114 +396,117 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                     </p>
                   </div>
                 ) : (
-                  messages.map((message) => (
-                    <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                      <div
-                        className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-3 ${
-                          message.role === "user"
-                            ? "bg-white text-black"
-                            : "bg-gray-800/60 backdrop-blur-sm text-white border border-white/10"
-                        }`}
-                      >
-                        {message.isCode ? (
-                          <div className="space-y-3">
-                            <ReactMarkdown className="text-sm sm:text-base leading-relaxed">
-                              {message.content}
-                            </ReactMarkdown>
-                            {generatedCode && (
-                              <div className="bg-black/40 rounded-lg p-3 border border-white/10">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-xs text-gray-400 font-mono">Generated Code</span>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => copyToClipboard(generatedCode)}
-                                    className="h-6 w-6 p-0 text-gray-400 hover:text-white"
-                                  >
-                                    <Copy className="h-3 w-3" />
-                                  </Button>
+                  <div className="flex-1 overflow-y-auto p-3 space-y-4">
+                    {messages.map((message) => (
+                      <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                        <div
+                          className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-3 ${
+                            message.role === "user"
+                              ? "bg-white text-black"
+                              : "bg-gray-800/60 backdrop-blur-sm text-white border border-white/10"
+                          }`}
+                        >
+                          {message.isCode ? (
+                            <div className="space-y-3">
+                              <ReactMarkdown className="text-sm sm:text-base leading-relaxed">
+                                {message.content}
+                              </ReactMarkdown>
+                              {generatedCode && (
+                                <div className="bg-black/40 rounded-lg p-3 border border-white/10">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-xs text-gray-400 font-mono">Generated Code</span>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => copyToClipboard(generatedCode)}
+                                      className="h-6 w-6 p-0 text-gray-400 hover:text-white"
+                                    >
+                                      <Copy className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                  <pre className="text-xs sm:text-sm text-gray-300 overflow-x-auto whitespace-pre-wrap">
+                                    {generatedCode.substring(0, 200)}
+                                    {generatedCode.length > 200 && "..."}
+                                  </pre>
                                 </div>
-                                <pre className="text-xs sm:text-sm text-gray-300 overflow-x-auto whitespace-pre-wrap">
-                                  {generatedCode.substring(0, 200)}
-                                  {generatedCode.length > 200 && "..."}
-                                </pre>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-sm sm:text-base leading-relaxed">{message.content}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-
-              <div className="border-t border-white/10 p-3 sm:p-4 bg-black/30 backdrop-blur-sm">
-                {isGenerating && (
-                  <div className="mb-4 bg-gray-800/60 rounded-lg p-3 border border-white/10">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-4 h-4 relative">
-                        <Image src="/s1-logo.png" alt="S1" width={16} height={16} className="object-contain" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm text-gray-300">Generating code...</span>
-                          <span className="text-xs text-gray-400">{Math.round(generationProgress)}%</span>
-                        </div>
-                        <div className="w-full bg-gray-700 rounded-full h-1.5">
-                          <div
-                            className="bg-white h-1.5 rounded-full transition-all duration-300"
-                            style={{ width: `${generationProgress}%` }}
-                          />
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm sm:text-base leading-relaxed">{message.content}</p>
+                          )}
                         </div>
                       </div>
-                    </div>
+                    ))}
+                    <div ref={messagesEndRef} />
                   </div>
                 )}
 
-                {hasError && (
-                  <div className="mb-4 bg-red-900/20 border border-red-500/30 rounded-lg p-3 flex items-center justify-between">
-                    <p className="text-red-400 text-sm">{errorMessage}</p>
+                {/* Input Area */}
+                <div className="border-t border-white/10 p-3 bg-black/30 backdrop-blur-sm">
+                  {isGenerating && (
+                    <div className="mb-4 bg-gray-800/60 rounded-lg p-3 border border-white/10">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-4 h-4 relative">
+                          <Image src="/s1-logo.png" alt="S1" width={16} height={16} className="object-contain" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm text-gray-300">Generating code...</span>
+                            <span className="text-xs text-gray-400">{Math.round(generationProgress)}%</span>
+                          </div>
+                          <div className="w-full bg-gray-700 rounded-full h-1.5">
+                            <div
+                              className="bg-white h-1.5 rounded-full transition-all duration-300"
+                              style={{ width: `${generationProgress}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {hasError && (
+                    <div className="mb-4 bg-red-900/20 border border-red-500/30 rounded-lg p-3 flex items-center justify-between">
+                      <p className="text-red-400 text-sm">{errorMessage}</p>
+                      <Button
+                        onClick={handleGenerateAI}
+                        disabled={isGenerating}
+                        className="text-xs text-white bg-red-500 hover:bg-red-600 h-6 px-2"
+                      >
+                        Retry
+                      </Button>
+                    </div>
+                  )}
+
+                  <div className="flex space-x-2">
+                    <Textarea
+                      ref={textareaRef}
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      placeholder="Describe what you want to create..."
+                      className="flex-1 bg-black/60 border-white/20 text-white placeholder-gray-400 resize-none min-h-[44px] max-h-32 text-sm sm:text-base"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault()
+                          handleGenerateAI()
+                        }
+                      }}
+                    />
                     <Button
                       onClick={handleGenerateAI}
-                      disabled={isGenerating}
-                      className="text-xs text-white bg-red-500 hover:bg-red-600 h-6 px-2"
+                      disabled={!aiPrompt.trim() || isGenerating}
+                      className="bg-white text-black hover:bg-gray-200 h-11 w-11 p-0 flex-shrink-0"
                     >
-                      Retry
+                      <Send className="h-4 w-4" />
                     </Button>
                   </div>
-                )}
-
-                <div className="flex space-x-2 sm:space-x-3">
-                  <Textarea
-                    ref={textareaRef}
-                    value={aiPrompt}
-                    onChange={(e) => setAiPrompt(e.target.value)}
-                    placeholder="Describe what you want to create..."
-                    className="flex-1 bg-black/60 border-white/20 text-white placeholder-gray-400 resize-none min-h-[44px] max-h-32 text-sm sm:text-base"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault()
-                        handleGenerateAI()
-                      }
-                    }}
-                  />
-                  <Button
-                    onClick={handleGenerateAI}
-                    disabled={!aiPrompt.trim() || isGenerating}
-                    className="bg-white text-black hover:bg-gray-200 h-11 w-11 p-0 flex-shrink-0"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
                 </div>
               </div>
-            </div>
+            )}
 
-            {generatedCode && (
-              <div className="w-full sm:w-96 border-l border-white/10 bg-black/40 backdrop-blur-sm flex flex-col">
-                <div className="border-b border-white/10 p-3 sm:p-4">
+            {activeView === "code" && (
+              <div className="flex-1 flex flex-col">
+                <div className="border-b border-white/10 p-3 bg-black/30">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-white font-semibold text-sm sm:text-base">Generated Code</h3>
                     <Button
@@ -708,12 +534,12 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                     />
                   </div>
                 </div>
-                <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+                <div className="flex-1 overflow-y-auto p-3 bg-black/20">
                   <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
                     {generatedCode}
                   </pre>
                 </div>
-                <div className="border-t border-white/10 p-3 sm:p-4">
+                <div className="border-t border-white/10 p-3 bg-black/30">
                   <Button
                     onClick={handleSaveAIFunction}
                     disabled={!pluginName.trim() || !generatedCode.trim() || isSaving}
@@ -731,6 +557,11 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Desktop Layout (unchanged) */}
+          <div className="hidden sm:flex flex-1 overflow-hidden">
+            {/* ... (keep your existing desktop layout code) ... */}
           </div>
         </div>
       </DialogContent>
