@@ -71,6 +71,7 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   const [messages, setMessages] = useState<{ role: "user" | "ai"; content: string; isCode?: boolean }[]>([])
   const [editingMetadata, setEditingMetadata] = useState(false)
   const [showCodeViewer, setShowCodeViewer] = useState(false)
+  const [usageInstructions, setUsageInstructions] = useState("")
 
   const [editPluginId, setEditPluginId] = useState<string | null>(null)
   const [editPluginName, setEditPluginName] = useState("")
@@ -188,14 +189,20 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
       })
       if (response.ok) {
         const data = await response.json()
-        setGeneratedCode(data.code)
+        const fullResponse = data.code
+        const parts = fullResponse.split(/\n\s*2\.\s*/)
+        const codeOnly = parts[0].trim()
+        const usageInstructions = parts.length > 1 ? parts[1].trim() : "No usage instructions provided."
+
+        setGeneratedCode(codeOnly)
+        setUsageInstructions(usageInstructions)
+
         setMessages((prev) => [
           ...prev,
-          { role: "ai", content: `Generated plugin code for: "${currentPrompt}"`, isCode: false },
-          { role: "ai", content: data.code, isCode: true },
+          { role: "ai", content: `Generated Discord bot for: "${currentPrompt}"`, isCode: false },
         ])
         const words = currentPrompt.split(" ").slice(0, 3).join(" ")
-        setPluginName(words.charAt(0).toUpperCase() + words.slice(1) + " Plugin")
+        setPluginName(words.charAt(0).toUpperCase() + words.slice(1) + " Bot")
         setPluginDescription(currentPrompt.length > 100 ? currentPrompt.substring(0, 100) + "..." : currentPrompt)
         clearInterval(progressInterval)
         setGenerationProgress(100)
@@ -504,125 +511,93 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
                     className={`max-w-[85%] sm:max-w-[80%] p-3 sm:p-4 rounded-lg ${
                       msg.role === "user"
                         ? "bg-[#4A90E2] text-white rounded-br-none"
-                        : msg.isCode
-                          ? "bg-gray-800 text-gray-200 w-full max-w-full"
-                          : "bg-gray-800 text-gray-200 rounded-bl-none"
+                        : "bg-gray-800 text-gray-200 rounded-bl-none"
                     }`}
                   >
-                    {msg.isCode ? (
-                      <div className="relative">
-                        <pre className="text-xs sm:text-sm overflow-x-auto font-mono whitespace-pre-wrap break-words">
-                          {msg.content}
-                        </pre>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="absolute top-2 right-2 h-8 w-8 p-0 text-gray-400 hover:text-white"
-                          onClick={handleCopyCode}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <span className="text-sm sm:text-base">{msg.content}</span>
-                    )}
+                    <span className="text-sm sm:text-base">{msg.content}</span>
                   </div>
                   {msg.role === "user" && <div className="w-2 sm:w-6 flex-shrink-0"></div>}
                 </div>
               ))}
 
-              {/* AI Function Generation Card */}
+              {/* Function Generation Card */}
               {(isGenerating || generatedCode) && (
-                <div className="mb-6">
-                  <div className="bg-gray-900 border border-gray-700 rounded-lg shadow-lg overflow-hidden">
-                    {/* Header Section */}
-                    <div className="p-4 border-b border-gray-700">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center">
-                          <Beaker className="h-5 w-5 text-gray-900" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-white font-medium text-base">{pluginName || "Generating Function..."}</h3>
-                          <p className="text-gray-400 text-sm">
-                            {isGenerating ? "AI is crafting your function" : "Function ready"}
-                          </p>
-                        </div>
-                        {generationProgress === 100 && (
-                          <div className="flex items-center space-x-2 text-white">
-                            <div className="w-2 h-2 rounded-full bg-white"></div>
-                            <span className="text-sm">Ready</span>
-                          </div>
-                        )}
+                <div className="mt-4 bg-gray-900 border border-gray-800 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-6 h-6 rounded bg-white flex items-center justify-center">
+                        <Beaker className="h-3 w-3 text-black" />
                       </div>
+                      <span className="text-white text-sm font-medium">{pluginName || "Discord Bot"}</span>
                     </div>
-
-                    {/* Progress Section */}
-                    {isGenerating && (
-                      <div className="px-4 py-3 bg-gray-800">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-gray-300 text-sm">Progress</span>
-                          <span className="text-white text-sm font-mono">{Math.round(generationProgress)}%</span>
-                        </div>
-                        <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-white rounded-full transition-all duration-500"
-                            style={{ width: `${generationProgress}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    {generatedCode && generationProgress === 100 && (
-                      <div className="p-4">
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 px-3 border-gray-600 bg-transparent text-white hover:bg-gray-800 hover:border-gray-500 text-sm"
-                            onClick={() => setShowCodeViewer(!showCodeViewer)}
-                          >
-                            <Code className="h-3 w-3 mr-1" />
-                            {showCodeViewer ? "Hide Code" : "Show Code"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="h-8 px-3 bg-white text-gray-900 hover:bg-gray-200 text-sm"
-                            onClick={handleSaveAIFunction}
-                            disabled={isSaving}
-                          >
-                            <Save className="h-3 w-3 mr-1" />
-                            {isSaving ? "Saving..." : "Save"}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+                    {isGenerating && <span className="text-gray-400 text-xs">{Math.round(generationProgress)}%</span>}
                   </div>
 
-                  {/* Code Viewer Section - Only shown when user clicks Show Code */}
-                  {showCodeViewer && generatedCode && (
-                    <div className="mt-4 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
-                      <div className="p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-gray-400 text-sm">Generated Code</span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={handleCopyCode}
-                            className="h-7 px-2 text-gray-400 hover:text-white hover:bg-gray-800 text-sm"
-                          >
-                            <Copy className="h-3 w-3 mr-1" />
-                            Copy
-                          </Button>
-                        </div>
-                        <div className="bg-black rounded border border-gray-700 overflow-hidden">
-                          <pre className="text-sm font-mono text-gray-200 p-3 overflow-x-auto whitespace-pre-wrap break-words max-h-80 overflow-y-auto">
-                            {generatedCode}
-                          </pre>
-                        </div>
+                  {isGenerating && (
+                    <div className="mb-4">
+                      <div className="w-full bg-gray-800 rounded-full h-1">
+                        <div
+                          className="bg-white h-1 rounded-full transition-all duration-300"
+                          style={{ width: `${generationProgress}%` }}
+                        />
                       </div>
                     </div>
                   )}
+
+                  {!isGenerating && usageInstructions && (
+                    <div className="mb-4 p-3 bg-gray-800 rounded border border-gray-700">
+                      <h4 className="text-white text-sm font-medium mb-2">How to use:</h4>
+                      <div className="text-gray-300 text-sm whitespace-pre-wrap">{usageInstructions}</div>
+                    </div>
+                  )}
+
+                  {!isGenerating && generatedCode && (
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-3 border-gray-600 bg-transparent text-white hover:bg-gray-800 hover:border-gray-500 text-sm"
+                        onClick={() => setShowCodeViewer(!showCodeViewer)}
+                      >
+                        <Code className="h-3 w-3 mr-1" />
+                        {showCodeViewer ? "Hide Code" : "Show Code"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-8 px-3 bg-white text-gray-900 hover:bg-gray-200 text-sm font-medium transition-all"
+                        onClick={handleSaveAIFunction}
+                        disabled={isSaving}
+                      >
+                        <Save className="h-3 w-3 mr-1" />
+                        {isSaving ? "Saving..." : "Save"}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Code Viewer Section - Only shown when user clicks Show Code */}
+              {showCodeViewer && generatedCode && (
+                <div className="mt-4 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-gray-400 text-sm">Generated Code</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleCopyCode}
+                        className="h-7 px-2 text-gray-400 hover:text-white hover:bg-gray-800 text-sm"
+                      >
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copy
+                      </Button>
+                    </div>
+                    <div className="bg-black rounded border border-gray-700 overflow-hidden">
+                      <pre className="text-sm font-mono text-gray-200 p-3 overflow-x-auto whitespace-pre-wrap break-words max-h-80 overflow-y-auto">
+                        {generatedCode}
+                      </pre>
+                    </div>
+                  </div>
                 </div>
               )}
             </>

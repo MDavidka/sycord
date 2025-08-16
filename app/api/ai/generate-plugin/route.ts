@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
           {
             role: "system",
             content:
-              "Create a Discord bot using the latest discord.py version with the appropriate intents, based on the user’s request. Return only the complete Python code, without any explanations, comments, or additional text.",
+              "Your task is to build a Discord bot using the latest discord.py module with the correct intents. Interpret the user's request, understand what they are trying to achieve, and generate the complete Python code for that functionality. When responding, follow this exact format:\n\n<Full raw Python code> (no ``` or any extra formatting, only the code itself)\n\n2. <Step-by-step explanation of how to use the function/bot>\n\nDo not include anything else besides these two parts.",
           },
           {
             role: "user",
