@@ -18,22 +18,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
-import {
-  Package,
-  Plus,
-  Download,
-  Check,
-  X,
-  Edit,
-  Trash2,
-  ImageIcon,
-  Save,
-  Send,
-  Copy,
-  Beaker,
-  Code,
-} from "lucide-react"
+import { Package, Plus, Download, Check, X, Edit, Trash2, ImageIcon, Save, Send, Beaker, Code } from "lucide-react"
 import Image from "next/image"
 import type { Plugin, UserPlugin, UserAIFunction } from "@/lib/types"
 import ReactMarkdown from "react-markdown"
@@ -431,25 +416,39 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
   if (isAICreatorOpen) {
     return (
       <Dialog open={isAICreatorOpen} onOpenChange={setIsAICreatorOpen}>
-        <DialogContent className="w-[95vw] max-w-4xl h-[90vh] bg-black/95 backdrop-blur-xl border border-white/10 text-white overflow-hidden">
-          <DialogHeader className="border-b border-white/10 pb-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 relative">
-                <Image src="/s1-logo.png" alt="S1 AI Lab" width={32} height={32} className="object-contain" />
+        <DialogContent className="w-full h-full sm:w-[95vw] sm:max-w-4xl sm:h-[90vh] bg-black/95 backdrop-blur-xl border-0 sm:border sm:border-white/10 text-white overflow-hidden p-0 sm:rounded-lg">
+          <DialogHeader className="border-b border-white/10 p-4 sm:pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 relative">
+                  <Image src="/s1-logo.png" alt="S1 AI Lab" width={32} height={32} className="object-contain" />
+                </div>
+                <div>
+                  <DialogTitle className="text-white text-lg sm:text-xl font-semibold">S1 AI Lab</DialogTitle>
+                  <DialogDescription className="text-gray-400 text-sm hidden sm:block">
+                    Generate Discord bots with AI assistance
+                  </DialogDescription>
+                </div>
               </div>
-              <DialogTitle className="text-white text-xl font-semibold">S1 AI Lab</DialogTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsAICreatorOpen(false)}
+                className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10 sm:hidden"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
-            <DialogDescription className="text-gray-400">Generate Discord bots with AI assistance</DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col overflow-hidden h-full">
             {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
               {messages.map((message, index) => (
                 <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                   {message.role !== "system" && (
                     <div
-                      className={`max-w-[80%] p-3 rounded-lg ${
+                      className={`max-w-[85%] sm:max-w-[80%] p-3 rounded-2xl sm:rounded-lg text-sm sm:text-base ${
                         message.role === "user"
                           ? "bg-white text-black"
                           : "bg-gray-800/50 text-white border border-gray-700/50"
@@ -463,14 +462,14 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
             </div>
 
             {(isGenerating || generatedCode) && (
-              <div className="p-4 border-t border-white/10">
-                <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl p-6 shadow-2xl">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-6 h-6 relative">
+              <div className="p-3 sm:p-4 border-t border-white/10">
+                <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-xl p-4 sm:p-6 shadow-2xl">
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <div className="flex items-center space-x-2 sm:space-x-3">
+                      <div className="w-5 h-5 sm:w-6 sm:h-6 relative">
                         <Image src="/s1-logo.png" alt="S1" width={24} height={24} className="object-contain" />
                       </div>
-                      <h3 className="text-white font-medium text-lg">{pluginName}</h3>
+                      <h3 className="text-white font-medium text-base sm:text-lg">{pluginName}</h3>
                     </div>
                     {!isGenerating && (
                       <Button
@@ -481,99 +480,78 @@ export default function PluginsTab({ serverId, activeTab, setActiveTab }: Plugin
                           setUsageInstructions("")
                           setGenerationProgress(0)
                         }}
-                        className="h-8 w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10"
+                        className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-gray-400 hover:text-white hover:bg-white/10"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-3 w-3 sm:h-4 sm:w-4" />
                       </Button>
                     )}
                   </div>
 
                   {isGenerating && (
-                    <div className="space-y-3">
-                      <div className="flex items-center space-x-2 text-sm text-gray-300">
-                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                        <span>Generating Discord bot...</span>
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-gray-300 text-sm">Generating...</span>
+                        <span className="text-gray-300 text-sm">{Math.round(generationProgress)}%</span>
                       </div>
-                      <Progress value={generationProgress} className="h-2 bg-white/10" />
-                    </div>
-                  )}
-
-                  {!isGenerating && usageInstructions && (
-                    <div className="space-y-4">
-                      <div className="bg-black/20 rounded-lg p-4 border border-white/5">
-                        <h4 className="text-white font-medium mb-2 text-sm">How to use:</h4>
-                        <div className="text-gray-300 text-sm prose prose-invert max-w-none">
-                          <ReactMarkdown>{usageInstructions}</ReactMarkdown>
-                        </div>
-                      </div>
-
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 px-3 border-white/20 bg-white/5 text-white hover:bg-white/10 hover:border-white/30 text-xs backdrop-blur-sm"
-                          onClick={() => setShowCodeViewer(!showCodeViewer)}
-                        >
-                          <Code className="h-3 w-3 mr-1" />
-                          {showCodeViewer ? "Hide Code" : "Show Code"}
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="h-7 px-3 bg-white/90 text-black hover:bg-white text-xs font-medium transition-all backdrop-blur-sm"
-                          onClick={handleSaveAIFunction}
-                          disabled={isSaving}
-                        >
-                          <Save className="h-3 w-3 mr-1" />
-                          {isSaving ? "Saving..." : "Save"}
-                        </Button>
+                      <div className="w-full bg-gray-800/50 rounded-full h-2">
+                        <div
+                          className="bg-white h-2 rounded-full transition-all duration-300 ease-out"
+                          style={{ width: `${generationProgress}%` }}
+                        />
                       </div>
                     </div>
                   )}
-                </div>
-              </div>
-            )}
 
-            {showCodeViewer && generatedCode && !isGenerating && (
-              <div className="p-4 border-t border-white/10">
-                <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-700/50 rounded-lg overflow-hidden">
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-gray-400 text-sm">Generated Code</span>
+                  {usageInstructions && (
+                    <div className="mb-4">
+                      <h4 className="text-white font-medium mb-2 text-sm sm:text-base">How to use:</h4>
+                      <div className="text-gray-300 text-sm sm:text-base prose prose-invert max-w-none">
+                        <ReactMarkdown>{usageInstructions}</ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
+
+                  {!isGenerating && generatedCode && (
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                       <Button
+                        onClick={() => setShowCodeViewer(!showCodeViewer)}
+                        variant="outline"
                         size="sm"
-                        variant="ghost"
-                        onClick={handleCopyCode}
-                        className="h-7 px-2 text-gray-400 hover:text-white hover:bg-gray-800 text-sm"
+                        className="flex-1 bg-transparent border-white/20 text-white hover:bg-white/10 hover:border-white/30 h-8 text-xs sm:text-sm"
                       >
-                        <Copy className="h-3 w-3 mr-1" />
-                        Copy
+                        <Code className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        {showCodeViewer ? "Hide Code" : "Show Code"}
+                      </Button>
+                      <Button
+                        onClick={handleSaveAIFunction}
+                        size="sm"
+                        className="flex-1 bg-white text-black hover:bg-gray-200 h-8 text-xs sm:text-sm font-medium"
+                      >
+                        <Save className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        Save
                       </Button>
                     </div>
-                    <div className="bg-black/50 rounded border border-gray-700/50 overflow-hidden backdrop-blur-sm">
-                      <pre className="p-4 text-sm text-gray-300 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">
-                        {generatedCode}
-                      </pre>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             )}
 
             {/* Input Area */}
-            <div className="p-4 border-t border-white/10 bg-black/20 backdrop-blur-sm">
-              <div className="flex space-x-2">
+            <div className="border-t border-white/10 p-3 sm:p-4">
+              <div className="flex space-x-2 sm:space-x-3">
                 <Input
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && !e.shiftKey && handleGeneratePlugin()}
                   placeholder="Describe the Discord bot you want to create..."
-                  className="flex-1 bg-white/5 border-white/10 text-white placeholder-gray-400 backdrop-blur-sm"
-                  onKeyPress={(e) => e.key === "Enter" && !isGenerating && handleGeneratePlugin()}
+                  className="flex-1 bg-gray-800/50 border-gray-700/50 text-white placeholder-gray-400 h-10 sm:h-11 text-sm sm:text-base"
                   disabled={isGenerating}
                 />
                 <Button
                   onClick={handleGeneratePlugin}
-                  disabled={!aiPrompt.trim() || isGenerating}
-                  className="bg-white text-black hover:bg-gray-200 px-4"
+                  disabled={isGenerating || !aiPrompt.trim()}
+                  size="sm"
+                  className="bg-white text-black hover:bg-gray-200 h-10 sm:h-11 px-3 sm:px-4"
                 >
                   <Send className="h-4 w-4" />
                 </Button>
