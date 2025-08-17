@@ -71,7 +71,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       const isPluginCode =
         content.includes("import discord") || content.includes("discord.py") || content.includes("@bot.command")
       const messageType = isPluginCode ? "plugin" : "question"
-      const displayContent = isPluginCode ? "[2] Plugin generated successfully!" : `[1] ${content}`
+      const displayContent = isPluginCode ? "Plugin generated successfully!" : content.replace(/^\[1\]\s*/, "")
 
       const aiMessage: ChatMessage = {
         id: `msg_${Date.now()}_ai`,
@@ -88,7 +88,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       const errorMessage: ChatMessage = {
         id: `msg_${Date.now()}_error`,
         role: "ai",
-        content: "[1] Sorry, I encountered an error. Please try again.",
+        content: "Sorry, I encountered an error. Please try again.",
         type: "question",
         timestamp: new Date(),
       }
@@ -142,8 +142,8 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
   return (
     <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm">
-      <div className="h-full w-full bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-xl text-white flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black/20 backdrop-blur-sm">
+      <div className="h-full w-full bg-[#101010]/95 backdrop-blur-xl text-white flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#101010]/40 backdrop-blur-sm">
           <div className="flex items-center space-x-3">
             <Button
               variant="ghost"
@@ -189,11 +189,11 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                     <p className="text-sm leading-relaxed">{message.content}</p>
                   </div>
                 ) : message.type === "question" ? (
-                  <div className="max-w-[80%] bg-gray-800/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
+                  <div className="max-w-[80%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
                     <p className="text-sm leading-relaxed">{message.content}</p>
                   </div>
                 ) : (
-                  <div className="max-w-[90%] bg-gray-800/60 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden shadow-lg">
+                  <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden shadow-lg">
                     <div className="p-4">
                       <div className="flex items-center space-x-3 mb-3">
                         <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
@@ -279,7 +279,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
           {isGenerating && (
             <div className="flex justify-start">
-              <div className="bg-gray-800/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
+              <div className="bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
                 <div className="flex items-center space-x-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span className="text-sm">Generating response...</span>
@@ -291,14 +291,14 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="border-t border-white/10 p-4 bg-black/20 backdrop-blur-sm">
+        <div className="border-t border-white/10 p-4 bg-[#101010]/40 backdrop-blur-sm">
           <div className="flex items-end space-x-3">
             <textarea
               ref={inputRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Ask a question or request a plugin..."
-              className="flex-1 bg-gray-800/60 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3 text-white placeholder-gray-400 resize-none min-h-[44px] max-h-32 text-base focus:outline-none focus:ring-2 focus:ring-white/20"
+              className="flex-1 bg-[#101010]/60 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3 text-white placeholder-gray-400 resize-none min-h-[44px] max-h-32 text-base focus:outline-none focus:ring-2 focus:ring-white/20"
               style={{ fontSize: "16px" }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -319,7 +319,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
         {showSavePrompt && (
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-gray-800/90 backdrop-blur-xl border border-white/10 rounded-2xl p-6 max-w-sm w-full">
+            <div className="bg-[#101010]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-6 max-w-sm w-full">
               <h3 className="text-lg font-semibold mb-2">Save Changes?</h3>
               <p className="text-gray-400 text-sm mb-4">
                 You have unsaved plugins. Do you want to save them before leaving?
