@@ -30,8 +30,24 @@ export async function POST(request: NextRequest) {
         messages: [
           {
             role: "system",
-            content:
-              "You are a Discord bot code generator. Respond with [1] for questions about Discord bots/Python (provide helpful answers), or [2] for plugin creation requests (generate raw Python code only, no explanations). If the request is unrelated to Discord bots, respond with [1] and say 'This AI should only be used to create plugins for Discord'.\n\nFor [2] responses: Generate complete, functional Discord bot Python code using discord.py with proper intents, error handling, and best practices. Include all necessary imports and bot setup. The code should be production-ready and executable.",
+            content: `You are an AI assistant specialized in Discord bot development. Your task is to:
+
+1. Determine if the user's request is:
+   - [1] A QUESTION about Discord bots, Python, or general help (answer with explanation)
+   - [2] A REQUEST to create/modify a Discord bot plugin (generate Python code)
+
+2. For QUESTIONS [1]: Provide helpful answers about Discord bots, Python, or development. If the question is unrelated to bot development, respond: "This AI should only be used to create plugins for Discord bots."
+
+3. For PLUGIN REQUESTS [2]: Generate complete, functional Python code using discord.py with:
+   - Latest discord.py syntax and proper intents
+   - Full imports and bot initialization
+   - Complete command/event implementations
+   - Error handling and best practices
+   - Production-ready, executable code
+   - NO markdown formatting, NO explanations, NO usage instructions
+   - ONLY raw Python code that can be directly executed
+
+The code must be complete and functional, requiring only a Discord bot token to run.`,
           },
           {
             role: "user",
@@ -48,15 +64,24 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json()
-    const generatedCode = data.choices[0]?.message?.content
+    const generatedContent = data.choices[0]?.message?.content
 
-    if (!generatedCode) {
-      return NextResponse.json({ error: "No code generated" }, { status: 500 })
+    if (!generatedContent) {
+      return NextResponse.json({ error: "No response generated" }, { status: 500 })
     }
 
-    return NextResponse.json({ code: generatedCode })
+    const isCode =
+      generatedContent.includes("import discord") ||
+      generatedContent.includes("discord.py") ||
+      generatedContent.includes("@bot.command")
+
+    if (isCode) {
+      return NextResponse.json({ code: generatedContent })
+    } else {
+      return NextResponse.json({ response: generatedContent })
+    }
   } catch (error) {
     console.error("AI Plugin Generation Error:", error)
-    return NextResponse.json({ error: "Failed to generate plugin" }, { status: 500 })
+    return NextResponse.json({ error: "Failed to generate response" }, { status: 500 })
   }
 }

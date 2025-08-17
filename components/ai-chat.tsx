@@ -1,9 +1,7 @@
 "use client"
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { Send, ArrowLeft, Plus, Eye, EyeOff, Save, Edit3, Code } from "lucide-react"
+import { ArrowLeft, MessageSquare, Send, Eye, Save, Edit3, Loader2 } from "lucide-react"
 import Image from "next/image"
 import type { UserAIFunction } from "@/lib/types"
 
@@ -14,7 +12,6 @@ interface ChatMessage {
   type: "question" | "plugin" | "normal"
   code?: string
   timestamp: Date
-  showCode?: boolean
 }
 
 interface AIChatProps {
@@ -25,120 +22,111 @@ interface AIChatProps {
 
 export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [inputMessage, setInputMessage] = useState("")
+  const [inputValue, setInputValue] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
-  const [generationStatus, setGenerationStatus] = useState("")
-  const [showSaveDialog, setShowSaveDialog] = useState(false)
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
-
-  // Plugin editing state
-  const [editingPlugin, setEditingPlugin] = useState<{
-    name: string
-    description: string
-    thumbnailUrl: string
-    profileUrl: string
-    code: string
-  } | null>(null)
+  const [showSavePrompt, setShowSavePrompt] = useState(false)
+  const [expandedCode, setExpandedCode] = useState<string | null>(null)
+  const [editingPlugin, setEditingPlugin] = useState<string | null>(null)
+  const [pluginMetadata, setPluginMetadata] = useState({
+    name: "",
+    description: "",
+    thumbnailUrl: "",
+    profileUrl: "",
+  })
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto"
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + "px"
-    }
-  }, [inputMessage])
-
   const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isGenerating) return
+    if (!inputValue.trim() || isGenerating) return
 
     const userMessage: ChatMessage = {
       id: `msg_${Date.now()}_user`,
       role: "user",
-      content: inputMessage,
+      content: inputValue,
       type: "normal",
       timestamp: new Date(),
     }
 
     setMessages((prev) => [...prev, userMessage])
-    setInputMessage("")
+    setInputValue("")
     setIsGenerating(true)
-    setGenerationStatus("Processing request...")
 
     try {
-      let contextMessage = inputMessage
-      const lastPluginMessage = messages.filter((m) => m.type === "plugin").pop()
-
-      if (lastPluginMessage && lastPluginMessage.code) {
-        contextMessage = `This is the current state of the code: ${lastPluginMessage.code}\n\nThe user wants: ${inputMessage}\n\nCreate this, but maintain the old functionality.`
-      }
-
       const response = await fetch("/api/ai/generate-plugin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: `Determine if this is a question about Discord bots/Python (respond with [1] and answer) or a plugin creation request (respond with [2] and generate code). If it's neither, respond with [1] and say "This AI should only be used to create plugins for Discord".\n\nUser request: ${contextMessage}`,
-        }),
+        body: JSON.stringify({ message: inputValue }),
       })
 
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+      if (!response.ok) throw new Error("Failed to generate response")
 
       const data = await response.json()
-      const aiResponse = data.code || ""
+      const content = data.code || data.response || ""
 
-      const isQuestion = aiResponse.startsWith("[1]")
-      const isPlugin = aiResponse.startsWith("[2]")
-
-      let cleanContent = aiResponse
-      let extractedCode = ""
-
-      if (isQuestion) {
-        cleanContent = aiResponse.replace(/^\[1\]\s*/, "")
-      } else if (isPlugin) {
-        cleanContent = aiResponse.replace(/^\[2\]\s*/, "")
-        extractedCode = cleanContent
-        cleanContent = "Plugin generated successfully!"
-      }
+      const isPluginCode =
+        content.includes("import discord") || content.includes("discord.py") || content.includes("@bot.command")
+      const messageType = isPluginCode ? "plugin" : "question"
+      const displayContent = isPluginCode ? "[2] Plugin generated successfully!" : `[1] ${content}`
 
       const aiMessage: ChatMessage = {
         id: `msg_${Date.now()}_ai`,
         role: "ai",
-        content: cleanContent,
-        type: isPlugin ? "plugin" : "question",
-        code: extractedCode,
+        content: displayContent,
+        type: messageType,
+        code: isPluginCode ? content : undefined,
         timestamp: new Date(),
-        showCode: false,
       }
 
       setMessages((prev) => [...prev, aiMessage])
-
-      if (isPlugin) {
-        setHasUnsavedChanges(true)
-      }
     } catch (error) {
-      console.error("Error generating response:", error)
+      console.error("Error:", error)
       const errorMessage: ChatMessage = {
         id: `msg_${Date.now()}_error`,
         role: "ai",
-        content: "Sorry, I encountered an error. Please try again.",
+        content: "[1] Sorry, I encountered an error. Please try again.",
         type: "question",
         timestamp: new Date(),
       }
       setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsGenerating(false)
-      setGenerationStatus("")
     }
   }
 
-  const handleClose = () => {
-    if (hasUnsavedChanges) {
-      setShowSaveDialog(true)
+  const handleSavePlugin = async (messageId: string) => {
+    const message = messages.find((m) => m.id === messageId)
+    if (!message?.code) return
+
+    try {
+      const response = await fetch("/api/user-ai-functions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: pluginMetadata.name || "Untitled Plugin",
+          description: pluginMetadata.description || "AI Generated Plugin",
+          code: message.code,
+          thumbnailUrl: pluginMetadata.thumbnailUrl,
+          profileUrl: pluginMetadata.profileUrl,
+        }),
+      })
+
+      if (response.ok) {
+        setEditingPlugin(null)
+        setPluginMetadata({ name: "", description: "", thumbnailUrl: "", profileUrl: "" })
+      }
+    } catch (error) {
+      console.error("Error saving plugin:", error)
+    }
+  }
+
+  const handleBack = () => {
+    if (messages.some((m) => m.type === "plugin")) {
+      setShowSavePrompt(true)
     } else {
       onClose()
     }
@@ -146,314 +134,218 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
   const handleNewChat = () => {
     setMessages([])
-    setHasUnsavedChanges(false)
-  }
-
-  const toggleCodeVisibility = (messageId: string) => {
-    setMessages((prev) => prev.map((msg) => (msg.id === messageId ? { ...msg, showCode: !msg.showCode } : msg)))
-  }
-
-  const handleEditPlugin = (message: ChatMessage) => {
-    setEditingPlugin({
-      name: "Unknown",
-      description: "",
-      thumbnailUrl: "",
-      profileUrl: "",
-      code: message.code || "",
-    })
-  }
-
-  const handleSavePlugin = async () => {
-    if (!editingPlugin) return
-
-    try {
-      const response = await fetch("/api/user-ai-functions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: editingPlugin.name,
-          description: editingPlugin.description,
-          code: editingPlugin.code,
-          thumbnailUrl: editingPlugin.thumbnailUrl,
-          profileUrl: editingPlugin.profileUrl,
-        }),
-      })
-
-      if (response.ok) {
-        setHasUnsavedChanges(false)
-        setEditingPlugin(null)
-        onClose()
-      }
-    } catch (error) {
-      console.error("Error saving plugin:", error)
-    }
+    setExpandedCode(null)
+    setEditingPlugin(null)
   }
 
   if (!isOpen) return null
 
   return (
-    <>
-      <Dialog open={isOpen} onOpenChange={() => {}}>
-        <DialogContent className="w-full h-full max-w-none bg-gray-900/95 backdrop-blur-xl border-0 text-white overflow-hidden p-0 sm:rounded-none">
-          <div className="bg-gray-800/80 backdrop-blur-md border-b border-gray-700/50 p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClose}
-                  className="h-9 w-9 p-0 text-gray-300 hover:text-white hover:bg-gray-700/50"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 relative">
-                    <Image src="/s1-logo.png" alt="S1" width={32} height={32} className="object-contain" />
-                  </div>
-                  <span className="text-xl font-semibold text-white">S1 AI Lab</span>
-                </div>
+    <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm">
+      <div className="h-full w-full bg-gradient-to-br from-gray-900/95 to-gray-800/95 backdrop-blur-xl text-white flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black/20 backdrop-blur-sm">
+          <div className="flex items-center space-x-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBack}
+              className="h-10 w-10 p-0 text-white hover:bg-white/10 rounded-full"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 relative">
+                <Image src="/s1-logo.png" alt="S1" width={32} height={32} className="object-contain" />
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleNewChat}
-                className="h-9 w-9 p-0 text-gray-300 hover:text-white hover:bg-gray-700/50"
-              >
-                <Plus className="h-5 w-5" />
-              </Button>
+              <span className="text-lg font-semibold">S1 AI Lab</span>
             </div>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleNewChat}
+            className="h-10 w-10 p-0 text-white hover:bg-white/10 rounded-full"
+          >
+            <MessageSquare className="h-5 w-5" />
+          </Button>
+        </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-900/30">
-            {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                <div className="w-16 h-16 relative mb-4 opacity-50">
-                  <Image src="/s1-logo.png" alt="S1" width={64} height={64} className="object-contain" />
-                </div>
-                <p className="text-center text-lg font-medium mb-2">Welcome to S1 AI Lab</p>
-                <p className="text-center text-base opacity-75 max-w-md">
-                  Ask questions about Discord bots or request plugin creation.
-                </p>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+              <div className="w-16 h-16 relative mb-4 opacity-50">
+                <Image src="/s1-logo.png" alt="S1" width={64} height={64} className="object-contain" />
               </div>
-            ) : (
-              messages.map((message) => (
-                <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                  {message.role === "user" ? (
-                    <div className="max-w-[80%] rounded-2xl px-4 py-3 bg-white text-gray-900">
-                      <p className="text-base leading-relaxed">{message.content}</p>
-                    </div>
-                  ) : message.type === "question" ? (
-                    <div className="max-w-[80%] rounded-2xl px-4 py-3 bg-gray-800/70 backdrop-blur-sm text-white border border-gray-700/50">
-                      <p className="text-base leading-relaxed">{message.content}</p>
-                    </div>
-                  ) : (
-                    <div className="max-w-[90%] bg-gray-800/70 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden">
-                      <div className="p-4">
-                        <div className="flex items-start space-x-3">
-                          <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
-                            <Code className="h-6 w-6 text-gray-300" />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="text-white font-medium">Unknown</h3>
-                            <p className="text-gray-400 text-sm">No description</p>
-                            <p className="text-gray-300 text-sm mt-2">{message.content}</p>
-                          </div>
+              <p className="text-center text-lg font-medium mb-2">Welcome to S1 AI Lab</p>
+              <p className="text-center opacity-75 max-w-md">
+                Ask questions about Discord bots or request plugin creation
+              </p>
+            </div>
+          ) : (
+            messages.map((message) => (
+              <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                {message.role === "user" ? (
+                  <div className="max-w-[80%] bg-white/90 backdrop-blur-sm text-gray-900 rounded-2xl px-4 py-3 shadow-lg">
+                    <p className="text-sm leading-relaxed">{message.content}</p>
+                  </div>
+                ) : message.type === "question" ? (
+                  <div className="max-w-[80%] bg-gray-800/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
+                    <p className="text-sm leading-relaxed">{message.content}</p>
+                  </div>
+                ) : (
+                  <div className="max-w-[90%] bg-gray-800/60 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden shadow-lg">
+                    <div className="p-4">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
+                          <span className="text-xs font-mono">PY</span>
                         </div>
-
-                        {message.code && (
-                          <div className="mt-4 bg-gray-900/50 rounded-lg border border-gray-700/30 overflow-hidden">
-                            <div className="flex items-center justify-between p-3 border-b border-gray-700/30">
-                              <span className="text-sm font-medium text-gray-300">Generated Code</span>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => toggleCodeVisibility(message.id)}
-                                className="h-8 px-3 text-gray-300 hover:text-white hover:bg-gray-700/50 bg-white text-gray-900"
-                              >
-                                {message.showCode ? (
-                                  <>
-                                    <EyeOff className="h-3 w-3 mr-1" />
-                                    Hide Code
-                                  </>
-                                ) : (
-                                  <>
-                                    <Eye className="h-3 w-3 mr-1" />
-                                    Show Code
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-
-                            {message.showCode && (
-                              <div className="p-3 bg-gray-950/50">
-                                <pre className="text-xs text-gray-300 overflow-x-auto whitespace-pre-wrap font-mono leading-relaxed">
-                                  {message.code}
-                                </pre>
-                              </div>
+                        <div className="flex-1">
+                          <h3 className="font-medium">
+                            {editingPlugin === message.id ? (
+                              <input
+                                type="text"
+                                value={pluginMetadata.name}
+                                onChange={(e) => setPluginMetadata((prev) => ({ ...prev, name: e.target.value }))}
+                                placeholder="Plugin name"
+                                className="bg-transparent border-b border-white/20 outline-none text-white placeholder-gray-400"
+                              />
+                            ) : (
+                              pluginMetadata.name || "Unknown Plugin"
                             )}
-                          </div>
-                        )}
-
-                        <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-700/30">
-                          <Button
-                            size="sm"
-                            onClick={() => handleEditPlugin(message)}
-                            className="bg-white text-gray-900 hover:bg-gray-100"
-                          >
-                            <Save className="h-3 w-3 mr-1" />
-                            Save
-                          </Button>
-                          <div className="flex space-x-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => toggleCodeVisibility(message.id)}
-                              className="text-gray-300 hover:text-white hover:bg-gray-700/50 bg-white text-gray-900"
-                            >
-                              Check Code
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleEditPlugin(message)}
-                              className="text-gray-300 hover:text-white hover:bg-gray-700/50 bg-white text-gray-900"
-                            >
-                              <Edit3 className="h-3 w-3" />
-                            </Button>
-                          </div>
+                          </h3>
+                          <p className="text-xs text-gray-400">
+                            {editingPlugin === message.id ? (
+                              <input
+                                type="text"
+                                value={pluginMetadata.description}
+                                onChange={(e) =>
+                                  setPluginMetadata((prev) => ({ ...prev, description: e.target.value }))
+                                }
+                                placeholder="Plugin description"
+                                className="bg-transparent border-b border-white/20 outline-none text-gray-400 placeholder-gray-500 w-full"
+                              />
+                            ) : (
+                              pluginMetadata.description || "AI Generated Discord Bot Plugin"
+                            )}
+                          </p>
                         </div>
                       </div>
+
+                      <p className="text-sm mb-4">{message.content}</p>
+
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setExpandedCode(expandedCode === message.id ? null : message.id)}
+                          className="text-white hover:bg-white/10 bg-white/5"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          {expandedCode === message.id ? "Hide Code" : "Show Code"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleSavePlugin(message.id)}
+                          className="text-white hover:bg-white/10 bg-white/5"
+                        >
+                          <Save className="h-4 w-4 mr-1" />
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditingPlugin(editingPlugin === message.id ? null : message.id)}
+                          className="text-white hover:bg-white/10 bg-white/5"
+                        >
+                          <Edit3 className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                      </div>
                     </div>
-                  )}
-                </div>
-              ))
-            )}
-            <div ref={messagesEndRef} />
-          </div>
+
+                    {expandedCode === message.id && message.code && (
+                      <div className="border-t border-white/10 bg-black/40 p-4">
+                        <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
+                          {message.code}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
 
           {isGenerating && (
-            <div className="border-t border-gray-700/50 p-4 bg-gray-800/60 backdrop-blur-sm">
-              <div className="flex items-center space-x-3">
-                <div className="w-6 h-6 relative animate-spin">
-                  <Image src="/s1-logo.png" alt="S1" width={24} height={24} className="object-contain" />
+            <div className="flex justify-start">
+              <div className="bg-gray-800/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Generating response...</span>
                 </div>
-                <span className="text-sm text-gray-300">{generationStatus}</span>
               </div>
             </div>
           )}
 
-          <div className="border-t border-gray-700/50 p-4 bg-gray-800/80 backdrop-blur-md">
-            <div className="flex space-x-3">
-              <Textarea
-                ref={textareaRef}
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="Ask a question or request a plugin..."
-                className="flex-1 bg-gray-700/50 backdrop-blur-sm border-gray-600/50 text-white placeholder-gray-400 resize-none min-h-[44px] max-h-32"
-                style={{ fontSize: "16px" }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault()
-                    handleSendMessage()
-                  }
-                }}
-              />
-              <Button
-                onClick={handleSendMessage}
-                disabled={!inputMessage.trim() || isGenerating}
-                className="bg-white text-gray-900 hover:bg-gray-100 h-11 w-11 p-0 flex-shrink-0"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          <div ref={messagesEndRef} />
+        </div>
 
-      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-        <DialogContent className="bg-gray-800/95 backdrop-blur-xl border border-gray-700/50 text-white">
-          <div className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Unsaved Changes</h3>
-            <p className="text-gray-300 mb-6">You have unsaved plugin changes. Do you want to save before leaving?</p>
-            <div className="flex justify-end space-x-3">
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setShowSaveDialog(false)
-                  setHasUnsavedChanges(false)
-                  onClose()
-                }}
-                className="text-gray-300 hover:text-white hover:bg-gray-700/50"
-              >
-                Don't Save
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowSaveDialog(false)
-                  // Handle save logic here
-                }}
-                className="bg-white text-gray-900 hover:bg-gray-100"
-              >
-                Save
-              </Button>
-            </div>
+        <div className="border-t border-white/10 p-4 bg-black/20 backdrop-blur-sm">
+          <div className="flex items-end space-x-3">
+            <textarea
+              ref={inputRef}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Ask a question or request a plugin..."
+              className="flex-1 bg-gray-800/60 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3 text-white placeholder-gray-400 resize-none min-h-[44px] max-h-32 text-base focus:outline-none focus:ring-2 focus:ring-white/20"
+              style={{ fontSize: "16px" }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSendMessage()
+                }
+              }}
+            />
+            <Button
+              onClick={handleSendMessage}
+              disabled={!inputValue.trim() || isGenerating}
+              className="bg-white text-black hover:bg-gray-200 h-11 w-11 p-0 rounded-full flex-shrink-0"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
 
-      <Dialog open={!!editingPlugin} onOpenChange={() => setEditingPlugin(null)}>
-        <DialogContent className="bg-gray-800/95 backdrop-blur-xl border border-gray-700/50 text-white max-w-md">
-          <div className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Edit Plugin Details</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
-                <input
-                  type="text"
-                  value={editingPlugin?.name || ""}
-                  onChange={(e) => setEditingPlugin((prev) => (prev ? { ...prev, name: e.target.value } : null))}
-                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-md text-white"
-                  style={{ fontSize: "16px" }}
-                />
+        {showSavePrompt && (
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-gray-800/90 backdrop-blur-xl border border-white/10 rounded-2xl p-6 max-w-sm w-full">
+              <h3 className="text-lg font-semibold mb-2">Save Changes?</h3>
+              <p className="text-gray-400 text-sm mb-4">
+                You have unsaved plugins. Do you want to save them before leaving?
+              </p>
+              <div className="flex space-x-3">
+                <Button
+                  onClick={() => {
+                    setShowSavePrompt(false)
+                    onClose()
+                  }}
+                  variant="ghost"
+                  className="flex-1 text-white hover:bg-white/10"
+                >
+                  Don't Save
+                </Button>
+                <Button
+                  onClick={() => setShowSavePrompt(false)}
+                  className="flex-1 bg-white text-black hover:bg-gray-200"
+                >
+                  Cancel
+                </Button>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
-                <textarea
-                  value={editingPlugin?.description || ""}
-                  onChange={(e) => setEditingPlugin((prev) => (prev ? { ...prev, description: e.target.value } : null))}
-                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-md text-white resize-none"
-                  rows={3}
-                  style={{ fontSize: "16px" }}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Thumbnail URL</label>
-                <input
-                  type="url"
-                  value={editingPlugin?.thumbnailUrl || ""}
-                  onChange={(e) =>
-                    setEditingPlugin((prev) => (prev ? { ...prev, thumbnailUrl: e.target.value } : null))
-                  }
-                  className="w-full px-3 py-2 bg-gray-700/50 border border-gray-600/50 rounded-md text-white"
-                  style={{ fontSize: "16px" }}
-                />
-              </div>
-            </div>
-            <div className="flex justify-end space-x-3 mt-6">
-              <Button
-                variant="ghost"
-                onClick={() => setEditingPlugin(null)}
-                className="text-gray-300 hover:text-white hover:bg-gray-700/50"
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleSavePlugin} className="bg-white text-gray-900 hover:bg-gray-100">
-                Save Plugin
-              </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
-    </>
+        )}
+      </div>
+    </div>
   )
 }
