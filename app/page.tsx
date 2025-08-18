@@ -185,7 +185,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-black text-white">
       <div className="hero-gradient" aria-hidden />
 
-      <nav className="glass-card border-b border-white/10 -mt-4">
+      <nav className="glass-card border-b border-white/10 mt-8">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Image src="/new-blue-logo.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
