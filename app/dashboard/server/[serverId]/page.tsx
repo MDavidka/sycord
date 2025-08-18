@@ -410,7 +410,7 @@ export default function ServerConfigPage() {
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Header */}
-      <header className="glass-card border-b border-white/10 sticky -top-4 z-50">
+      <header className="glass-card border-b border-white/10 sticky -top-4 z-50 -mt-4">
         <div className="container mx-auto px-4 py-3 pt-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
