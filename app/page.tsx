@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -26,11 +28,7 @@ export default function LandingPage() {
   const [isAuthorized, setIsAuthorized] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
-  const typingPhrases = [
-    "Moderate smarter…",
-    "Automate faster…",
-    "Grow your community…"
-  ]
+  const typingPhrases = ["Moderate smarter…", "Automate faster…", "Grow your community…"]
   const [typedText, setTypedText] = useState("")
   const [typingIndex, setTypingIndex] = useState(0)
   const [charIndex, setCharIndex] = useState(0)
@@ -39,7 +37,7 @@ export default function LandingPage() {
   const socialProof = [
     { quote: "Sycord cut moderation time in half.", who: "Nova Server" },
     { quote: "Tickets get handled automatically — love it.", who: "GameHub" },
-    { quote: "Invite tracking that actually works.", who: "Study Group" }
+    { quote: "Invite tracking that actually works.", who: "Study Group" },
   ]
   const [proofIndex, setProofIndex] = useState(0)
 
@@ -75,7 +73,7 @@ export default function LandingPage() {
       if (charIndex <= currentPhrase.length) {
         timeout = setTimeout(() => {
           setTypedText(currentPhrase.slice(0, charIndex))
-          setCharIndex(c => c + 1)
+          setCharIndex((c) => c + 1)
         }, 80)
       } else {
         timeout = setTimeout(() => setIsDeleting(true), 800)
@@ -84,11 +82,11 @@ export default function LandingPage() {
       if (charIndex >= 0) {
         timeout = setTimeout(() => {
           setTypedText(currentPhrase.slice(0, charIndex))
-          setCharIndex(c => c - 1)
+          setCharIndex((c) => c - 1)
         }, 35)
       } else {
         setIsDeleting(false)
-        setTypingIndex(i => (i + 1) % typingPhrases.length)
+        setTypingIndex((i) => (i + 1) % typingPhrases.length)
         setCharIndex(0)
       }
     }
@@ -98,7 +96,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     const id = setInterval(() => {
-      setProofIndex(i => (i + 1) % socialProof.length)
+      setProofIndex((i) => (i + 1) % socialProof.length)
     }, 4200)
     return () => clearInterval(id)
   }, [])
@@ -106,7 +104,7 @@ export default function LandingPage() {
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        entries.forEach(entry => {
+        entries.forEach((entry) => {
           const el = entry.target as HTMLElement
           if (entry.isIntersecting) {
             el.classList.add("in-view")
@@ -114,9 +112,9 @@ export default function LandingPage() {
           }
         })
       },
-      { threshold: 0.15 }
+      { threshold: 0.15 },
     )
-    cardRefs.current.forEach(el => el && observer.observe(el))
+    cardRefs.current.forEach((el) => el && observer.observe(el))
     return () => observer.disconnect()
   }, [])
 
@@ -187,7 +185,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-black text-white">
       <div className="hero-gradient" aria-hidden />
 
-      <nav className="glass-card border-b border-white/10">
+      <nav className="glass-card border-b border-white/10 mt-8">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Image src="/new-blue-logo.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
@@ -218,9 +216,7 @@ export default function LandingPage() {
       <section className="container mx-auto px-4 py-20 text-center relative">
         <div className="max-w-4xl mx-auto animate-fade-in">
           <div className="flex items-center justify-center gap-6">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6">
-              Meet Sycord
-            </h1>
+            <h1 className="text-5xl md:text-6xl font-bold mb-6">Meet Sycord</h1>
           </div>
 
           <p className="text-xl md:text-2xl text-gray-300 mb-2 leading-relaxed">
@@ -264,47 +260,54 @@ export default function LandingPage() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {(appSettings === null ? Array.from({ length: 6 }) : [
-            {
-              Icon: MessageSquare,
-              title: "Smart Support System",
-              desc: "Automated ticket system with intelligent responses",
-              items: ["Automated ticket management", "Custom response system", "User reporting features"]
-            },
-            {
-              Icon: Shield,
-              title: "Advanced Moderation",
-              desc: "Comprehensive protection with fraud detection and raid protection",
-              items: ["Suspicious account filtering", "Advanced fraud protection", "Raid protection"]
-            },
-            {
-              Icon: Users,
-              title: "Welcome & Invite Tracking",
-              desc: "Welcome new members and track who invited them",
-              items: ["Custom welcome messages", "Invite tracking system", "Auto role assignment"]
-            },
-            {
-              Icon: Clock,
-              title: "Smart Announcements",
-              desc: "Triggered announcements and web-based giveaways",
-              items: ["Time-based triggers", "Member count milestones", "Web giveaway system"]
-            },
-            {
-              Icon: Zap,
-              title: "Real-time Dashboard",
-              desc: "Monitor and configure your bot from anywhere",
-              items: ["Live server statistics", "Feature toggles", "Configuration management"]
-            },
-            {
-              Icon: Bot,
-              title: "Easy Setup",
-              desc: "Get started in minutes with our simple setup process",
-              items: ["One-click Discord integration", "Guided configuration", "24/7 support"]
-            }
-          ]).map((c, idx) => {
+          {(appSettings === null
+            ? Array.from({ length: 6 })
+            : [
+                {
+                  Icon: MessageSquare,
+                  title: "Smart Support System",
+                  desc: "Automated ticket system with intelligent responses",
+                  items: ["Automated ticket management", "Custom response system", "User reporting features"],
+                },
+                {
+                  Icon: Shield,
+                  title: "Advanced Moderation",
+                  desc: "Comprehensive protection with fraud detection and raid protection",
+                  items: ["Suspicious account filtering", "Advanced fraud protection", "Raid protection"],
+                },
+                {
+                  Icon: Users,
+                  title: "Welcome & Invite Tracking",
+                  desc: "Welcome new members and track who invited them",
+                  items: ["Custom welcome messages", "Invite tracking system", "Auto role assignment"],
+                },
+                {
+                  Icon: Clock,
+                  title: "Smart Announcements",
+                  desc: "Triggered announcements and web-based giveaways",
+                  items: ["Time-based triggers", "Member count milestones", "Web giveaway system"],
+                },
+                {
+                  Icon: Zap,
+                  title: "Real-time Dashboard",
+                  desc: "Monitor and configure your bot from anywhere",
+                  items: ["Live server statistics", "Feature toggles", "Configuration management"],
+                },
+                {
+                  Icon: Bot,
+                  title: "Easy Setup",
+                  desc: "Get started in minutes with our simple setup process",
+                  items: ["One-click Discord integration", "Guided configuration", "24/7 support"],
+                },
+              ]
+          ).map((c, idx) => {
             if (appSettings === null) {
               return (
-                <div key={idx} className="glass-card p-6 animate-fade-in skeleton-card" ref={el => (cardRefs.current[idx] = el as HTMLElement)}>
+                <div
+                  key={idx}
+                  className="glass-card p-6 animate-fade-in skeleton-card"
+                  ref={(el) => (cardRefs.current[idx] = el as HTMLElement)}
+                >
                   <div className="h-6 bg-white/6 rounded mb-4 w-24 animate-pulse" />
                   <div className="h-4 bg-white/6 rounded mb-2 w-48 animate-pulse" />
                   <div className="h-3 bg-white/6 rounded mt-4 w-full animate-pulse" />
@@ -314,17 +317,21 @@ export default function LandingPage() {
 
             const Icon = c.Icon
             return (
-              <Card key={idx} className="glass-card hover-glow card-reveal" ref={el => (cardRefs.current[idx] = el as HTMLElement)}>
+              <Card
+                key={idx}
+                className="glass-card hover-glow card-reveal"
+                ref={(el) => (cardRefs.current[idx] = el as HTMLElement)}
+              >
                 <CardHeader>
                   <Icon className="h-12 w-12 text-gray-400 mb-4" />
                   <CardTitle className="text-white">{c.title}</CardTitle>
-                  <CardDescription className="text-gray-400">
-                    {c.desc}
-                  </CardDescription>
+                  <CardDescription className="text-gray-400">{c.desc}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ul className="text-sm text-gray-300 space-y-2">
-                    {c.items.map((it, i) => <li key={i}>• {it}</li>)}
+                    {c.items.map((it, i) => (
+                      <li key={i}>• {it}</li>
+                    ))}
                   </ul>
                 </CardContent>
               </Card>
