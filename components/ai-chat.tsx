@@ -143,28 +143,27 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
   return (
     <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm">
       <div className="h-full w-full bg-[#101010]/95 backdrop-blur-xl text-white flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#101010]/40 backdrop-blur-sm">
-          <div className="flex items-center space-x-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleBack}
-              className="h-10 w-10 p-0 text-white hover:bg-white/10 rounded-full"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 relative">
-                <Image src="/s1-logo.png" alt="S1" width={32} height={32} className="object-contain" />
-              </div>
-              <span className="text-lg font-semibold">S1 AI Lab</span>
+        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#101010]/80 backdrop-blur-sm">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBack}
+            className="h-10 w-10 p-0 text-white hover:bg-white/10 rounded-full bg-white/5"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+
+          <div className="flex items-center justify-center">
+            <div className="w-8 h-8 relative">
+              <Image src="/s1-logo.png" alt="S1" width={32} height={32} className="object-contain" />
             </div>
           </div>
+
           <Button
             variant="ghost"
             size="sm"
             onClick={handleNewChat}
-            className="h-10 w-10 p-0 text-white hover:bg-white/10 rounded-full"
+            className="h-10 w-10 p-0 text-white hover:bg-white/10 rounded-full bg-white/5"
           >
             <MessageSquare className="h-5 w-5" />
           </Button>
@@ -238,28 +237,25 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                           size="sm"
                           variant="ghost"
                           onClick={() => setExpandedCode(expandedCode === message.id ? null : message.id)}
-                          className="text-white hover:bg-white/10 bg-white/5"
+                          className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
                         >
-                          <Eye className="h-4 w-4 mr-1" />
-                          {expandedCode === message.id ? "Hide Code" : "Show Code"}
+                          <Eye className="h-4 w-4" />
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => handleSavePlugin(message.id)}
-                          className="text-white hover:bg-white/10 bg-white/5"
+                          className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
                         >
-                          <Save className="h-4 w-4 mr-1" />
-                          Save
+                          <Save className="h-4 w-4" />
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => setEditingPlugin(editingPlugin === message.id ? null : message.id)}
-                          className="text-white hover:bg-white/10 bg-white/5"
+                          className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
                         >
-                          <Edit3 className="h-4 w-4 mr-1" />
-                          Edit
+                          <Edit3 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -298,7 +294,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Ask a question or request a plugin..."
-              className="flex-1 bg-[#101010]/60 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-3 text-white placeholder-gray-400 resize-none min-h-[44px] max-h-32 text-base focus:outline-none focus:ring-2 focus:ring-white/20"
+              className="flex-1 bg-[#101010]/60 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-2 text-white placeholder-gray-400 resize-none min-h-[40px] max-h-32 text-base focus:outline-none focus:ring-2 focus:ring-white/20"
               style={{ fontSize: "16px" }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -310,7 +306,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
             <Button
               onClick={handleSendMessage}
               disabled={!inputValue.trim() || isGenerating}
-              className="bg-white text-black hover:bg-gray-200 h-11 w-11 p-0 rounded-full flex-shrink-0"
+              className="bg-white text-black hover:bg-gray-200 h-10 w-10 p-0 rounded-full flex-shrink-0"
             >
               <Send className="h-4 w-4" />
             </Button>
