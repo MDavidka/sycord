@@ -410,10 +410,10 @@ export default function ServerConfigPage() {
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Header */}
-      <header className="glass-card border-b border-white/10 sticky top-8 z-50">
+      <header className="glass-card border-b border-white/10 sticky -top-4 z-50">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 pt-8">
               <Image src="/new-blue-logo.png" alt="Sycord Bot" width={28} height={28} className="rounded-lg" />
               <div>
                 <h1 className="text-lg font-bold text-white">
@@ -426,7 +426,7 @@ export default function ServerConfigPage() {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent"
+                  className="border-white/20 text-white hover:bg-gray-100 hover:text-gray-900 bg-transparent pt-8"
                 >
                   <div className="flex items-center space-x-2">
                     {serverConfig.server_icon ? (
@@ -449,6 +449,7 @@ export default function ServerConfigPage() {
                   </div>
                 </Button>
               </DropdownMenuTrigger>
+
               <DropdownMenuContent align="end" className="w-64">
                 {userServers.map((server) => (
                   <DropdownMenuItem key={server.serverId} asChild>

@@ -155,10 +155,10 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <header className="glass-card border-b border-white/10 mt-8">
+      <header className="glass-card border-b border-white/10 -mt-4">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 pt-8">
               <Image src="/new-blue-logo.png" alt="Sycord Bot" width={32} height={32} className="rounded-lg" />
               <div>
                 <h1 className="text-2xl font-bold text-white">
@@ -183,7 +183,7 @@ export default function Dashboard() {
             </div>
             <Button
               onClick={() => setShowAddServerModal(true)}
-              className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
+              className="bg-gray-800/50 hover:bg-gray-700/50 text-white pt-8"
             >
               <Plus className="h-5 w-5" />
             </Button>
