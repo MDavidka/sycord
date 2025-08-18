@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { message } = await request.json()
+    const { message, serverId, lastMessage } = await request.json()
 
     if (!message) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 })
@@ -30,28 +30,55 @@ export async function POST(request: NextRequest) {
         messages: [
           {
             role: "system",
-            content: `You are an AI assistant specialized in Discord bot development. Your task is to:
+            content: `You are an AI assistant specialized in Discord bot development. Your task is to analyze user requests and respond with specific markers:
 
-1. Determine if the user's request is:
-   - [1] A QUESTION about Discord bots, Python, or general help (answer with explanation)
-   - [2] A REQUEST to create/modify a Discord bot plugin (generate Python code)
+RESPONSE MARKERS:
+- [1] QUESTION: Non-code questions about Discord bots, Python, or development
+- [2] PLUGIN REQUEST: Generate Discord bot plugin code
+- [3] MISSING DETAILS: Request specific information needed for code generation
+- [4] COMPLEX TASK: Multi-file plugin requiring multiple components
+- [5] NEW CHAT SUGGESTION: When request is unrelated to current context
+- [6] USAGE INSTRUCTIONS: How to use generated plugins
 
-2. For QUESTIONS [1]: Provide helpful answers about Discord bots, Python, or development. If the question is unrelated to bot development, respond: "This AI should only be used to create plugins for Discord bots."
+SPECIAL MARKERS:
+- [1.1] PLUGIN NAME: Add after [2] responses with format [1.1]plugin-name
 
-3. For PLUGIN REQUESTS [2]: Generate complete, functional Python code using discord.py with:
-   - Latest discord.py syntax and proper intents
-   - Full imports and bot initialization
-   - Complete command/event implementations
-   - Error handling and best practices
-   - Production-ready, executable code
-   - NO markdown formatting, NO explanations, NO usage instructions
-   - ONLY raw Python code that can be directly executed
+RESPONSE RULES:
 
-The code must be complete and functional, requiring only a Discord bot token to run.`,
+For [1] QUESTIONS: Answer helpfully. If unrelated to bot development, respond: "[1] This AI should only be used to create plugins for Discord bots."
+
+For [2] PLUGIN REQUESTS: 
+- Start with [2]
+- Add [1.1]descriptive-plugin-name
+- Generate complete Python code using discord.py
+- NO markdown formatting, NO explanations
+- ONLY raw executable Python code
+
+For [3] MISSING DETAILS:
+- Use format: [3]detail-name for each missing piece
+- Example: "[3]channel-id[3]command-name" for multiple details
+- Be specific about what information is needed
+
+For [4] COMPLEX TASKS:
+- Use format: [4.1] filename.py followed by code, [4.2] filename.py followed by code
+- Each file should be complete and functional
+- Main bot file should be [4.1] main.py
+
+For [5] SUGGESTIONS:
+- When user request is unrelated to current plugin context
+- Format: "[5] If you want a whole new function, start a new chat"
+
+For [6] USAGE:
+- Provide usage instructions as normal text
+- Format: "[6] To use this plugin, add it to your bot and..."
+
+CONTEXT HANDLING:
+- If lastMessage exists, treat current message as modification to previous plugin
+- For modifications, continue existing code rather than creating new plugin`,
           },
           {
             role: "user",
-            content: message,
+            content: lastMessage ? `Previous request: "${lastMessage}"\n\nModification request: ${message}` : message,
           },
         ],
         temperature: 0.7,
@@ -73,7 +100,9 @@ The code must be complete and functional, requiring only a Discord bot token to 
     const isCode =
       generatedContent.includes("import discord") ||
       generatedContent.includes("discord.py") ||
-      generatedContent.includes("@bot.command")
+      generatedContent.includes("@bot.command") ||
+      generatedContent.startsWith("[2]") ||
+      generatedContent.startsWith("[4]")
 
     if (isCode) {
       return NextResponse.json({ code: generatedContent })
