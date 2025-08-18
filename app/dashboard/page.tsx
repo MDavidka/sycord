@@ -155,7 +155,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <header className="glass-card border-b border-white/10 mt-8">
+      <header className="glass-card border-b border-white/10 -mt-4">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
