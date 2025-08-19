@@ -206,7 +206,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         body: JSON.stringify({ message: initialPrompt, mode: "plan", history }),
       })
       if (!planResponse.ok) throw new Error("Failed to generate plan")
-      const plan = (await planResponse.json()).response
+      const plan = ((await planResponse.json()).response) || ""
       setPipelineState({ active: true, step: 2 })
 
       // Step 2: Generate Code from Plan
@@ -217,7 +217,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         body: JSON.stringify({ message: codeMessage, mode: "code", history }),
       })
       if (!codeResponse.ok) throw new Error("Failed to generate code")
-      const rawCodeResponse = (await codeResponse.json()).response
+      const rawCodeResponse = ((await codeResponse.json()).response) || ""
       const codeMessages = parseAIResponse(rawCodeResponse)
       setMessages((prev) => [...prev, ...codeMessages])
       setPipelineState({ active: true, step: 3 })
@@ -238,7 +238,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         body: JSON.stringify({ message: reviewMessage, mode: "review", history }),
       })
       if (!reviewResponse.ok) throw new Error("Failed to review code")
-      const rawReviewedResponse = (await reviewResponse.json()).response
+      const rawReviewedResponse = ((await reviewResponse.json()).response) || ""
       const reviewedMessages = parseAIResponse(rawReviewedResponse)
 
       // Find the plugin message and update it with the reviewed code
