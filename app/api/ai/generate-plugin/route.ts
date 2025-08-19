@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "llama3-70b-8192",
+        model: "compound-beta",
         messages: [
           {
             role: "system",
