@@ -200,6 +200,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
     try {
       // Step 1: Generate Plan
+      await new Promise(resolve => setTimeout(resolve, 500))
       const planResponse = await fetch("/api/ai/generate-plugin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -207,7 +208,9 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       })
       if (!planResponse.ok) throw new Error("Failed to generate plan")
       const plan = ((await planResponse.json()).response) || ""
+
       setPipelineState({ active: true, step: 2 })
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       // Step 2: Generate Code from Plan
       const codeMessage = `Based on the following plan, please generate the plugin code.\n\n**Plan:**\n${plan}\n\n**Original Request:**\n${initialPrompt}`
@@ -220,7 +223,9 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       const rawCodeResponse = ((await codeResponse.json()).response) || ""
       const codeMessages = parseAIResponse(rawCodeResponse)
       setMessages((prev) => [...prev, ...codeMessages])
+
       setPipelineState({ active: true, step: 3 })
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       // Step 3: Review Code
       const pluginMessage = codeMessages.find(m => m.type === 'ai_plugin')
@@ -231,7 +236,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         throw new Error("Could not extract plugin details for review.")
       }
 
-      const reviewMessage = `The plugin is named \`${pluginName}\`. Please review the following Python code:\n\n\`\`\`python\n${codeToReview}\n\`\`\``
+      const reviewMessage = `Plugin Name: ${pluginName}\n\nPlease review the following Python code:\n${codeToReview}`
       const reviewResponse = await fetch("/api/ai/generate-plugin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -240,6 +245,8 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       if (!reviewResponse.ok) throw new Error("Failed to review code")
       const rawReviewedResponse = ((await reviewResponse.json()).response) || ""
       const reviewedMessages = parseAIResponse(rawReviewedResponse)
+
+      setPipelineState({ active: true, step: 4 })
 
       // Find the plugin message and update it with the reviewed code
       setMessages((prev) => {
@@ -267,7 +274,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         }
         return newMessages
       })
-      setPipelineState({ active: true, step: 4 })
 
     } catch (error) {
       console.error("Pipeline Error:", error)

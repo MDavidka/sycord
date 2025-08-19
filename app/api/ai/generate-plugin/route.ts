@@ -47,11 +47,8 @@ export async function POST(request: NextRequest) {
       '    *   Provide clear, concise usage instructions for the generated plugin.\\n' +
       '    *   Format: `[6]To use this, type /banword add <word>.[6]`\\n\\n'
 
-    const reviewPrompt = 'You are a world-class code reviewer and senior Python developer. Your task is to analyze the provided discord.py code for bugs, logical errors, style issues (following PEP8), and potential optimizations.\\n\\n' +
-      '- If you find issues, you MUST provide a corrected version of the full code block.\\n' +
-      '- Your response MUST be in the same structured format as the input you received, including the `[2]` tag for the code and a `[1.1]` tag for the name.\\n' +
-      '- You MUST also provide an updated `[6]` usage instruction block if your changes affect how the user interacts with the bot.\\n' +
-      '- If the code is perfect and requires no changes, simply respond with the original code and a message like `[6]The code looks solid, no changes were needed.[6]`.'
+    const reviewPrompt = 'You are a Python code reviewer. Review the following code. If you find any bugs or improvements, provide the full, corrected code.\\n\\n' +
+      'Your response must include the plugin name in a `[1.1]` tag and the full code in a `[2]` tag. If the code is correct, return it as is.'
 
     switch (mode) {
       case 'plan':
