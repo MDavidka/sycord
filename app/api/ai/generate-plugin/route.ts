@@ -8,7 +8,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { message, history } = await request.json()
+
+    const { message, history, mode } = await request.json()
 
     if (!message) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 })
@@ -18,8 +19,6 @@ export async function POST(request: NextRequest) {
     if (!apiKey) {
       return NextResponse.json({ error: "API key not configured" }, { status: 500 })
     }
-
-    const { message, history, mode } = await request.json()
 
     let systemPrompt = ''
 
