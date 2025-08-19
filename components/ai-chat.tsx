@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, MessageSquare, Send, Eye, Edit3, Loader2, Play, CheckCircle } from "lucide-react"
+import { ArrowLeft, MessageSquare, Send, Eye, Edit3, Loader2, AlertCircle, CheckCircle } from "lucide-react"
 import Image from "next/image"
 import type { UserAIFunction } from "@/lib/types"
 
@@ -10,12 +10,12 @@ interface ChatMessage {
   id: string
   role: "user" | "ai"
   content: string
-  type: "question" | "plugin" | "normal" | "missing_details" | "complex_task" | "new_chat_suggestion"
-  code?: string
-  files?: Array<{ filename: string; code: string }>
+  type: "question" | "plugin" | "complex" | "missing_details" | "out_of_scope"
   pluginName?: string
-  usage?: string
-  details?: string[]
+  code?: string
+  complexFiles?: Array<{ index: string; filename: string; code: string }>
+  usageInstructions?: string
+  missingDetails?: string[]
   timestamp: Date
 }
 
@@ -30,12 +30,13 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputValue, setInputValue] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
-  const [showSavePrompt, setShowSavePrompt] = useState(false)
   const [expandedCode, setExpandedCode] = useState<string | null>(null)
   const [deployedPlugins, setDeployedPlugins] = useState<Set<string>>(new Set())
-  const [detailInputs, setDetailInputs] = useState<{ [messageId: string]: { [detail: string]: string } }>({})
-  const [activeFileTab, setActiveFileTab] = useState<{ [messageId: string]: number }>({})
-  const [editingPlugin, setEditingPlugin] = useState<string | null>(null)
+  const [showingSuccess, setShowingSuccess] = useState<string | null>(null)
+  const [conversationHistory, setConversationHistory] = useState<any[]>([])
+  const [lastCodeState, setLastCodeState] = useState<string>("")
+  const [missingDetailsInputs, setMissingDetailsInputs] = useState<Record<string, string>>({})
+  const [activeComplexTab, setActiveComplexTab] = useState<string>("0")
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -44,34 +45,43 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() || isGenerating) return
+  const handleSendMessage = async (isDetailResponse = false, details?: Record<string, string>) => {
+    let messageContent = inputValue.trim()
+
+    if (isDetailResponse && details) {
+      const lastUserMessage = messages.filter((m) => m.role === "user").pop()?.content || ""
+      const detailsText = Object.entries(details)
+        .map(([key, value]) => `${key}:${value}`)
+        .join(", ")
+      messageContent = `I requested this feature before ${lastUserMessage}, but missed this detail ${detailsText}`
+    }
+
+    if (!messageContent || isGenerating) return
 
     const userMessage: ChatMessage = {
       id: `msg_${Date.now()}_user`,
       role: "user",
-      content: inputValue,
-      type: "normal",
+      content: messageContent,
+      type: "question",
       timestamp: new Date(),
     }
 
     setMessages((prev) => [...prev, userMessage])
-    const currentInput = inputValue
     setInputValue("")
+    setMissingDetailsInputs({})
     setIsGenerating(true)
 
-    try {
-      const isFollowUp = messages.length > 0 && messages.some((m) => m.type === "plugin" || m.type === "complex_task")
-      const lastPluginMessage = messages.findLast((m) => m.type === "plugin" || m.type === "complex_task")
+    const newHistory = [...conversationHistory, { role: "user", content: messageContent }]
+    setConversationHistory(newHistory)
 
+    try {
       const response = await fetch("/api/ai/generate-plugin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: currentInput,
-          followUp: isFollowUp,
-          currentCode: lastPluginMessage?.code || lastPluginMessage?.files,
-          serverId,
+          message: messageContent,
+          conversationHistory: newHistory.slice(-10), // Keep last 10 messages for context
+          lastCodeState,
         }),
       })
 
@@ -82,34 +92,21 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
       const aiMessage: ChatMessage = {
         id: `msg_${Date.now()}_ai`,
         role: "ai",
-        content: data.content || "",
-        type: data.type || "normal",
-        code: data.code,
-        files: data.files,
+        content: data.rawContent,
+        type: data.type,
         pluginName: data.pluginName,
-        usage: data.usage,
-        details: data.details,
+        code: data.code,
+        complexFiles: data.complexFiles,
+        usageInstructions: data.usageInstructions,
+        missingDetails: data.missingDetails,
         timestamp: new Date(),
       }
 
       setMessages((prev) => [...prev, aiMessage])
 
-      if (data.type === "missing_details" && data.details) {
-        const inputs: { [detail: string]: string } = {}
-        data.details.forEach((detail: string) => {
-          inputs[detail] = ""
-        })
-        setDetailInputs((prev) => ({
-          ...prev,
-          [aiMessage.id]: inputs,
-        }))
-      }
-
-      if (data.type === "complex_task" && data.files?.length > 0) {
-        setActiveFileTab((prev) => ({
-          ...prev,
-          [aiMessage.id]: 0,
-        }))
+      setConversationHistory((prev) => [...prev, { role: "assistant", content: data.rawContent }])
+      if (data.code) {
+        setLastCodeState(data.code)
       }
     } catch (error) {
       console.error("Error:", error)
@@ -126,88 +123,44 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
     }
   }
 
-  const handleDetailSubmission = async (messageId: string) => {
-    const message = messages.find((m) => m.id === messageId)
-    if (!message || !message.details) return
-
-    const inputs = detailInputs[messageId] || {}
-    const filledDetails = message.details.map((detail) => `${detail}: ${inputs[detail] || "not provided"}`).join(", ")
-
-    const originalUserMessage = messages[messages.findIndex((m) => m.id === messageId) - 1]
-    if (!originalUserMessage) return
-
-    const enhancedMessage = `I requested this feature before: "${originalUserMessage.content}", but missed these details: ${filledDetails}`
-
-    const userMessage: ChatMessage = {
-      id: `msg_${Date.now()}_user_enhanced`,
-      role: "user",
-      content: originalUserMessage.content,
-      type: "normal",
-      timestamp: new Date(),
-    }
-
-    setMessages((prev) => [...prev, userMessage])
-    setIsGenerating(true)
-
-    try {
-      const response = await fetch("/api/ai/generate-plugin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: enhancedMessage,
-          followUp: true,
-          serverId,
-        }),
-      })
-
-      if (!response.ok) throw new Error("Failed to generate response")
-      const data = await response.json()
-
-      const aiMessage: ChatMessage = {
-        id: `msg_${Date.now()}_ai_enhanced`,
-        role: "ai",
-        content: data.content || "",
-        type: data.type || "normal",
-        code: data.code,
-        files: data.files,
-        pluginName: data.pluginName,
-        usage: data.usage,
-        timestamp: new Date(),
-      }
-
-      setMessages((prev) => [...prev, aiMessage])
-    } catch (error) {
-      console.error("Error:", error)
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-
-  const handleDeployPlugin = async (messageId: string) => {
-    const message = messages.find((m) => m.id === messageId)
-    if (!message) return
-
+  const handleDeployPlugin = async (messageId: string, pluginName: string, code?: string, complexFiles?: any[]) => {
     try {
       const response = await fetch("/api/user-ai-functions/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: message.pluginName || "Untitled Plugin",
-          description: "AI Generated Plugin",
-          code: message.code,
-          files: message.files,
+          pluginName,
+          code,
+          complexFiles,
           serverId,
-          pluginType: message.type === "complex_task" ? "complex" : "single",
         }),
       })
 
       if (response.ok) {
         setDeployedPlugins((prev) => new Set([...prev, messageId]))
-        setTimeout(() => {}, 1000)
+        setShowingSuccess(messageId)
+
+        // Show green checkmark for 1 second
+        setTimeout(() => {
+          setShowingSuccess(null)
+        }, 1000)
       }
     } catch (error) {
       console.error("Error deploying plugin:", error)
     }
+  }
+
+  const handleSubmitDetails = () => {
+    handleSendMessage(true, missingDetailsInputs)
+  }
+
+  const handleNewChat = () => {
+    setMessages([])
+    setExpandedCode(null)
+    setConversationHistory([])
+    setLastCodeState("")
+    setDeployedPlugins(new Set())
+    setMissingDetailsInputs({})
   }
 
   if (!isOpen) return null
@@ -215,17 +168,12 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
   return (
     <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm">
       <div className="h-full w-full bg-[#101010]/95 backdrop-blur-xl text-white flex flex-col">
+        {/* ... existing header code ... */}
         <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#101010]/80 backdrop-blur-sm">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              if (messages.some((m) => m.type === "plugin")) {
-                setShowSavePrompt(true)
-              } else {
-                onClose()
-              }
-            }}
+            onClick={onClose}
             className="h-10 w-10 p-0 text-white hover:bg-white/10 rounded-full bg-white/5"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -240,11 +188,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              setMessages([])
-              setExpandedCode(null)
-              setEditingPlugin(null)
-            }}
+            onClick={handleNewChat}
             className="h-10 w-10 p-0 text-white hover:bg-white/10 rounded-full bg-white/5"
           >
             <MessageSquare className="h-5 w-5" />
@@ -258,9 +202,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
                 <Image src="/s1-logo.png" alt="S1" width={64} height={64} className="object-contain" />
               </div>
               <p className="text-center text-lg font-medium mb-2">Welcome to S1 AI Lab</p>
-              <p className="text-center opacity-75 max-w-md">
-                Ask questions about Discord bots or request plugin creation
-              </p>
+              <p className="text-center opacity-75 max-w-md">Create Discord bot plugins with AI assistance</p>
             </div>
           ) : (
             messages.map((message) => (
@@ -269,162 +211,208 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
                   <div className="max-w-[80%] bg-white/90 backdrop-blur-sm text-gray-900 rounded-2xl px-4 py-3 shadow-lg">
                     <p className="text-sm leading-relaxed">{message.content}</p>
                   </div>
-                ) : message.type === "question" || message.type === "new_chat_suggestion" ? (
+                ) : message.type === "question" ? (
                   <div className="max-w-[80%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
                     <p className="text-sm leading-relaxed">{message.content}</p>
-                    {message.type === "new_chat_suggestion" && (
-                      <Button
-                        onClick={() => {
-                          setMessages([])
-                          setExpandedCode(null)
-                        }}
-                        className="mt-3 bg-white text-black hover:bg-gray-200 text-xs px-3 py-1 h-7"
-                      >
-                        <MessageSquare className="h-3 w-3 mr-1" />
-                        New Chat
-                      </Button>
-                    )}
+                  </div>
+                ) : message.type === "out_of_scope" ? (
+                  <div className="max-w-[80%] bg-[#101010]/60 backdrop-blur-sm border border-orange-500/20 rounded-2xl px-4 py-3 shadow-lg">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <AlertCircle className="h-4 w-4 text-orange-400" />
+                      <span className="text-orange-400 text-sm font-medium">New Chat Suggested</span>
+                    </div>
+                    <p className="text-sm leading-relaxed">If you want a whole new function, start a new chat.</p>
+                    <Button
+                      onClick={handleNewChat}
+                      className="mt-3 bg-orange-500 text-white hover:bg-orange-600 h-8 px-3 text-xs"
+                    >
+                      <MessageSquare className="h-3 w-3 mr-1" />
+                      New Chat
+                    </Button>
                   </div>
                 ) : message.type === "missing_details" ? (
-                  <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl p-4 shadow-lg">
-                    <p className="text-sm mb-4">Please provide the following details:</p>
+                  <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-blue-500/20 rounded-2xl p-4 shadow-lg">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <AlertCircle className="h-4 w-4 text-blue-400" />
+                      <span className="text-blue-400 text-sm font-medium">Missing Details</span>
+                    </div>
+                    <p className="text-sm mb-4">I need some additional information:</p>
                     <div className="space-y-3">
-                      {message.details?.map((detail, index) => (
+                      {message.missingDetails?.map((detail, index) => (
                         <div key={index}>
                           <label className="text-xs text-gray-400 mb-1 block">{detail}</label>
                           <Input
                             placeholder={`Enter ${detail}`}
-                            value={detailInputs[message.id]?.[detail] || ""}
+                            value={missingDetailsInputs[detail] || ""}
                             onChange={(e) =>
-                              setDetailInputs((prev) => ({
+                              setMissingDetailsInputs((prev) => ({
                                 ...prev,
-                                [message.id]: {
-                                  ...prev[message.id],
-                                  [detail]: e.target.value,
-                                },
+                                [detail]: e.target.value,
                               }))
                             }
                             className="bg-black/40 border-white/20 text-white text-sm h-8"
                           />
                         </div>
                       ))}
-                      <Button
-                        onClick={() => handleDetailSubmission(message.id)}
-                        className="bg-white text-black hover:bg-gray-200 text-sm px-4 py-2 h-8 mt-2"
-                      >
-                        Submit Details
-                      </Button>
                     </div>
+                    <Button
+                      onClick={handleSubmitDetails}
+                      disabled={!message.missingDetails?.every((detail) => missingDetailsInputs[detail]?.trim())}
+                      className="mt-3 bg-blue-500 text-white hover:bg-blue-600 h-8 px-3 text-xs"
+                    >
+                      Submit Details
+                    </Button>
+                  </div>
+                ) : message.type === "complex" ? (
+                  <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden shadow-lg">
+                    <div className="p-4">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <div className="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center relative">
+                          <span className="text-xs font-mono">PY</span>
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-medium">{message.pluginName || "Complex Plugin"}</h3>
+                          <p className="text-xs text-red-400">Complex Task • Multiple Files</p>
+                        </div>
+                      </div>
+
+                      {message.usageInstructions && (
+                        <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                          <p className="text-sm text-blue-300">{message.usageInstructions}</p>
+                        </div>
+                      )}
+
+                      <div className="flex items-center space-x-2 mb-4">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setExpandedCode(expandedCode === message.id ? null : message.id)}
+                          className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+
+                        {!deployedPlugins.has(message.id) ? (
+                          showingSuccess === message.id ? (
+                            <div className="flex items-center space-x-2 text-green-400">
+                              <CheckCircle className="h-4 w-4" />
+                              <span className="text-sm">Deployed!</span>
+                            </div>
+                          ) : (
+                            <Button
+                              onClick={() =>
+                                handleDeployPlugin(
+                                  message.id,
+                                  message.pluginName || "plugin",
+                                  undefined,
+                                  message.complexFiles,
+                                )
+                              }
+                              className="bg-white text-black hover:bg-gray-200 h-8 px-4 text-sm font-medium"
+                            >
+                              Deploy
+                            </Button>
+                          )
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    {expandedCode === message.id && message.complexFiles && (
+                      <div className="border-t border-white/10 bg-black/40">
+                        <div className="flex border-b border-white/10">
+                          {message.complexFiles.map((file, index) => (
+                            <button
+                              key={index}
+                              onClick={() => setActiveComplexTab(index.toString())}
+                              className={`px-4 py-2 text-sm border-r border-white/10 ${
+                                activeComplexTab === index.toString()
+                                  ? "bg-white/10 text-white"
+                                  : "text-gray-400 hover:text-white hover:bg-white/5"
+                              }`}
+                            >
+                              {file.filename}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="p-4">
+                          <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
+                            {message.complexFiles[Number.parseInt(activeComplexTab)]?.code}
+                          </pre>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden shadow-lg">
-                    {message.usage && (
-                      <div className="p-3 bg-blue-500/10 border-b border-white/10">
-                        <p className="text-xs text-blue-300">{message.usage}</p>
-                      </div>
-                    )}
-
                     <div className="p-4">
                       <div className="flex items-center space-x-3 mb-3">
                         <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
                           <span className="text-xs font-mono">PY</span>
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-medium text-white">{message.pluginName || "Unknown Plugin"}</h3>
+                          <h3 className="font-medium">{message.pluginName || "Discord Plugin"}</h3>
                           <p className="text-xs text-gray-400">AI Generated Discord Bot Plugin</p>
                         </div>
-                        {message.type === "complex_task" && (
-                          <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                            <span className="text-xs text-red-400">Complex Task</span>
-                          </div>
-                        )}
                       </div>
 
-                      <p className="text-sm mb-4">Plugin generated successfully!</p>
+                      {message.usageInstructions && (
+                        <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                          <p className="text-sm text-blue-300">{message.usageInstructions}</p>
+                        </div>
+                      )}
 
                       <div className="flex items-center space-x-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setExpandedCode(expandedCode === message.id ? null : message.id)}
+                          className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+
                         {!deployedPlugins.has(message.id) ? (
-                          <>
+                          showingSuccess === message.id ? (
+                            <div className="flex items-center space-x-2 text-green-400">
+                              <CheckCircle className="h-4 w-4" />
+                              <span className="text-sm">Deployed!</span>
+                            </div>
+                          ) : (
                             <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setExpandedCode(expandedCode === message.id ? null : message.id)}
-                              className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
+                              onClick={() =>
+                                handleDeployPlugin(message.id, message.pluginName || "plugin", message.code)
+                              }
+                              className="bg-white text-black hover:bg-gray-200 h-8 px-4 text-sm font-medium"
                             >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              onClick={() => handleDeployPlugin(message.id)}
-                              className="bg-white text-black hover:bg-gray-200 text-sm px-6 py-2 h-8 flex-1"
-                            >
-                              <Play className="h-3 w-3 mr-2" />
                               Deploy
                             </Button>
-                          </>
+                          )
                         ) : (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setExpandedCode(expandedCode === message.id ? null : message.id)}
-                              className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <div className="flex items-center text-green-400 text-sm">
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Deployed
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
-                            >
-                              <Edit3 className="h-4 w-4" />
-                            </Button>
-                          </>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
                         )}
                       </div>
                     </div>
 
-                    {expandedCode === message.id && (
-                      <div className="border-t border-white/10 bg-black/40">
-                        {message.type === "complex_task" && message.files ? (
-                          <div>
-                            <div className="flex border-b border-white/10">
-                              {message.files.map((file, index) => (
-                                <button
-                                  key={index}
-                                  onClick={() =>
-                                    setActiveFileTab((prev) => ({
-                                      ...prev,
-                                      [message.id]: index,
-                                    }))
-                                  }
-                                  className={`px-4 py-2 text-xs border-r border-white/10 ${
-                                    activeFileTab[message.id] === index
-                                      ? "bg-white/10 text-white"
-                                      : "text-gray-400 hover:text-white"
-                                  }`}
-                                >
-                                  {file.filename}
-                                </button>
-                              ))}
-                            </div>
-                            <div className="p-4">
-                              <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
-                                {message.files[activeFileTab[message.id] || 0]?.code}
-                              </pre>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="p-4">
-                            <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
-                              {message.code}
-                            </pre>
-                          </div>
-                        )}
+                    {expandedCode === message.id && message.code && (
+                      <div className="border-t border-white/10 bg-black/40 p-4">
+                        <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
+                          {message.code}
+                        </pre>
                       </div>
                     )}
                   </div>
@@ -447,6 +435,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
           <div ref={messagesEndRef} />
         </div>
 
+        {/* ... existing input section ... */}
         <div className="border-t border-white/10 p-4 bg-[#101010]/40 backdrop-blur-sm">
           <div className="flex items-end space-x-3">
             <textarea
@@ -464,7 +453,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
               }}
             />
             <Button
-              onClick={handleSendMessage}
+              onClick={() => handleSendMessage()}
               disabled={!inputValue.trim() || isGenerating}
               className="bg-white text-black hover:bg-gray-200 h-10 w-10 p-0 rounded-full flex-shrink-0"
             >
@@ -472,35 +461,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
             </Button>
           </div>
         </div>
-
-        {showSavePrompt && (
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-[#101010]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-6 max-w-sm w-full">
-              <h3 className="text-lg font-semibold mb-2">Save Changes?</h3>
-              <p className="text-gray-400 text-sm mb-4">
-                You have unsaved plugins. Do you want to save them before leaving?
-              </p>
-              <div className="flex space-x-3">
-                <Button
-                  onClick={() => {
-                    setShowSavePrompt(false)
-                    onClose()
-                  }}
-                  variant="ghost"
-                  className="flex-1 text-white hover:bg-white/10"
-                >
-                  Don't Save
-                </Button>
-                <Button
-                  onClick={() => setShowSavePrompt(false)}
-                  className="flex-1 bg-white text-black hover:bg-gray-200"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

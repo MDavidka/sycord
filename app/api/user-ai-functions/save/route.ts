@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
-import { MongoClient } from "mongodb"
+import { connectToDatabase } from "@/lib/mongodb"
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,44 +9,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { name, description, code, files, serverId, pluginType = "single" } = await request.json()
+    const { pluginName, code, serverId, complexFiles } = await request.json()
 
-    if (!name || (!code && !files)) {
-      return NextResponse.json({ error: "Name and code/files are required" }, { status: 400 })
+    if (!pluginName || (!code && !complexFiles)) {
+      return NextResponse.json({ error: "Plugin name and code are required" }, { status: 400 })
     }
 
-    const client = new MongoClient(process.env.MONGODB_URI!)
-    await client.connect()
-    const db = client.db("dash-bot")
+    const { db } = await connectToDatabase()
 
-    const userFolder = session.user.email.replace(/[^a-zA-Z0-9]/g, "_")
-    const pluginData = {
-      name,
-      description,
-      code: pluginType === "single" ? code : null,
-      files: pluginType === "complex" ? files : null,
-      pluginType,
-      userEmail: session.user.email,
-      userFolder,
+    const userFolder = session.user.email.split("@")[0] // Use email prefix as user folder
+    const folderPath = `dash-bot/users/${userFolder}/servers/${serverId || "default"}/saved-plugins`
+
+    const savedPlugin = {
+      pluginName,
+      code,
+      complexFiles,
+      folderPath,
+      userId: session.user.email,
       serverId: serverId || "default",
-      status: "deployed",
-      created_at: new Date(),
-      updated_at: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
     }
 
-    const result = await db
-      .collection(`users.${userFolder}.servers.${serverId || "default"}.saved-plugins`)
-      .insertOne(pluginData)
-
-    await client.close()
+    const result = await db.collection("saved_plugins").insertOne(savedPlugin)
 
     return NextResponse.json({
       success: true,
       pluginId: result.insertedId,
-      message: "Plugin saved successfully",
+      folderPath,
     })
   } catch (error) {
-    console.error("Save Plugin Error:", error)
+    console.error("Error saving plugin:", error)
     return NextResponse.json({ error: "Failed to save plugin" }, { status: 500 })
   }
 }
