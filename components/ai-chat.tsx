@@ -198,8 +198,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     setPipelineState({ active: true, step: 1 })
     setIsGenerating(true)
 
-    let finalMessages: ChatMessage[] = []
-
     try {
       // Step 1: Generate Plan
       const planResponse = await fetch("/api/ai/generate-plugin", {
@@ -209,7 +207,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       })
       if (!planResponse.ok) throw new Error("Failed to generate plan")
       const plan = (await planResponse.json()).response
-      // The plan is no longer displayed in the chat, only used for the next step.
       setPipelineState({ active: true, step: 2 })
 
       // Step 2: Generate Code from Plan
@@ -226,14 +223,15 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       setPipelineState({ active: true, step: 3 })
 
       // Step 3: Review Code
-      const codeMatch = rawCodeResponse.match(/\[2\]([\s\S]*?)\[2\]/s)
-      const codeToReview = codeMatch ? codeMatch[1].trim() : ""
+      const pluginMessage = codeMessages.find(m => m.type === 'ai_plugin')
+      const pluginName = pluginMessage?.pluginName
+      const codeToReview = pluginMessage?.pluginFiles?.[0]?.code
 
-      if (!codeToReview) {
-        throw new Error("Could not extract code for review.")
+      if (!codeToReview || !pluginName) {
+        throw new Error("Could not extract plugin details for review.")
       }
 
-      const reviewMessage = `Please review the following Python code:\n\n\`\`\`python\n${codeToReview}\n\`\`\``
+      const reviewMessage = `The plugin is named \`${pluginName}\`. Please review the following Python code:\n\n\`\`\`python\n${codeToReview}\n\`\`\``
       const reviewResponse = await fetch("/api/ai/generate-plugin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -250,13 +248,19 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         if (pluginMsgIndex !== -1) {
           const reviewedPlugin = reviewedMessages.find((m) => m.type === "ai_plugin")
           if (reviewedPlugin) {
+            // Preserve the original message ID to avoid key issues
+            reviewedPlugin.id = newMessages[pluginMsgIndex].id
             newMessages[pluginMsgIndex] = reviewedPlugin
           }
           const reviewedUsage = reviewedMessages.find((m) => m.type === "ai_usage_instructions")
           if (reviewedUsage) {
              const usageMsgIndex = newMessages.findIndex((m) => m.type === "ai_usage_instructions")
-             if(usageMsgIndex !== -1) newMessages[usageMsgIndex] = reviewedUsage
-             else newMessages.push(reviewedUsage)
+             if(usageMsgIndex !== -1) {
+                reviewedUsage.id = newMessages[usageMsgIndex].id
+                newMessages[usageMsgIndex] = reviewedUsage
+             } else {
+                newMessages.push(reviewedUsage)
+             }
           }
         } else {
            newMessages.push(...reviewedMessages)
@@ -264,8 +268,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         return newMessages
       })
       setPipelineState({ active: true, step: 4 })
-
-      finalMessages = reviewedMessages
 
     } catch (error) {
       console.error("Pipeline Error:", error)
@@ -282,7 +284,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     } finally {
       // Finish pipeline
       setPipelineState({ active: true, step: 5 })
-      await new Promise(resolve => setTimeout(resolve, 1500)) // Show "Finished" for a moment
+      await new Promise(resolve => setTimeout(resolve, 1500))
       setPipelineState({ active: false, step: 0 })
       setIsGenerating(false)
     }
