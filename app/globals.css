@@ -4,42 +4,26 @@
 
 @layer base {
   :root {
-    /* Updated design tokens to match green-focused developer theme */
-    --background: 220 13% 18%; /* #1f2937 - Dark background for main interface */
-    --foreground: 0 0% 100%; /* #ffffff - Main text color */
-    --card: 220 13% 23%; /* #374151 - Card background for chat messages and plugin cards */
-    --card-foreground: 0 0% 100%; /* #ffffff - Text color for card content */
-    --popover: 220 13% 23%; /* #374151 - Background for popovers */
-    --popover-foreground: 0 0% 100%; /* #ffffff - Text color for popover content */
-    --primary: 142 76% 36%; /* #15803d - Primary action color for buttons */
-    --primary-foreground: 0 0% 100%; /* #ffffff - Text color for primary actions */
-    --secondary: 84 81% 44%; /* #84cc16 - Accent color for interactive elements */
-    --secondary-foreground: 220 13% 18%; /* #1f2937 - Text color for secondary actions */
-    --muted: 220 9% 46%; /* #6b7280 - Muted text color */
-    --muted-foreground: 0 0% 100%; /* #ffffff - Text color for muted elements */
-    --accent: 84 81% 44%; /* #84cc16 - Bright accent for highlights */
-    --accent-foreground: 220 13% 18%; /* #1f2937 - Text color for accent elements */
-    --destructive: 0 84% 60%; /* #dc2626 - Color for error or destructive actions */
-    --destructive-foreground: 0 0% 100%; /* #ffffff - Text color for destructive actions */
-    --border: 220 13% 23%; /* #374151 - Border color for cards and input fields */
-    --input: 220 13% 18%; /* #2a2e35 - Input field background color */
-    --ring: 142 76% 36%; /* Focus ring color */
-    --radius: 0.5rem; /* Standard corner rounding */
-
-    /* Added chart and sidebar tokens for future components */
-    --chart-1: 142 76% 36%; /* #15803d */
-    --chart-2: 84 81% 44%; /* #84cc16 */
-    --chart-3: 0 84% 60%; /* #dc2626 */
-    --chart-4: 45 93% 47%; /* #f59e0b */
-    --chart-5: 142 76% 97%; /* #f0fdf4 */
-    --sidebar: 220 13% 18%; /* #1f2937 */
-    --sidebar-foreground: 0 0% 100%; /* #ffffff */
-    --sidebar-primary: 142 76% 36%; /* #15803d */
-    --sidebar-primary-foreground: 0 0% 100%; /* #ffffff */
-    --sidebar-accent: 84 81% 44%; /* #84cc16 */
-    --sidebar-accent-foreground: 220 13% 18%; /* #1f2937 */
-    --sidebar-border: 220 13% 23%; /* #374151 */
-    --sidebar-ring: 142 76% 36%; /* Focus ring color */
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --radius: 0.75rem;
   }
 }
 
@@ -49,75 +33,38 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* Updated gradient to match new color scheme */
-    background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(220 13% 15%) 50%, hsl(var(--background)) 100%) !important;
+    background: linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #000000 100%) !important;
     min-height: 100vh;
   }
-
+  
   html {
-    background: hsl(var(--background)) !important;
+    background: #000000 !important;
   }
-
+  
   /* Ensure all containers maintain dark background */
-  #__next,
-  [data-nextjs-scroll-focus-boundary] {
+  #__next, [data-nextjs-scroll-focus-boundary] {
     background: transparent !important;
   }
 }
 
 @layer components {
-  /* Updated component styles to use semantic tokens */
   .glass-card {
-    @apply bg-card/40 backdrop-blur-xl border border-border rounded-xl;
+    @apply bg-black/40 backdrop-blur-xl border border-white/10 rounded-xl;
   }
 
   .neon-border {
-    @apply border border-primary/30 shadow-[0_0_15px_hsl(var(--primary)/0.3)];
+    @apply border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.3)];
   }
 
   .hover-glow {
-    @apply transition-all duration-300 hover:shadow-[0_0_20px_hsl(var(--primary)/0.4)] hover:border-primary/50;
+    @apply transition-all duration-300 hover:shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:border-cyan-400/50;
   }
 
   .mobile-block {
-    @apply p-4 rounded-xl bg-card/60 border border-border backdrop-blur-sm;
-  }
-
-  /* Added new component styles for chat interface */
-  .chat-message {
-    @apply bg-card border border-border rounded-lg p-4 mb-4 animate-fade-in;
-  }
-
-  .chat-message.user {
-    @apply bg-primary/10 border-primary/20;
-  }
-
-  .chat-message.ai {
-    @apply bg-card border-border;
-  }
-
-  .plugin-card {
-    @apply bg-card border border-border rounded-lg p-6 hover-glow transition-all duration-200;
-  }
-
-  .code-block {
-    @apply bg-muted/20 border border-border rounded-md p-4 font-mono text-sm;
-  }
-
-  .generation-step {
-    @apply flex items-center gap-3 p-3 rounded-lg bg-card/50 border border-border;
-  }
-
-  .generation-step.active {
-    @apply bg-primary/10 border-primary/30 shadow-[0_0_10px_hsl(var(--primary)/0.2)];
-  }
-
-  .generation-step.complete {
-    @apply bg-accent/10 border-accent/30;
+    @apply p-4 rounded-xl bg-black/60 border border-white/10 backdrop-blur-sm;
   }
 }
 
-/* Enhanced animations for better UX */
 .animate-fade-in {
   animation: fadeIn 0.5s ease-in-out;
 }
@@ -145,20 +92,5 @@
   to {
     transform: translateY(0);
     opacity: 1;
-  }
-}
-
-/* Added pulse animation for active generation steps */
-.animate-pulse-glow {
-  animation: pulseGlow 2s ease-in-out infinite;
-}
-
-@keyframes pulseGlow {
-  0%,
-  100% {
-    box-shadow: 0 0 10px hsl(var(--primary) / 0.2);
-  }
-  50% {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.4);
   }
 }
