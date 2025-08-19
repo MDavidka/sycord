@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
         model: "compound-beta",
         messages: messages,
         temperature: 0.7,
-        max_tokens: 4000,
+        max_tokens: 40000,
       }),
     })
 
