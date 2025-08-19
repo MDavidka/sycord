@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "qwen/qwen3-32b",
+        model: "compound-beta",
         messages: messages,
         temperature: 0.7,
         max_tokens: 4000,
