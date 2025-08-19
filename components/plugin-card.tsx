@@ -75,14 +75,13 @@ export function PluginCard({
   const handleDeploy = async () => {
     setIsDeploying(true)
 
-    // Simulate deployment process
     setTimeout(() => {
       setDeploySuccess(true)
       setTimeout(() => {
         onDeploy(id)
         setIsDeploying(false)
         setDeploySuccess(false)
-      }, 1000)
+      }, 1000) // Show checkmark for exactly 1 second
     }, 500)
   }
 
@@ -107,7 +106,8 @@ export function PluginCard({
           <CardTitle className="text-lg font-semibold">{name}</CardTitle>
           <div className="flex items-center gap-2">
             {isComplex && (
-              <Badge variant="destructive" className="text-xs">
+              <Badge variant="destructive" className="text-xs relative">
+                <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                 <AlertCircle className="h-3 w-3 mr-1" />
                 Complex task
               </Badge>
@@ -133,10 +133,12 @@ export function PluginCard({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Usage Instructions */}
         {usageInstructions && (
-          <div className="p-3 bg-muted/50 rounded-lg border-l-4 border-accent">
-            <p className="text-sm text-muted-foreground">{usageInstructions}</p>
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <div className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0">💡</div>
+              <p className="text-sm text-blue-800">{usageInstructions}</p>
+            </div>
           </div>
         )}
 
@@ -170,12 +172,11 @@ export function PluginCard({
           </div>
         )}
 
-        {/* Code Display */}
         {(showCode || isDeployed) && (code || files.length > 0) && (
           <div className="border border-border rounded-lg overflow-hidden">
             {isComplex && files.length > 0 ? (
               <Tabs defaultValue={files[0]?.name || "main.py"} className="w-full">
-                <TabsList className="w-full justify-start rounded-none border-b">
+                <TabsList className="w-full justify-start rounded-none border-b bg-muted/30">
                   {files.map((file) => (
                     <TabsTrigger key={file.name} value={file.name} className="text-xs">
                       {file.name}
@@ -184,21 +185,20 @@ export function PluginCard({
                 </TabsList>
                 {files.map((file) => (
                   <TabsContent key={file.name} value={file.name} className="m-0">
-                    <pre className="p-4 text-xs bg-muted/30 overflow-x-auto">
+                    <pre className="p-4 text-xs bg-muted/30 overflow-x-auto max-h-64">
                       <code>{file.content}</code>
                     </pre>
                   </TabsContent>
                 ))}
               </Tabs>
             ) : (
-              <pre className="p-4 text-xs bg-muted/30 overflow-x-auto">
+              <pre className="p-4 text-xs bg-muted/30 overflow-x-auto max-h-64">
                 <code>{code}</code>
               </pre>
             )}
           </div>
         )}
 
-        {/* Action Buttons */}
         <div className="flex gap-2">
           {!isDeployed ? (
             <>
@@ -219,7 +219,10 @@ export function PluginCard({
                 disabled={isDeploying || (generationSteps && currentStep < generationSteps.length)}
               >
                 {deploySuccess ? (
-                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <span>Deployed!</span>
+                  </div>
                 ) : isDeploying ? (
                   <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (

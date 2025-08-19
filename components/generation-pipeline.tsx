@@ -100,7 +100,6 @@ export function GenerationPipeline({ pluginName, onComplete, isComplex = false }
   }, [currentStep, isComplete])
 
   const generatePlanningReasoning = () => {
-    // Hidden AI reasoning (at least 20 lines as specified)
     const reasoning = [
       `Analyzing plugin requirements for ${pluginName}`,
       "Determining core functionality and command structure",
@@ -121,16 +120,23 @@ export function GenerationPipeline({ pluginName, onComplete, isComplex = false }
       "Planning documentation and help commands",
       "Designing user feedback and notification systems",
       "Planning maintenance and update procedures",
+      "Evaluating security implications and safeguards",
       "Finalizing architecture and implementation approach",
+      "Preparing code structure and class organization",
     ]
     setHiddenReasoning(reasoning)
   }
 
   const generateFinalCode = () => {
+    const className = pluginName
+      .split("-")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join("")
+
     const sampleCode = `import discord
 from discord.ext import commands
 
-class ${pluginName.replace(/-/g, "_")}(commands.Cog):
+class ${className}(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.data = {}
@@ -144,7 +150,7 @@ class ${pluginName.replace(/-/g, "_")}(commands.Cog):
         await ctx.send("Hello from ${pluginName}!")
 
 async def setup(bot):
-    await bot.add_cog(${pluginName.replace(/-/g, "_")}(bot))`
+    await bot.add_cog(${className}(bot))`
 
     const files = isComplex
       ? [
@@ -191,7 +197,6 @@ async def setup(bot):
           </Badge>
         </div>
 
-        {/* Progress Bar */}
         <div className="w-full bg-muted rounded-full h-3 mt-3 overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-accent/80 to-accent transition-all duration-1000 ease-out relative"
