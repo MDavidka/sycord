@@ -161,7 +161,7 @@ const parseAIResponse = (rawResponse: string): ChatMessage[] => {
 export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputValue, setInputValue] = useState("")
-  const [isGenerating, setIsGenerating] = useState(false) // Will be controlled by pipelineState
+  const [isGenerating, setIsGenerating] = useState(false)
   const [showSavePrompt, setShowSavePrompt] = useState(false)
   const [activeTabs, setActiveTabs] = useState<Record<string, string>>({})
   const [missingDetailsInput, setMissingDetailsInput] = useState<Record<string, Record<string, string>>>({})
@@ -169,6 +169,11 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
   // New state for the real pipeline
   const [pipelineState, setPipelineState] = useState({ active: false, step: 0 })
+   const [pipelineArtifacts, setPipelineArtifacts] = useState({
+    plan: "",
+    rawCodeResponse: "",
+    error: null as string | null,
+  })
   const [elapsedTime, setElapsedTime] = useState(0)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -194,90 +199,108 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     }
   }, [pipelineState.active])
 
+  // --- Start of New Pipeline Logic ---
+
+  const generatePlan = async (initialPrompt: string, history: ChatMessage[]) => {
+    const response = await fetch("/api/ai/generate-plugin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: initialPrompt, mode: "plan", history }),
+    })
+    if (!response.ok) throw new Error("Failed to generate plan")
+    const plan = ((await response.json()).response) || ""
+    if (!plan) throw new Error("AI failed to generate a plan.")
+    return plan
+  }
+
+  const generateCode = async (plan: string, initialPrompt: string, history: ChatMessage[]) => {
+    const message = `Based on the following plan, please generate the plugin code.\n\n**Plan:**\n${plan}\n\n**Original Request:**\n${initialPrompt}`
+    const response = await fetch("/api/ai/generate-plugin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, mode: "code", history }),
+    })
+    if (!response.ok) throw new Error("Failed to generate code")
+    const rawCodeResponse = ((await response.json()).response) || ""
+    if (!rawCodeResponse) throw new Error("AI failed to generate code.")
+    return rawCodeResponse
+  }
+
+  const reviewCode = async (rawCodeResponse: string, history: ChatMessage[]) => {
+    const pluginMessage = parseAIResponse(rawCodeResponse).find(m => m.type === 'ai_plugin')
+    const pluginName = pluginMessage?.pluginName
+    const codeToReview = pluginMessage?.pluginFiles?.[0]?.code
+
+    if (!codeToReview || !pluginName) {
+      throw new Error("Could not extract plugin details for review.")
+    }
+
+    const message = `Plugin Name: ${pluginName}\n\nPlease review the following Python code:\n${codeToReview}`
+    const response = await fetch("/api/ai/generate-plugin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, mode: "review", history }),
+    })
+    if (!response.ok) throw new Error("Failed to review code")
+    const rawReviewedResponse = ((await response.json()).response) || ""
+    if (!rawReviewedResponse) throw new Error("AI failed to provide a review.")
+    return rawReviewedResponse
+  }
+
   const runGenerationPipeline = async (initialPrompt: string, history: ChatMessage[]) => {
     setPipelineState({ active: true, step: 1 })
     setIsGenerating(true)
+    setPipelineArtifacts({ plan: "", rawCodeResponse: "", error: null })
 
     try {
       // Step 1: Generate Plan
-      await new Promise(resolve => setTimeout(resolve, 500))
-      const planResponse = await fetch("/api/ai/generate-plugin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: initialPrompt, mode: "plan", history }),
-      })
-      if (!planResponse.ok) throw new Error("Failed to generate plan")
-      const plan = ((await planResponse.json()).response) || ""
-
+      const plan = await generatePlan(initialPrompt, history)
+      setPipelineArtifacts(prev => ({ ...prev, plan }))
       setPipelineState({ active: true, step: 2 })
-      await new Promise(resolve => setTimeout(resolve, 500))
 
-      // Step 2: Generate Code from Plan
-      const codeMessage = `Based on the following plan, please generate the plugin code.\n\n**Plan:**\n${plan}\n\n**Original Request:**\n${initialPrompt}`
-      const codeResponse = await fetch("/api/ai/generate-plugin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: codeMessage, mode: "code", history }),
-      })
-      if (!codeResponse.ok) throw new Error("Failed to generate code")
-      const rawCodeResponse = ((await codeResponse.json()).response) || ""
+      // Step 2: Generate Code
+      const rawCodeResponse = await generateCode(plan, initialPrompt, history)
+      setPipelineArtifacts(prev => ({ ...prev, rawCodeResponse }))
       const codeMessages = parseAIResponse(rawCodeResponse)
-      setMessages((prev) => [...prev, ...codeMessages])
-
+      setMessages(prev => [...prev, ...codeMessages])
       setPipelineState({ active: true, step: 3 })
-      await new Promise(resolve => setTimeout(resolve, 500))
 
       // Step 3: Review Code
-      const pluginMessage = codeMessages.find(m => m.type === 'ai_plugin')
-      const pluginName = pluginMessage?.pluginName
-      const codeToReview = pluginMessage?.pluginFiles?.[0]?.code
-
-      if (!codeToReview || !pluginName) {
-        throw new Error("Could not extract plugin details for review.")
-      }
-
-      const reviewMessage = `Plugin Name: ${pluginName}\n\nPlease review the following Python code:\n${codeToReview}`
-      const reviewResponse = await fetch("/api/ai/generate-plugin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: reviewMessage, mode: "review", history }),
-      })
-      if (!reviewResponse.ok) throw new Error("Failed to review code")
-      const rawReviewedResponse = ((await reviewResponse.json()).response) || ""
+      const rawReviewedResponse = await reviewCode(rawCodeResponse, history)
       const reviewedMessages = parseAIResponse(rawReviewedResponse)
 
       setPipelineState({ active: true, step: 4 })
 
-      // Find the plugin message and update it with the reviewed code
-      setMessages((prev) => {
+      // Update UI with reviewed code
+      setMessages(prev => {
         const newMessages = [...prev]
-        const pluginMsgIndex = newMessages.findIndex((m) => m.type === "ai_plugin")
+        const pluginMsgIndex = newMessages.findIndex(m => m.type === 'ai_plugin')
         if (pluginMsgIndex !== -1) {
-          const reviewedPlugin = reviewedMessages.find((m) => m.type === "ai_plugin")
+          const reviewedPlugin = reviewedMessages.find(m => m.type === 'ai_plugin')
           if (reviewedPlugin) {
-            // Preserve the original message ID to avoid key issues
             reviewedPlugin.id = newMessages[pluginMsgIndex].id
             newMessages[pluginMsgIndex] = reviewedPlugin
           }
-          const reviewedUsage = reviewedMessages.find((m) => m.type === "ai_usage_instructions")
+          const reviewedUsage = reviewedMessages.find(m => m.type === 'ai_usage_instructions')
           if (reviewedUsage) {
-             const usageMsgIndex = newMessages.findIndex((m) => m.type === "ai_usage_instructions")
-             if(usageMsgIndex !== -1) {
-                reviewedUsage.id = newMessages[usageMsgIndex].id
-                newMessages[usageMsgIndex] = reviewedUsage
-             } else {
-                newMessages.push(reviewedUsage)
-             }
+            const usageMsgIndex = newMessages.findIndex(m => m.type === 'ai_usage_instructions')
+            if (usageMsgIndex !== -1) {
+              reviewedUsage.id = newMessages[usageMsgIndex].id
+              newMessages[usageMsgIndex] = reviewedUsage
+            } else {
+              newMessages.push(reviewedUsage)
+            }
           }
         } else {
-           newMessages.push(...reviewedMessages)
+          newMessages.push(...reviewedMessages)
         }
         return newMessages
       })
 
     } catch (error) {
       console.error("Pipeline Error:", error)
-      setMessages((prev) => [
+      setPipelineArtifacts(prev => ({ ...prev, error: error.message }))
+      setMessages(prev => [
         ...prev,
         {
           id: `msg_${Date.now()}_error`,
@@ -288,13 +311,14 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         },
       ])
     } finally {
-      // Finish pipeline
       setPipelineState({ active: true, step: 5 })
       await new Promise(resolve => setTimeout(resolve, 1500))
       setPipelineState({ active: false, step: 0 })
       setIsGenerating(false)
     }
   }
+
+  // --- End of New Pipeline Logic ---
 
   const handleSendClick = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault()
@@ -318,13 +342,11 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     setMessages((prev) => [...prev, userMessage])
     setInputValue("")
 
-    // This is a temporary simple check. A more robust solution might be needed.
     const isPluginRequest = ["make", "create", "build", "generate", "bot", "plugin"].some(keyword => content.toLowerCase().includes(keyword))
 
     if (isPluginRequest) {
       runGenerationPipeline(content, currentHistory)
     } else {
-      // Handle simple Q&A without the pipeline
       setIsGenerating(true)
       try {
         const response = await fetch("/api/ai/generate-plugin", {
@@ -338,7 +360,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         setMessages((prev) => [...prev, ...newAiMessages])
       } catch (error) {
         setMessages((prev) => [...prev, {
-          id: `msg_${Date.now()}_error`, role: "ai", type: "ai_error",
+          id: `msg_${Date.now()}_error`, role: "assistant", type: "ai_error",
           content: "Sorry, I encountered an error.", timestamp: new Date()
         }])
       } finally {
@@ -350,8 +372,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
   const handleProvideDetails = (messageId: string) => {
     const details = missingDetailsInput[messageId]
     if (!details || Object.values(details).some((v) => !v)) {
-      // Basic validation: ensure all fields are filled
-      // You might want to show a more user-friendly error
       return
     }
 
@@ -374,8 +394,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       return
     }
 
-    // For now, we'll just save the first file. A more robust solution
-    // for multi-file plugins would require backend changes.
     const codeToSave = message.pluginFiles[0].code
     const usageInstructions = messages.find(
       (m) => m.type === "ai_usage_instructions" && m.timestamp < message.timestamp
@@ -387,12 +405,11 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: message.pluginName || "Untitled Plugin",
-          description: "AI Generated Plugin", // This field is no longer user-editable in this UI
+          description: "AI Generated Plugin",
           code: codeToSave,
           usageInstructions: usageInstructions || "",
         }),
       })
-      // Optionally, provide feedback to the user on successful save
     } catch (error) {
       console.error("Error saving plugin:", error)
     }
@@ -408,8 +425,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
   const handleNewChat = () => {
     setMessages([])
-    setExpandedCode(null)
-    setEditingPlugin(null)
   }
 
   if (!isOpen) return null
