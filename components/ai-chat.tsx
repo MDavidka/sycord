@@ -1,7 +1,9 @@
 "use client"
 import { useState, useEffect, useRef } from "react"
+import type React from "react"
+
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, MessageSquare, Send, Eye, Loader2, Code, CheckCircle } from "lucide-react"
+import { ArrowLeft, MessageSquare, Send, Eye, Loader2, User, Lightbulb, Wrench, Bug, CheckCircle } from "lucide-react"
 import Image from "next/image"
 import type { UserAIFunction } from "@/lib/types"
 
@@ -9,20 +11,19 @@ interface ChatMessage {
   id: string
   role: "user" | "ai"
   content: string
-  type: "question" | "plugin" | "normal" | "missing_details" | "complex_task" | "out_of_scope"
+  type: "question" | "plugin" | "normal" | "usage" | "missing-details" | "out-of-scope"
   code?: string
   pluginName?: string
-  usageInstructions?: string
   missingDetails?: string[]
-  files?: Array<{ id: string; filename: string; code: string }>
   timestamp: Date
 }
 
 interface GenerationStep {
-  id: number
-  name: string
-  icon: string
+  id: string
+  icon: React.ReactNode
+  text: string
   status: "pending" | "active" | "completed"
+  progress: number
 }
 
 interface AIChatProps {
@@ -44,47 +45,96 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     thumbnailUrl: "",
     profileUrl: "",
   })
-
-  const [generationSteps, setGenerationSteps] = useState<GenerationStep[]>([
-    { id: 1, name: "Information collected", icon: "👥", status: "pending" },
-    { id: 2, name: "Planning structure", icon: "💡", status: "pending" },
-    { id: 3, name: "Making Python Cog", icon: "🔧", status: "pending" },
-    { id: 4, name: "Finding bugs / optimizing", icon: "🐞", status: "pending" },
-    { id: 5, name: "Finishing code", icon: "✅", status: "pending" },
-  ])
-  const [currentStep, setCurrentStep] = useState(0)
-  const [showPipeline, setShowPipeline] = useState(false)
-  const [pipelineProgress, setPipelineProgress] = useState(0)
-  const [pipelineTimer, setPipelineTimer] = useState(0)
-  const [missingDetailsInputs, setMissingDetailsInputs] = useState<Record<string, string>>({})
-  const [deployedPlugins, setDeployedPlugins] = useState<Set<string>>(new Set())
-  const [showingCheckmark, setShowingCheckmark] = useState<string | null>(null)
+  const [generationSteps, setGenerationSteps] = useState<GenerationStep[]>([])
+  const [showGenerationPipeline, setShowGenerationPipeline] = useState(false)
+  const [generationTimer, setGenerationTimer] = useState(0)
+  const [missingDetailsInputs, setMissingDetailsInputs] = useState<{ [key: string]: string }>({})
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const timerRef = useRef<NodeJS.Timeout>()
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
   useEffect(() => {
-    if (showPipeline && currentStep > 0) {
+    if (showGenerationPipeline && timerRef.current === null) {
       timerRef.current = setInterval(() => {
-        setPipelineTimer((prev) => prev + 1)
+        setGenerationTimer((prev) => prev + 1)
       }, 1000)
-    } else {
-      if (timerRef.current) {
-        clearInterval(timerRef.current)
-      }
+    } else if (!showGenerationPipeline && timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+      setGenerationTimer(0)
     }
 
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current)
+        timerRef.current = null
       }
     }
-  }, [showPipeline, currentStep])
+  }, [showGenerationPipeline])
+
+  const initializeGenerationSteps = () => {
+    const steps: GenerationStep[] = [
+      {
+        id: "collect",
+        icon: <User className="h-4 w-4 text-gray-400" />,
+        text: "Information collected",
+        status: "active",
+        progress: 20,
+      },
+      {
+        id: "plan",
+        icon: <Lightbulb className="h-4 w-4 text-gray-400" />,
+        text: "Planning structure",
+        status: "pending",
+        progress: 40,
+      },
+      {
+        id: "code",
+        icon: <Wrench className="h-4 w-4 text-gray-400" />,
+        text: "Making Python Cog",
+        status: "pending",
+        progress: 60,
+      },
+      {
+        id: "debug",
+        icon: <Bug className="h-4 w-4 text-gray-400" />,
+        text: "Finding bugs / optimizing",
+        status: "pending",
+        progress: 80,
+      },
+      {
+        id: "finish",
+        icon: <CheckCircle className="h-4 w-4 text-gray-400" />,
+        text: "Finishing code",
+        status: "pending",
+        progress: 100,
+      },
+    ]
+    setGenerationSteps(steps)
+  }
+
+  const updateGenerationStep = (stepId: string, status: "pending" | "active" | "completed") => {
+    setGenerationSteps((prev) => prev.map((step) => (step.id === stepId ? { ...step, status } : step)))
+  }
+
+  const parseAIResponse = (response: string) => {
+    // Parse different mark types
+    const marks = {
+      pluginName: response.match(/\[1\.1\](.*?)\[1\.1\]/)?.[1],
+      code: response.match(/\[2\]([\s\S]*?)\[2\]/)?.[1],
+      missingDetails: response.match(/\[3\](.*?)\[3\]/g)?.map((match) => match.replace(/\[3\]|\[3\]/g, "")),
+      usage: response.match(/\[6\](.*?)(?=\[|$)/s)?.[1],
+      outOfScope: response.includes("[5]"),
+      question: response.includes("[1]"),
+    }
+
+    return marks
+  }
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isGenerating) return
@@ -101,42 +151,119 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     setInputValue("")
     setIsGenerating(true)
 
+    // Check if this is a missing details response
+    const isMissingDetailsResponse = Object.keys(missingDetailsInputs).length > 0
+
+    if (isMissingDetailsResponse) {
+      // Start generation pipeline
+      setShowGenerationPipeline(true)
+      initializeGenerationSteps()
+
+      // Simulate the 5-step process
+      setTimeout(() => updateGenerationStep("collect", "completed"), 1000)
+      setTimeout(() => {
+        updateGenerationStep("plan", "active")
+        updateGenerationStep("collect", "completed")
+      }, 2000)
+      setTimeout(() => {
+        updateGenerationStep("plan", "completed")
+        updateGenerationStep("code", "active")
+      }, 4000)
+      setTimeout(() => {
+        updateGenerationStep("code", "completed")
+        updateGenerationStep("debug", "active")
+      }, 6000)
+      setTimeout(() => {
+        updateGenerationStep("debug", "completed")
+        updateGenerationStep("finish", "active")
+      }, 8000)
+    }
+
     try {
+      const requestBody = isMissingDetailsResponse
+        ? {
+            message: `I requested this feature before ${messages[messages.length - 2]?.content}, but missed these details: ${Object.entries(
+              missingDetailsInputs,
+            )
+              .map(([key, value]) => `${key}:${value}`)
+              .join(", ")}.`,
+            missingDetails: missingDetailsInputs,
+          }
+        : { message: inputValue }
+
       const response = await fetch("/api/ai/generate-plugin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: inputValue }),
+        body: JSON.stringify(requestBody),
       })
 
       if (!response.ok) throw new Error("Failed to generate response")
 
       const data = await response.json()
+      const content = data.response || ""
+
+      // Parse the AI response for marks
+      const marks = parseAIResponse(content)
+
+      let messageType: ChatMessage["type"] = "normal"
+      let displayContent = content
+      let code = undefined
+      let pluginName = undefined
+      let missingDetails = undefined
+
+      if (marks.question) {
+        messageType = "question"
+        displayContent = "This AI is only for plugin making."
+      } else if (marks.outOfScope) {
+        messageType = "out-of-scope"
+        displayContent = "If you want a whole new function, start a new chat."
+      } else if (marks.missingDetails && marks.missingDetails.length > 0) {
+        messageType = "missing-details"
+        displayContent = "I need some additional details to create your plugin:"
+        missingDetails = marks.missingDetails
+      } else if (marks.code) {
+        messageType = "plugin"
+        displayContent = "Plugin generated successfully!"
+        code = marks.code.trim()
+        pluginName = marks.pluginName || "Unknown Plugin"
+
+        // Complete generation pipeline
+        if (showGenerationPipeline) {
+          setTimeout(() => {
+            updateGenerationStep("finish", "completed")
+            setTimeout(() => setShowGenerationPipeline(false), 2000)
+          }, 1000)
+        }
+      }
+
+      // Add usage instructions as separate message if present
+      if (marks.usage) {
+        const usageMessage: ChatMessage = {
+          id: `msg_${Date.now()}_usage`,
+          role: "ai",
+          content: marks.usage.trim(),
+          type: "usage",
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, usageMessage])
+      }
 
       const aiMessage: ChatMessage = {
         id: `msg_${Date.now()}_ai`,
         role: "ai",
-        content: data.content || "",
-        type: data.type || "normal",
-        code: data.code,
-        pluginName: data.pluginName,
-        usageInstructions: data.usageInstructions,
-        missingDetails: data.missingDetails,
-        files: data.files,
+        content: displayContent,
+        type: messageType,
+        code,
+        pluginName,
+        missingDetails,
         timestamp: new Date(),
       }
 
       setMessages((prev) => [...prev, aiMessage])
 
-      if (data.type === "missing_details" && data.missingDetails) {
-        const inputs: Record<string, string> = {}
-        data.missingDetails.forEach((detail: string) => {
-          inputs[detail] = ""
-        })
-        setMissingDetailsInputs(inputs)
-      }
-
-      if (data.type === "plugin" && data.code) {
-        await startGenerationPipeline(inputValue)
+      // Clear missing details inputs after successful generation
+      if (isMissingDetailsResponse) {
+        setMissingDetailsInputs({})
       }
     } catch (error) {
       console.error("Error:", error)
@@ -153,81 +280,16 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     }
   }
 
-  const startGenerationPipeline = async (originalMessage: string) => {
-    setShowPipeline(true)
-    setPipelineProgress(20)
-    setPipelineTimer(0)
-
-    for (let step = 1; step <= 5; step++) {
-      setCurrentStep(step)
-      setGenerationSteps((prev) =>
-        prev.map((s) => (s.id === step ? { ...s, status: "active" } : s.id < step ? { ...s, status: "completed" } : s)),
-      )
-
-      setPipelineProgress(20 * step)
-
-      // Simulate step processing time
-      await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 2000))
-
-      setGenerationSteps((prev) => prev.map((s) => (s.id === step ? { ...s, status: "completed" } : s)))
-    }
-
-    setShowPipeline(false)
-    setCurrentStep(0)
-  }
-
-  const handleMissingDetailsSubmit = async () => {
-    const details = Object.entries(missingDetailsInputs)
-      .map(([key, value]) => `${key}:${value}`)
-      .join(", ")
-
-    const followUpMessage = `I requested this feature before, but missed this detail ${details}.`
-
-    setInputValue(followUpMessage)
-    setMissingDetailsInputs({})
-    await handleSendMessage()
-  }
-
-  const handleDeployPlugin = async (messageId: string) => {
+  const handleSavePlugin = async (messageId: string) => {
     const message = messages.find((m) => m.id === messageId)
-    if (!message?.code || !message?.pluginName) return
-
-    setShowingCheckmark(messageId)
+    if (!message?.code) return
 
     try {
       const response = await fetch("/api/user-ai-functions/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          pluginName: message.pluginName,
-          code: message.code,
-          usageInstructions: message.usageInstructions || "",
-          serverId: "default",
-        }),
-      })
-
-      if (response.ok) {
-        setTimeout(() => {
-          setShowingCheckmark(null)
-          setDeployedPlugins((prev) => new Set([...prev, messageId]))
-        }, 1000)
-      }
-    } catch (error) {
-      console.error("Error deploying plugin:", error)
-      setShowingCheckmark(null)
-    }
-  }
-
-  const handleSavePlugin = async (messageId: string) => {
-    const message = messages.find((m) => m.id === messageId)
-    if (!message?.code) return
-
-    try {
-      const response = await fetch("/api/user-ai-functions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: pluginMetadata.name || "Untitled Plugin",
+          name: message.pluginName || pluginMetadata.name || "Untitled Plugin",
           description: pluginMetadata.description || "AI Generated Plugin",
           code: message.code,
           thumbnailUrl: pluginMetadata.thumbnailUrl,
@@ -244,6 +306,20 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     }
   }
 
+  const handleMissingDetailSubmit = (details: string[]) => {
+    const inputs: { [key: string]: string } = {}
+    details.forEach((detail) => {
+      inputs[detail] = ""
+    })
+    setMissingDetailsInputs(inputs)
+  }
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+  }
+
   const handleBack = () => {
     if (messages.some((m) => m.type === "plugin")) {
       setShowSavePrompt(true)
@@ -256,15 +332,9 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     setMessages([])
     setExpandedCode(null)
     setEditingPlugin(null)
+    setShowGenerationPipeline(false)
+    setGenerationTimer(0)
     setMissingDetailsInputs({})
-    setDeployedPlugins(new Set())
-    setShowingCheckmark(null)
-  }
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
   if (!isOpen) return null
@@ -282,10 +352,11 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
             <ArrowLeft className="h-5 w-5" />
           </Button>
 
-          <div className="flex items-center justify-center">
+          <div className="flex flex-col items-center justify-center">
             <div className="w-8 h-8 relative">
               <Image src="/s1-logo.png" alt="S1" width={32} height={32} className="object-contain" />
             </div>
+            <span className="text-xs text-gray-400 mt-1">s1-small</span>
           </div>
 
           <Button
@@ -316,149 +387,93 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                   <div className="max-w-[80%] bg-white/90 backdrop-blur-sm text-gray-900 rounded-2xl px-4 py-3 shadow-lg">
                     <p className="text-sm leading-relaxed">{message.content}</p>
                   </div>
-                ) : message.type === "question" || message.type === "out_of_scope" ? (
+                ) : message.type === "question" || message.type === "usage" || message.type === "out-of-scope" ? (
                   <div className="max-w-[80%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
                     <p className="text-sm leading-relaxed">{message.content}</p>
-                    {message.type === "out_of_scope" && (
-                      <div className="mt-3 p-2 bg-white/10 rounded-lg flex items-center justify-center">
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        <span className="text-xs">Start New Chat</span>
-                      </div>
+                    {message.type === "out-of-scope" && (
+                      <Button
+                        onClick={handleNewChat}
+                        className="mt-3 bg-white text-black hover:bg-gray-200 text-xs px-3 py-1 h-8"
+                      >
+                        <MessageSquare className="h-3 w-3 mr-1" />
+                        New Chat
+                      </Button>
                     )}
                   </div>
-                ) : message.type === "missing_details" ? (
+                ) : message.type === "missing-details" ? (
                   <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl p-4 shadow-lg">
                     <p className="text-sm mb-4">{message.content}</p>
-                    <div className="space-y-3">
-                      {message.missingDetails?.map((detail, index) => (
-                        <div key={index}>
-                          <label className="block text-xs text-gray-400 mb-1">{detail}</label>
-                          <input
-                            type="text"
-                            value={missingDetailsInputs[detail] || ""}
-                            onChange={(e) =>
-                              setMissingDetailsInputs((prev) => ({
-                                ...prev,
-                                [detail]: e.target.value,
-                              }))
+                    {message.missingDetails && (
+                      <div className="space-y-3">
+                        {message.missingDetails.map((detail, index) => (
+                          <div key={index}>
+                            <label className="block text-xs text-gray-400 mb-1 capitalize">
+                              {detail.replace("-", " ")}
+                            </label>
+                            <input
+                              type="text"
+                              value={missingDetailsInputs[detail] || ""}
+                              onChange={(e) =>
+                                setMissingDetailsInputs((prev) => ({
+                                  ...prev,
+                                  [detail]: e.target.value,
+                                }))
+                              }
+                              className="w-full bg-black/40 border border-white/20 rounded-lg px-3 py-2 text-white text-sm"
+                              placeholder={`Enter ${detail}`}
+                            />
+                          </div>
+                        ))}
+                        <Button
+                          onClick={() => {
+                            const allFilled = message.missingDetails?.every((detail) =>
+                              missingDetailsInputs[detail]?.trim(),
+                            )
+                            if (allFilled) {
+                              handleSendMessage()
                             }
-                            className="w-full bg-black/40 border border-white/20 rounded-lg px-3 py-2 text-white text-sm"
-                            placeholder={`Enter ${detail}`}
-                          />
-                        </div>
-                      ))}
-                      <Button
-                        onClick={handleMissingDetailsSubmit}
-                        disabled={Object.values(missingDetailsInputs).some((v) => !v.trim())}
-                        className="w-full bg-white text-black hover:bg-gray-200 mt-3"
-                      >
-                        Submit Details
-                      </Button>
-                    </div>
-                  </div>
-                ) : message.type === "complex_task" ? (
-                  <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden shadow-lg">
-                    <div className="p-4">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <div className="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center relative">
-                          <Code className="h-6 w-6" />
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-medium">{message.pluginName || "Complex Task"}</h3>
-                          <p className="text-xs text-red-400">Multiple files • Complex Task</p>
-                        </div>
-                      </div>
-
-                      {message.usageInstructions && (
-                        <p className="text-sm mb-4 text-gray-300">{message.usageInstructions}</p>
-                      )}
-
-                      <div className="flex items-center space-x-2 mb-4">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setExpandedCode(expandedCode === message.id ? null : message.id)}
-                          className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
+                          }}
+                          disabled={!message.missingDetails?.every((detail) => missingDetailsInputs[detail]?.trim())}
+                          className="w-full bg-white text-black hover:bg-gray-200 mt-3"
                         >
-                          <Eye className="h-4 w-4" />
+                          Continue Generation
                         </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => handleDeployPlugin(message.id)}
-                          disabled={deployedPlugins.has(message.id) || showingCheckmark === message.id}
-                          className="flex-1 bg-white text-black hover:bg-gray-200 h-8"
-                        >
-                          {showingCheckmark === message.id ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : deployedPlugins.has(message.id) ? (
-                            "Edit"
-                          ) : (
-                            "Deploy"
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-
-                    {expandedCode === message.id && message.files && (
-                      <div className="border-t border-white/10 bg-black/40">
-                        <div className="flex border-b border-white/10">
-                          {message.files.map((file, index) => (
-                            <button
-                              key={file.id}
-                              className={`px-4 py-2 text-xs border-r border-white/10 ${
-                                index === 0 ? "bg-white/10 text-white" : "text-gray-400 hover:bg-white/5"
-                              }`}
-                            >
-                              {file.filename}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="p-4">
-                          <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
-                            {message.files[0]?.code}
-                          </pre>
-                        </div>
                       </div>
                     )}
                   </div>
                 ) : (
                   <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden shadow-lg">
-                    {message.usageInstructions && (
-                      <div className="p-4 border-b border-white/10 bg-blue-500/10">
-                        <p className="text-sm text-blue-300">{message.usageInstructions}</p>
-                      </div>
-                    )}
-
                     <div className="p-4">
                       <div className="flex items-center space-x-3 mb-3">
                         <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
                           <span className="text-xs font-mono">PY</span>
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-medium">{message.pluginName || "Discord Bot Plugin"}</h3>
+                          <h3 className="font-medium">{message.pluginName || "Unknown Plugin"}</h3>
                           <p className="text-xs text-gray-400">AI Generated Discord Bot Plugin</p>
                         </div>
                       </div>
 
-                      {showPipeline && (
+                      <p className="text-sm mb-4">{message.content}</p>
+
+                      {showGenerationPipeline && (
                         <div className="mb-4 p-3 bg-black/40 rounded-lg border border-white/10">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs text-gray-400">Generation Progress</span>
-                            <span className="text-xs text-gray-400">{formatTime(pipelineTimer)}</span>
-                          </div>
-                          <div className="w-full bg-gray-700 rounded-full h-1 mb-3">
-                            <div
-                              className="bg-white h-1 rounded-full transition-all duration-300"
-                              style={{ width: `${pipelineProgress}%` }}
-                            ></div>
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-xs text-gray-400">Generation Pipeline</span>
+                            <span className="text-xs text-gray-400 font-mono">{formatTime(generationTimer)}</span>
                           </div>
                           <div className="space-y-2">
                             {generationSteps.map((step) => (
-                              <div key={step.id} className="flex items-center space-x-2">
-                                <span className="text-sm">{step.icon}</span>
+                              <div key={step.id} className="flex items-center space-x-3">
+                                <div
+                                  className={`flex-shrink-0 ${
+                                    step.status === "active" ? "animate-pulse" : ""
+                                  } ${step.status === "completed" ? "text-green-400" : ""}`}
+                                >
+                                  {step.icon}
+                                </div>
                                 <span
-                                  className={`text-xs ${
+                                  className={`text-xs flex-1 ${
                                     step.status === "completed"
                                       ? "text-green-400"
                                       : step.status === "active"
@@ -466,11 +481,23 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                                         : "text-gray-500"
                                   }`}
                                 >
-                                  {step.name}
+                                  {step.text}
                                 </span>
-                                {step.status === "active" && (
-                                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                                )}
+                                <div className="w-16 h-1 bg-gray-700 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full transition-all duration-500 ${
+                                      step.status === "completed"
+                                        ? "bg-green-400"
+                                        : step.status === "active"
+                                          ? "bg-blue-400"
+                                          : "bg-gray-600"
+                                    }`}
+                                    style={{
+                                      width:
+                                        step.status === "completed" ? "100%" : step.status === "active" ? "60%" : "0%",
+                                    }}
+                                  />
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -488,17 +515,10 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                         </Button>
                         <Button
                           size="sm"
-                          onClick={() => handleDeployPlugin(message.id)}
-                          disabled={deployedPlugins.has(message.id) || showingCheckmark === message.id}
-                          className="flex-1 bg-white text-black hover:bg-gray-200 h-8"
+                          className="bg-white text-black hover:bg-gray-200 px-4 h-8 text-xs font-medium flex-1"
+                          onClick={() => handleSavePlugin(message.id)}
                         >
-                          {showingCheckmark === message.id ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : deployedPlugins.has(message.id) ? (
-                            "Edit"
-                          ) : (
-                            "Deploy"
-                          )}
+                          Deploy
                         </Button>
                       </div>
                     </div>
