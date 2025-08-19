@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import clientPromise from "@/lib/mongodb"
+import { authOptions } from "../../auth/[...nextauth]/route"
+import { connectToDatabase } from "@/lib/mongodb"
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,36 +10,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { pluginName, code, usageInstructions, serverId } = await request.json()
+    const { pluginName, code, serverId, usageInstructions, isComplexTask, files } = await request.json()
 
-    if (!pluginName || !code) {
-      return NextResponse.json({ error: "Plugin name and code are required" }, { status: 400 })
+    if (!pluginName || !serverId) {
+      return NextResponse.json({ error: "Plugin name and server ID are required" }, { status: 400 })
     }
 
-    const client = await clientPromise
-    const db = client.db("dash-bot")
+    const { db } = await connectToDatabase()
 
-    const userFolder = session.user.email.replace("@", "_at_").replace(".", "_dot_")
-    const folderPath = `users/${userFolder}/servers/${serverId || "default"}/saved-plugins`
-
-    const savedPlugin = {
+    const userFolder = session.user.email.split("@")[0] // Use email prefix as user folder
+    const pluginData = {
       name: pluginName,
-      code,
+      code: code || "",
       usageInstructions: usageInstructions || "",
-      folderPath,
-      savedAt: new Date().toISOString(),
-      savedBy: session.user.email,
+      isComplexTask: isComplexTask || false,
+      files: files || [],
+      serverId,
+      userFolder,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     }
 
-    const result = await db.collection("saved_plugins").insertOne(savedPlugin)
+    // Save to MongoDB with folder structure path
+    const result = await db.collection("saved-plugins").insertOne({
+      ...pluginData,
+      folderPath: `dash-bot/users/${userFolder}/servers/${serverId}/saved-plugins`,
+    })
 
     return NextResponse.json({
-      message: "Plugin saved successfully",
+      success: true,
       pluginId: result.insertedId,
-      folderPath,
+      message: "Plugin saved successfully",
     })
   } catch (error) {
-    console.error("Error saving plugin:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("Save Plugin Error:", error)
+    return NextResponse.json({ error: "Failed to save plugin" }, { status: 500 })
   }
 }
