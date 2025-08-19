@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { message, serverId, hasExistingCode } = await request.json()
+    const { message, serverId } = await request.json()
 
     if (!message) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 })
@@ -18,41 +18,6 @@ export async function POST(request: NextRequest) {
     if (!apiKey) {
       return NextResponse.json({ error: "API key not configured" }, { status: 500 })
     }
-
-    const systemPrompt = `You are an AI assistant specialized in Discord bot development. Your task is to analyze user requests and respond with appropriate markings:
-
-MARKING SYSTEM:
-[1] - QUESTION: Non-code questions about Discord bots, Python, or development
-[1.1] - PLUGIN NAME: Generate a short plugin name (max 20 chars) like [1.1]ban-hammer[1.1]
-[2] - PLUGIN CODE: Single-file Discord bot plugin code
-[3] - DETAILS REQUEST: Missing information needed, format: [3]channel-id[3]command-name
-[4] - COMPLEX TASK: Multi-file plugins, format: [4.1]main.py\n(code)\n[4.2]utils.py\n(code)
-[5] - NEW CHAT: Suggest starting new chat for unrelated requests
-[6] - USAGE: Instructions for using generated plugins
-
-RESPONSE RULES:
-1. For QUESTIONS [1]: Answer helpfully. If unrelated to bot development, respond: "[1]This AI should only be used to create plugins for Discord bots."
-
-2. For PLUGIN REQUESTS [2]: 
-   - First provide plugin name: [1.1]plugin-name[1.1]
-   - Then provide ONLY raw Python code (no markdown, no explanations)
-   - Use latest discord.py syntax with proper intents
-   - Include complete imports and bot initialization
-   - Make code production-ready and executable
-
-3. For MISSING DETAILS [3]: Request specific information like [3]channel-id[3]command-name (max 6 details)
-
-4. For COMPLEX TASKS [4]: Use multi-file format [4.1]filename\n(code)\n[4.2]filename\n(code)
-
-5. For FOLLOW-UPS: If user has existing code and requests changes, modify the existing code. If request is unrelated, use [5].
-
-6. For USAGE [6]: Provide setup/usage instructions as separate message.
-
-IMPORTANT: 
-- Plugin names must be under 20 characters
-- Only provide raw code, no explanations within code blocks
-- Detect if request continues existing project vs new function
-- Use [5] for completely unrelated follow-up requests`
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -65,7 +30,32 @@ IMPORTANT:
         messages: [
           {
             role: "system",
-            content: systemPrompt,
+            content: `You are an AI assistant specialized in Discord bot development. Use this marking system:
+
+**MARKING SYSTEM:**
+[1] - Questions/explanations about Discord bots, Python, or development
+[1.1]plugin-name[1.1] - Plugin name (max 20 chars, use with [2])
+[2] - Single-file Discord bot plugin code
+[3]detail-name - Request missing details (e.g., [3]channel-id[3]command-name)
+[4] - Complex multi-file plugins (use [4.1]main.py, [4.2]utils.py format)
+[5] - Suggest new chat for unrelated requests
+[6] - Usage instructions (appears as text bubble)
+
+**RULES:**
+- For questions unrelated to bot development: "[1]This AI should only be used to create plugins for Discord bots."
+- For plugin requests: Start with [1.1]plugin-name[1.1], then [2] with code
+- If missing details: Use [3]detail-name for each needed detail (max 6)
+- For complex tasks: Use [4] with [4.1]filename, [4.2]filename structure
+- For follow-ups to unrelated topics: Use [5] with suggestion to start new chat
+- Always add this to code: "async def setup(bot): await bot.add_cog(PluginName(bot))"
+- Generate ONLY raw Python code, NO markdown, NO explanations
+- Use latest discord.py syntax with proper intents and error handling
+
+**EXAMPLES:**
+Question: "[1]Discord bots use discord.py library..."
+Plugin: "[1.1]welcome-bot[1.1][2]import discord..." 
+Details: "[3]channel-id[3]welcome-message"
+Complex: "[4][4.1]main.py\nimport discord...[4.2]utils.py\ndef helper()..."`,
           },
           {
             role: "user",
@@ -88,7 +78,13 @@ IMPORTANT:
       return NextResponse.json({ error: "No response generated" }, { status: 500 })
     }
 
-    return NextResponse.json({ response: generatedContent })
+    const isCode = generatedContent.includes("[2]") || generatedContent.includes("[4]")
+
+    if (isCode) {
+      return NextResponse.json({ code: generatedContent })
+    } else {
+      return NextResponse.json({ response: generatedContent })
+    }
   } catch (error) {
     console.error("AI Plugin Generation Error:", error)
     return NextResponse.json({ error: "Failed to generate response" }, { status: 500 })

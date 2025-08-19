@@ -9,13 +9,18 @@ interface ChatMessage {
   id: string
   role: "user" | "ai"
   content: string
-  type: "question" | "plugin" | "normal" | "details" | "complex" | "newchat" | "usage"
-  code?: string
+  type: "question" | "plugin" | "detail-request" | "complex" | "new-chat" | "usage"
+  code?: string | { [key: string]: string } // Support multi-file code
   pluginName?: string
-  files?: { name: string; code: string }[]
-  detailsRequested?: string[]
   timestamp: Date
-  deployed?: boolean
+  isDeployed?: boolean
+  detailsRequested?: string[]
+  isComplex?: boolean
+}
+
+interface DetailInput {
+  name: string
+  value: string
 }
 
 interface AIChatProps {
@@ -32,10 +37,10 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
   const [showSavePrompt, setShowSavePrompt] = useState(false)
   const [expandedCode, setExpandedCode] = useState<string | null>(null)
   const [editingPlugin, setEditingPlugin] = useState<string | null>(null)
-  const [detailInputs, setDetailInputs] = useState<Record<string, string>>({})
-  const [activeFileTab, setActiveFileTab] = useState<Record<string, string>>({})
+  const [detailInputs, setDetailInputs] = useState<{ [messageId: string]: DetailInput[] }>({})
+  const [activeTab, setActiveTab] = useState<{ [messageId: string]: string }>({})
   const [lastUserMessage, setLastUserMessage] = useState("")
-  const [currentPluginCode, setCurrentPluginCode] = useState("")
+  const [currentCode, setCurrentCode] = useState<string>("")
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -45,129 +50,104 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
   }, [messages])
 
   const parseAIResponse = (content: string) => {
-    const cleanContent = content.trim()
-
-    // Check for [3] details request
-    if (cleanContent.startsWith("[3]")) {
-      const detailsMatch = cleanContent.match(/\[3\]([^[]+)/g)
-      const detailsRequested = detailsMatch?.map((match) => match.replace("[3]", "").trim()) || []
-      return {
-        type: "details" as const,
-        content: "Please provide the following details:",
-        detailsRequested,
-      }
+    const markings = {
+      type: "question" as const,
+      pluginName: "",
+      detailsRequested: [] as string[],
+      isComplex: false,
+      files: {} as { [key: string]: string },
+      cleanContent: content,
     }
 
-    // Check for [4] complex task
-    if (cleanContent.startsWith("[4]")) {
-      const files: { name: string; code: string }[] = []
-      const fileMatches = cleanContent.match(/\[4\.\d+\]\s*([^\n]+)\n([\s\S]*?)(?=\[4\.\d+\]|$)/g)
+    // Check for [1] - question
+    if (content.startsWith("[1]")) {
+      markings.type = "question"
+      markings.cleanContent = content.replace(/^\[1\]/, "").trim()
+    }
+    // Check for [2] - plugin
+    else if (content.startsWith("[2]")) {
+      markings.type = "plugin"
+      markings.cleanContent = content.replace(/^\[2\]/, "").trim()
+    }
+    // Check for [3] - detail request
+    else if (content.startsWith("[3]")) {
+      markings.type = "detail-request"
+      const detailMatches = content.match(/\[3\]([^[]+)/g)
+      if (detailMatches) {
+        markings.detailsRequested = detailMatches.map((match) => match.replace("[3]", "").trim())
+      }
+      markings.cleanContent = "I need some additional details to create this plugin:"
+    }
+    // Check for [4] - complex task
+    else if (content.startsWith("[4]")) {
+      markings.type = "complex"
+      markings.isComplex = true
 
+      // Parse multi-file structure [4.1], [4.2], etc.
+      const fileMatches = content.match(/\[4\.\d+\]\s*([^\n]+)\n([\s\S]*?)(?=\[4\.\d+\]|$)/g)
       if (fileMatches) {
         fileMatches.forEach((match) => {
-          const [, fileName, code] = match.match(/\[4\.\d+\]\s*([^\n]+)\n([\s\S]*)/) || []
-          if (fileName && code) {
-            files.push({ name: fileName.trim(), code: code.trim() })
+          const fileMatch = match.match(/\[4\.\d+\]\s*([^\n]+)\n([\s\S]*)/)
+          if (fileMatch) {
+            const fileName = fileMatch[1].trim()
+            const fileCode = fileMatch[2].trim()
+            markings.files[fileName] = fileCode
           }
         })
       }
-
-      return {
-        type: "complex" as const,
-        content: "Complex multi-file plugin generated",
-        files,
-      }
+      markings.cleanContent = "Complex plugin generated with multiple files"
+    }
+    // Check for [5] - new chat suggestion
+    else if (content.startsWith("[5]")) {
+      markings.type = "new-chat"
+      markings.cleanContent = content.replace(/^\[5\]/, "").trim()
+    }
+    // Check for [6] - usage instructions
+    else if (content.startsWith("[6]")) {
+      markings.type = "usage"
+      markings.cleanContent = content.replace(/^\[6\]/, "").trim()
     }
 
-    // Check for [5] new chat suggestion
-    if (cleanContent.startsWith("[5]")) {
-      return {
-        type: "newchat" as const,
-        content: cleanContent.replace(/^\[5\]\s*/, ""),
-      }
-    }
-
-    // Check for [6] usage instructions
-    if (cleanContent.startsWith("[6]")) {
-      return {
-        type: "usage" as const,
-        content: cleanContent.replace(/^\[6\]\s*/, ""),
-      }
-    }
-
-    // Check for [1.1] plugin name
-    const nameMatch = cleanContent.match(/\[1\.1\]([^[]+)\[1\.1\]/)
+    // Extract plugin name from [1.1] tags
+    const nameMatch = content.match(/\[1\.1\]([^[]+)\[1\.1\]/)
     if (nameMatch) {
-      return {
-        type: "plugin" as const,
-        content: "Plugin generated successfully!",
-        pluginName: nameMatch[1].trim().substring(0, 20),
-      }
+      markings.pluginName = nameMatch[1].trim().substring(0, 20) // Max 20 characters
+      markings.cleanContent = markings.cleanContent.replace(/\[1\.1\][^[]+\[1\.1\]/, "")
     }
 
-    // Check for [2] plugin code
-    if (cleanContent.includes("import discord") || cleanContent.includes("@bot.command")) {
-      return {
-        type: "plugin" as const,
-        content: "Plugin generated successfully!",
-        code: cleanContent,
-      }
-    }
-
-    // Check for [1] question response
-    if (cleanContent.startsWith("[1]")) {
-      return {
-        type: "question" as const,
-        content: cleanContent.replace(/^\[1\]\s*/, ""),
-      }
-    }
-
-    // Default to question type
-    return {
-      type: "question" as const,
-      content: cleanContent,
-    }
+    return markings
   }
 
-  const handleSendMessage = async (isDetailSubmission = false) => {
+  const handleSendMessage = async () => {
     if (!inputValue.trim() || isGenerating) return
 
-    let messageToSend = inputValue
-
-    if (isDetailSubmission && lastUserMessage && Object.keys(detailInputs).length > 0) {
-      const detailsText = Object.entries(detailInputs)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join(", ")
-
-      messageToSend = `I requested this feature before: "${lastUserMessage}", but missed these details: ${detailsText}. ${currentPluginCode ? `This is the current state of the code: ${currentPluginCode}` : ""}`
-
-      // Hide the complex message from user view
-      setInputValue("")
-    } else {
-      setLastUserMessage(inputValue)
-
-      const userMessage: ChatMessage = {
-        id: `msg_${Date.now()}_user`,
-        role: "user",
-        content: inputValue,
-        type: "normal",
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, userMessage])
-      setInputValue("")
+    const userMessage: ChatMessage = {
+      id: `msg_${Date.now()}_user`,
+      role: "user",
+      content: inputValue,
+      type: "question",
+      timestamp: new Date(),
     }
 
+    setMessages((prev) => [...prev, userMessage])
+    setLastUserMessage(inputValue)
+    setInputValue("")
     setIsGenerating(true)
-    setDetailInputs({})
 
     try {
+      let requestMessage = inputValue
+
+      // Check if this is a follow-up with current code
+      if (currentCode && messages.length > 0) {
+        requestMessage = `This is the current state of the code: ${currentCode}. ${inputValue}`
+      }
+
       const response = await fetch("/api/ai/generate-plugin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: messageToSend,
-          serverId,
-          hasExistingCode: !!currentPluginCode,
+          message: requestMessage,
+          serverId: serverId,
         }),
       })
 
@@ -181,21 +161,34 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
       const aiMessage: ChatMessage = {
         id: `msg_${Date.now()}_ai`,
         role: "ai",
-        content: parsed.content,
+        content: parsed.cleanContent,
         type: parsed.type,
-        code: parsed.code || (parsed.type === "plugin" ? content : undefined),
+        code: parsed.type === "complex" ? parsed.files : parsed.type === "plugin" ? content : undefined,
         pluginName: parsed.pluginName,
-        files: parsed.files,
         detailsRequested: parsed.detailsRequested,
+        isComplex: parsed.isComplex,
         timestamp: new Date(),
-        deployed: false,
-      }
-
-      if (parsed.code) {
-        setCurrentPluginCode(parsed.code)
+        isDeployed: false,
       }
 
       setMessages((prev) => [...prev, aiMessage])
+
+      if (parsed.type === "detail-request" && parsed.detailsRequested.length > 0) {
+        setDetailInputs((prev) => ({
+          ...prev,
+          [aiMessage.id]: parsed.detailsRequested.map((detail) => ({ name: detail, value: "" })),
+        }))
+      }
+
+      if (parsed.type === "complex" && Object.keys(parsed.files).length > 0) {
+        const firstFile = Object.keys(parsed.files)[0]
+        setActiveTab((prev) => ({ ...prev, [aiMessage.id]: firstFile }))
+      }
+
+      // Update current code for follow-ups
+      if (parsed.type === "plugin" || parsed.type === "complex") {
+        setCurrentCode(content)
+      }
     } catch (error) {
       console.error("Error:", error)
       const errorMessage: ChatMessage = {
@@ -211,41 +204,47 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
     }
   }
 
-  const handleDeployPlugin = async (messageId: string) => {
+  const handleDetailSubmission = async (messageId: string) => {
+    const inputs = detailInputs[messageId]
+    if (!inputs || inputs.some((input) => !input.value.trim())) return
+
+    const detailsText = inputs.map((input) => `${input.name}: ${input.value}`).join(", ")
+    const fullRequest = `I requested this feature before: "${lastUserMessage}", but missed these details: ${detailsText}`
+
+    setInputValue(fullRequest)
+    await handleSendMessage()
+  }
+
+  const handleDeploy = async (messageId: string) => {
     const message = messages.find((m) => m.id === messageId)
-    if (!message?.code && !message?.files) return
+    if (!message?.code) return
+
+    // Show checkmark animation
+    setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, isDeployed: true } : m)))
 
     try {
-      const pluginData = {
-        name: message.pluginName || "Untitled Plugin",
-        description: "AI Generated Plugin",
-        code: message.code,
-        files: message.files,
-        serverId,
-      }
+      const codeToSave = typeof message.code === "string" ? message.code : JSON.stringify(message.code)
 
       const response = await fetch("/api/user-ai-functions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(pluginData),
+        body: JSON.stringify({
+          name: message.pluginName || "Untitled Plugin",
+          description: "AI Generated Plugin",
+          code: codeToSave,
+          serverId: serverId,
+          isComplex: message.isComplex,
+        }),
       })
 
-      if (response.ok) {
-        // Show checkmark animation
-        setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, deployed: true } : m)))
-
-        // Hide checkmark after 1 second
-        setTimeout(() => {
-          setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, deployed: "completed" as any } : m)))
-        }, 1000)
-      }
+      if (!response.ok) throw new Error("Failed to save plugin")
     } catch (error) {
       console.error("Error deploying plugin:", error)
     }
   }
 
   const handleBack = () => {
-    if (messages.some((m) => m.type === "plugin" && !m.deployed)) {
+    if (messages.some((m) => m.type === "plugin" && !m.isDeployed)) {
       setShowSavePrompt(true)
     } else {
       onClose()
@@ -256,8 +255,9 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
     setMessages([])
     setExpandedCode(null)
     setEditingPlugin(null)
-    setCurrentPluginCode("")
-    setLastUserMessage("")
+    setCurrentCode("")
+    setDetailInputs({})
+    setActiveTab({})
   }
 
   if (!isOpen) return null
@@ -265,12 +265,12 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
   return (
     <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm">
       <div className="h-full w-full bg-[#101010]/95 backdrop-blur-xl text-white flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#101010]/90 backdrop-blur-sm">
+        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#101010]/80 backdrop-blur-sm">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleBack}
-            className="h-10 w-10 p-0 text-white hover:bg-white/10 rounded-full bg-white/10"
+            className="h-10 w-10 p-0 text-white hover:bg-white/10 rounded-full bg-white/5"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -285,7 +285,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
             variant="ghost"
             size="sm"
             onClick={handleNewChat}
-            className="h-10 w-10 p-0 text-white hover:bg-white/10 rounded-full bg-white/10"
+            className="h-10 w-10 p-0 text-white hover:bg-white/10 rounded-full bg-white/5"
           >
             <MessageSquare className="h-5 w-5" />
           </Button>
@@ -309,49 +309,55 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
                   <div className="max-w-[80%] bg-white/90 backdrop-blur-sm text-gray-900 rounded-2xl px-4 py-3 shadow-lg">
                     <p className="text-sm leading-relaxed">{message.content}</p>
                   </div>
-                ) : message.type === "question" ? (
+                ) : message.type === "question" || message.type === "usage" ? (
                   <div className="max-w-[80%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
                     <p className="text-sm leading-relaxed">{message.content}</p>
                   </div>
-                ) : message.type === "usage" ? (
-                  <div className="max-w-[80%] bg-blue-500/20 backdrop-blur-sm border border-blue-500/30 rounded-2xl px-4 py-3 shadow-lg">
-                    <p className="text-sm leading-relaxed text-blue-100">{message.content}</p>
-                  </div>
-                ) : message.type === "newchat" ? (
-                  <div className="max-w-[80%] bg-orange-500/20 backdrop-blur-sm border border-orange-500/30 rounded-2xl px-4 py-3 shadow-lg">
-                    <p className="text-sm leading-relaxed text-orange-100">{message.content}</p>
+                ) : message.type === "new-chat" ? (
+                  <div className="max-w-[80%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
+                    <p className="text-sm leading-relaxed">{message.content}</p>
                     <Button
                       onClick={handleNewChat}
-                      className="mt-2 bg-orange-500 hover:bg-orange-600 text-white text-xs px-3 py-1 h-auto"
+                      className="mt-2 bg-white/10 hover:bg-white/20 text-white border border-white/20"
+                      size="sm"
                     >
-                      <MessageSquare className="h-3 w-3 mr-1" />
-                      New Chat
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Start New Chat
                     </Button>
                   </div>
-                ) : message.type === "details" ? (
-                  <div className="max-w-[90%] bg-yellow-500/20 backdrop-blur-sm border border-yellow-500/30 rounded-2xl p-4 shadow-lg">
-                    <p className="text-sm mb-3 text-yellow-100">{message.content}</p>
-                    <div className="space-y-2">
-                      {message.detailsRequested?.map((detail, index) => (
-                        <div key={index}>
-                          <label className="text-xs text-yellow-200 block mb-1">{detail}</label>
-                          <input
-                            type="text"
-                            value={detailInputs[detail] || ""}
-                            onChange={(e) => setDetailInputs((prev) => ({ ...prev, [detail]: e.target.value }))}
-                            className="w-full bg-black/30 border border-yellow-500/30 rounded px-2 py-1 text-sm text-white"
-                            placeholder={`Enter ${detail}`}
-                          />
-                        </div>
-                      ))}
-                      <Button
-                        onClick={() => handleSendMessage(true)}
-                        disabled={!Object.values(detailInputs).every((v) => v.trim())}
-                        className="mt-2 bg-yellow-500 hover:bg-yellow-600 text-black text-xs px-3 py-1 h-auto"
-                      >
-                        Submit Details
-                      </Button>
-                    </div>
+                ) : message.type === "detail-request" ? (
+                  <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl p-4 shadow-lg">
+                    <p className="text-sm mb-4">{message.content}</p>
+                    {detailInputs[message.id] && (
+                      <div className="space-y-3">
+                        {detailInputs[message.id].map((input, index) => (
+                          <div key={index}>
+                            <label className="block text-xs text-gray-400 mb-1">{input.name}</label>
+                            <input
+                              type="text"
+                              value={input.value}
+                              onChange={(e) => {
+                                setDetailInputs((prev) => ({
+                                  ...prev,
+                                  [message.id]: prev[message.id].map((inp, i) =>
+                                    i === index ? { ...inp, value: e.target.value } : inp,
+                                  ),
+                                }))
+                              }}
+                              className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400 text-sm"
+                              placeholder={`Enter ${input.name}`}
+                            />
+                          </div>
+                        ))}
+                        <Button
+                          onClick={() => handleDetailSubmission(message.id)}
+                          className="bg-white text-black hover:bg-gray-200 mt-3"
+                          size="sm"
+                        >
+                          Submit Details
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden shadow-lg">
@@ -361,88 +367,87 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
                           <span className="text-xs font-mono">PY</span>
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-medium text-sm">{message.pluginName || "Generated Plugin"}</h3>
-                          <p className="text-xs text-gray-400">AI Generated Discord Bot Plugin</p>
-                        </div>
-                        {message.type === "complex" && (
-                          <div className="flex items-center space-x-1 text-red-400">
-                            <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                            <span className="text-xs">Complex Task</span>
+                          <h3 className="font-medium">{message.pluginName || "Generated Plugin"}</h3>
+                          <div className="flex items-center space-x-2">
+                            <p className="text-xs text-gray-400">AI Generated Discord Bot Plugin</p>
+                            {message.isComplex && (
+                              <div className="flex items-center space-x-1">
+                                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                                <span className="text-xs text-red-400">Complex Task</span>
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </div>
 
                       <p className="text-sm mb-4">{message.content}</p>
 
                       <div className="flex items-center space-x-2">
-                        {message.deployed === true ? (
-                          <div className="flex items-center justify-center w-8 h-8 bg-green-500 rounded-full">
-                            <Check className="h-4 w-4 text-white" />
-                          </div>
-                        ) : message.deployed === "completed" ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setExpandedCode(expandedCode === message.id ? null : message.id)}
+                          className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+
+                        {!message.isDeployed ? (
                           <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setEditingPlugin(editingPlugin === message.id ? null : message.id)}
-                            className="text-white hover:bg-white/10 bg-white/10 h-8 w-8 p-0"
+                            onClick={() => handleDeploy(message.id)}
+                            className="flex-1 bg-white text-black hover:bg-gray-200 h-10"
                           >
-                            <Edit3 className="h-4 w-4" />
+                            <Play className="h-4 w-4 mr-2" />
+                            Deploy
                           </Button>
                         ) : (
-                          <>
+                          <div className="flex items-center space-x-2 flex-1">
+                            <div className="flex items-center space-x-2 text-green-400">
+                              <Check className="h-4 w-4" />
+                              <span className="text-sm">Deployed</span>
+                            </div>
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => setExpandedCode(expandedCode === message.id ? null : message.id)}
-                              className="text-white hover:bg-white/10 bg-white/10 h-8 w-8 p-0"
+                              onClick={() => setEditingPlugin(editingPlugin === message.id ? null : message.id)}
+                              className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
                             >
-                              <Eye className="h-4 w-4" />
+                              <Edit3 className="h-4 w-4" />
                             </Button>
-                            <Button
-                              onClick={() => handleDeployPlugin(message.id)}
-                              className="flex-1 bg-white text-black hover:bg-gray-200 h-8 text-xs"
-                            >
-                              <Play className="h-3 w-3 mr-1" />
-                              Deploy
-                            </Button>
-                          </>
+                          </div>
                         )}
                       </div>
                     </div>
 
-                    {expandedCode === message.id && (message.code || message.files) && (
+                    {expandedCode === message.id && message.code && (
                       <div className="border-t border-white/10 bg-black/40">
-                        {message.files && message.files.length > 1 ? (
-                          <>
+                        {message.isComplex && typeof message.code === "object" ? (
+                          <div>
                             <div className="flex border-b border-white/10">
-                              {message.files.map((file, index) => (
+                              {Object.keys(message.code).map((fileName) => (
                                 <button
-                                  key={index}
-                                  onClick={() => setActiveFileTab((prev) => ({ ...prev, [message.id]: file.name }))}
-                                  className={`px-3 py-2 text-xs border-r border-white/10 ${
-                                    (activeFileTab[message.id] || message.files![0].name) === file.name
+                                  key={fileName}
+                                  onClick={() => setActiveTab((prev) => ({ ...prev, [message.id]: fileName }))}
+                                  className={`px-4 py-2 text-sm border-r border-white/10 ${
+                                    activeTab[message.id] === fileName
                                       ? "bg-white/10 text-white"
                                       : "text-gray-400 hover:text-white"
                                   }`}
                                 >
-                                  {file.name}
+                                  {fileName}
                                 </button>
                               ))}
                             </div>
                             <div className="p-4">
                               <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
-                                {
-                                  message.files.find(
-                                    (f) => f.name === (activeFileTab[message.id] || message.files![0].name),
-                                  )?.code
-                                }
+                                {message.code[activeTab[message.id] || Object.keys(message.code)[0]]}
                               </pre>
                             </div>
-                          </>
+                          </div>
                         ) : (
                           <div className="p-4">
                             <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
-                              {message.code || message.files?.[0]?.code}
+                              {typeof message.code === "string" ? message.code : JSON.stringify(message.code, null, 2)}
                             </pre>
                           </div>
                         )}
@@ -485,7 +490,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
               }}
             />
             <Button
-              onClick={() => handleSendMessage()}
+              onClick={handleSendMessage}
               disabled={!inputValue.trim() || isGenerating}
               className="bg-white text-black hover:bg-gray-200 h-9 w-9 p-0 rounded-full flex-shrink-0"
             >
@@ -508,7 +513,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
                     onClose()
                   }}
                   variant="ghost"
-                  className="flex-1 text-white hover:bg-white/10 bg-white/5"
+                  className="flex-1 text-white hover:bg-white/10"
                 >
                   Don't Deploy
                 </Button>
