@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { message, context } = await request.json()
+    const { message, serverId, hasExistingCode } = await request.json()
 
     if (!message) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 })
@@ -19,63 +19,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "API key not configured" }, { status: 500 })
     }
 
-    const systemPrompt = `You are an AI assistant specialized in Discord bot development. Your task is to analyze user requests and respond with specific markers:
+    const systemPrompt = `You are an AI assistant specialized in Discord bot development. Your task is to analyze user requests and respond with appropriate markings:
 
 MARKING SYSTEM:
-- [1] QUESTION: Non-code questions about Discord bots, Python, or development
-- [1.1] PLUGIN NAME: Add after [2] responses - format: [1.1]plugin-name
-- [2] PLUGIN REQUEST: Generate complete Python Discord bot code
-- [3] MISSING DETAILS: Request specific information - format: [3]detail-name
-- [4] COMPLEX TASK: Multi-file plugins - format: [4.1]filename.py\\n(code)\\n[4.2]filename.py\\n(code)
-- [5] NEW CHAT SUGGESTION: When request is unrelated to current context
-- [6] USAGE INSTRUCTIONS: How to use the generated plugin
+[1] - QUESTION: Non-code questions about Discord bots, Python, or development
+[1.1] - PLUGIN NAME: Generate a short plugin name (max 20 chars) like "ban-hammer" or "welcome-bot"
+[2] - PLUGIN CODE: Generate complete Python code for Discord bot plugins
+[3] - DETAILS REQUEST: Request missing information like "[3]channel-id[3]command-name"
+[4] - COMPLEX TASK: Multi-file functions that need multiple Python files
+[4.1] - COMPLEX FILE: Individual files in complex tasks like "[4.1]main.py" then "[4.2]utils.py"
+[5] - NEW CHAT: Suggest starting new chat for unrelated requests
+[6] - USAGE INSTRUCTIONS: How to use the generated plugin
 
 RESPONSE RULES:
-1. For QUESTIONS [1]: Provide helpful answers. If unrelated to bot development, respond: "[1] This AI should only be used to create plugins for Discord bots."
+- For QUESTIONS [1]: Answer helpfully. If unrelated to bots: "This AI should only be used to create plugins for Discord bots."
+- For PLUGIN NAMES [1.1]: Generate short, descriptive names without spaces
+- For PLUGIN CODE [2]: Generate complete, functional Python code with discord.py
+- For DETAILS [3]: Request specific missing info like channel IDs, command names, user IDs
+- For COMPLEX [4]: Use when multiple files are needed, then follow with [4.1], [4.2], etc.
+- For NEW CHAT [5]: When request is unrelated to current plugin context
+- For USAGE [6]: Provide setup instructions as text
 
-2. For PLUGIN REQUESTS [2]: 
-   - Start with [2]
-   - Add plugin name with [1.1]descriptive-plugin-name
-   - Generate complete, functional Python code using discord.py
-   - NO markdown formatting, NO explanations, NO usage instructions
-   - ONLY raw Python code that can be directly executed
+CODE REQUIREMENTS:
+- Use latest discord.py syntax with proper intents
+- Include complete imports and bot initialization
+- Add error handling and best practices
+- Generate production-ready, executable code
+- NO markdown formatting, NO explanations in code responses
+- Plugin names must be under 20 characters
 
-3. For MISSING DETAILS [3]:
-   - Use [3]detail-name for each missing piece
-   - Example: "[3]channel-id[3]command-name" for multiple details
+FOLLOW-UP HANDLING:
+- If user has existing code context, modify the existing code
+- If request is unrelated to current plugin, suggest [5] new chat
+- Continue plugin development when user requests changes
 
-4. For COMPLEX TASKS [4]:
-   - Use [4.1]main.py\\n(code)\\n[4.2]utils.py\\n(code) format
-   - Each file should be complete and functional
-
-5. For FOLLOW-UP REQUESTS:
-   - If related to current plugin: modify existing code
-   - If unrelated: respond with [5] and suggest starting new chat
-
-6. For USAGE INSTRUCTIONS [6]:
-   - Only when specifically requested
-   - Format: [6] followed by plain text instructions
-
-The code must be complete and functional, requiring only a Discord bot token to run.`
-
-    const messages = [
-      {
-        role: "system",
-        content: systemPrompt,
-      },
-    ]
-
-    if (context && context.code) {
-      messages.push({
-        role: "assistant",
-        content: `Previous code generated: ${context.code}`,
-      })
-    }
-
-    messages.push({
-      role: "user",
-      content: message,
-    })
+${hasExistingCode ? "CONTEXT: User has existing plugin code. Modify the existing code based on their request." : ""}`
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -85,7 +63,16 @@ The code must be complete and functional, requiring only a Discord bot token to 
       },
       body: JSON.stringify({
         model: "llama3-70b-8192",
-        messages,
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+          {
+            role: "user",
+            content: message,
+          },
+        ],
         temperature: 0.7,
         max_tokens: 4000,
       }),
@@ -102,18 +89,49 @@ The code must be complete and functional, requiring only a Discord bot token to 
       return NextResponse.json({ error: "No response generated" }, { status: 500 })
     }
 
-    const isCode =
-      generatedContent.includes("[2]") ||
-      generatedContent.includes("import discord") ||
-      generatedContent.includes("discord.py") ||
-      generatedContent.includes("@bot.command") ||
-      generatedContent.includes("[4.")
+    const markPattern = /^\[(\d+(?:\.\d+)?)\]/
+    const match = generatedContent.match(markPattern)
 
-    if (isCode) {
-      return NextResponse.json({ code: generatedContent })
-    } else {
-      return NextResponse.json({ response: generatedContent })
+    if (match) {
+      const mark = match[1]
+
+      // Handle complex multi-file responses
+      if (mark === "4" || mark.startsWith("4.")) {
+        const files: { [key: string]: string } = {}
+        const filePattern = /\[4\.(\d+)\]\s*([^[]+)/g
+        let fileMatch
+
+        while ((fileMatch = filePattern.exec(generatedContent)) !== null) {
+          const fileNumber = fileMatch[1]
+          const fileName = `file_${fileNumber}.py`
+          const codeStart = fileMatch.index + fileMatch[0].length
+          const nextFileIndex = generatedContent.indexOf(`[4.${Number.parseInt(fileNumber) + 1}]`, codeStart)
+          const codeEnd = nextFileIndex === -1 ? generatedContent.length : nextFileIndex
+          const code = generatedContent.substring(codeStart, codeEnd).trim()
+
+          files[fileName] = code
+        }
+
+        if (Object.keys(files).length > 0) {
+          return NextResponse.json({ code: files, type: "complex" })
+        }
+      }
+
+      // Handle single file code responses
+      if (mark === "2" || mark === "1.1") {
+        const isCode =
+          generatedContent.includes("import discord") ||
+          generatedContent.includes("discord.py") ||
+          generatedContent.includes("@bot.command")
+
+        if (isCode) {
+          return NextResponse.json({ code: generatedContent, type: mark === "1.1" ? "plugin-name" : "plugin" })
+        }
+      }
     }
+
+    // Default to response for questions and other types
+    return NextResponse.json({ response: generatedContent })
   } catch (error) {
     console.error("AI Plugin Generation Error:", error)
     return NextResponse.json({ error: "Failed to generate response" }, { status: 500 })
