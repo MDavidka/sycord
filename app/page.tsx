@@ -1,69 +1,57 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Bot, Send, Code, MessageSquare } from "lucide-react"
+import { Send, Bot, Edit, AlertCircle } from "lucide-react"
+import { ChatMessage } from "@/components/chat-message"
 import { PluginCard } from "@/components/plugin-card"
-import { MissingDetailsForm } from "@/components/missing-details-form"
 import { GenerationPipeline } from "@/components/generation-pipeline"
-import { AIMarksParser, type ParsedAIResponse } from "@/lib/ai-marks-parser"
 
-interface ChatMessage {
+interface Message {
   id: string
   type: "user" | "ai"
   content: string
   timestamp: Date
-  parsedResponse?: ParsedAIResponse
+  marks?: {
+    type: "question" | "plugin-name" | "code" | "missing-details" | "complex-task" | "out-of-scope" | "usage"
+    content: string
+    pluginName?: string
+    missingDetails?: string[]
+    files?: { name: string; content: string }[]
+  }
 }
 
-interface GenerationStep {
-  id: string
-  icon: React.ComponentType<any>
-  label: string
-  status: "pending" | "active" | "completed"
-}
-
-interface PluginFile {
-  name: string
-  content: string
-}
-
-interface PluginCardData {
+interface Plugin {
   id: string
   name: string
   code: string
-  files?: PluginFile[]
-  isDeployed: boolean
-  isComplex?: boolean
-  generationSteps?: GenerationStep[]
+  deployed: boolean
+  lastModified: Date
   usageInstructions?: string
 }
 
-export default function DiscordPluginCreator() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
+export default function DiscordBotMaker() {
+  const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
       type: "ai",
       content:
-        "Welcome to the Discord Plugin Creator! I can help you build custom Discord bot plugins. What would you like to create?",
+        "Welcome to the Discord Bot Plugin Maker! I can help you create custom Discord bot plugins. What kind of bot functionality would you like to build?",
       timestamp: new Date(),
     },
   ])
   const [inputValue, setInputValue] = useState("")
-  const [plugins, setPlugins] = useState<PluginCardData[]>([])
+  const [plugins, setPlugins] = useState<Plugin[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
-  const [showMissingDetails, setShowMissingDetails] = useState<ParsedAIResponse | null>(null)
-  const [showGenerationPipeline, setShowGenerationPipeline] = useState<{
-    pluginName: string
-    isComplex: boolean
-  } | null>(null)
-  const [lastUserMessage, setLastUserMessage] = useState("")
+  const [currentPlugin, setCurrentPlugin] = useState<Plugin | null>(null)
+  const [missingDetails, setMissingDetails] = useState<string[]>([])
+  const [detailInputs, setDetailInputs] = useState<Record<string, string>>({})
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -73,37 +61,10 @@ export default function DiscordPluginCreator() {
     scrollToBottom()
   }, [messages])
 
-  const simulateAIResponse = (userInput: string): string => {
-    const input = userInput.toLowerCase()
-
-    // Simulate different response types based on input
-    if (input.includes("what") || input.includes("how") || input.includes("?")) {
-      if (input.includes("plugin") || input.includes("bot") || input.includes("discord")) {
-        return AIMarksParser.generateSampleResponse("simple")
-      } else {
-        return "[1]This AI is only for plugin making."
-      }
-    }
-
-    if (input.includes("complex") || input.includes("advanced") || input.includes("multi")) {
-      return AIMarksParser.generateSampleResponse("complex")
-    }
-
-    if (input.includes("welcome") || input.includes("greeting")) {
-      return AIMarksParser.generateSampleResponse("missing-details")
-    }
-
-    if (input.includes("unrelated") || input.includes("different")) {
-      return "[5]If you want a whole new function, start a new chat."
-    }
-
-    return AIMarksParser.generateSampleResponse("simple")
-  }
-
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return
 
-    const userMessage: ChatMessage = {
+    const userMessage: Message = {
       id: Date.now().toString(),
       type: "user",
       content: inputValue,
@@ -111,141 +72,116 @@ export default function DiscordPluginCreator() {
     }
 
     setMessages((prev) => [...prev, userMessage])
-    setLastUserMessage(inputValue)
-    const currentInput = inputValue
     setInputValue("")
     setIsGenerating(true)
 
-    // Simulate AI processing
     setTimeout(() => {
-      const aiResponseText = simulateAIResponse(currentInput)
-      const parsedResponse = AIMarksParser.parseResponse(aiResponseText)
-
-      const aiMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        type: "ai",
-        content: aiResponseText,
-        timestamp: new Date(),
-        parsedResponse,
-      }
-
-      setMessages((prev) => [...prev, aiMessage])
-
-      // Handle different response types
-      handleParsedResponse(parsedResponse)
+      const aiResponse = simulateAIResponse(inputValue)
+      setMessages((prev) => [...prev, aiResponse])
       setIsGenerating(false)
+
+      // Handle different mark types
+      if (aiResponse.marks) {
+        switch (aiResponse.marks.type) {
+          case "plugin-name":
+            // Start plugin creation
+            const newPlugin: Plugin = {
+              id: Date.now().toString(),
+              name: aiResponse.marks.pluginName || "new-plugin",
+              code: "",
+              deployed: false,
+              lastModified: new Date(),
+            }
+            setCurrentPlugin(newPlugin)
+            break
+          case "missing-details":
+            setMissingDetails(aiResponse.marks.missingDetails || [])
+            break
+          case "code":
+            if (currentPlugin) {
+              const updatedPlugin = {
+                ...currentPlugin,
+                code: aiResponse.marks.content,
+                lastModified: new Date(),
+              }
+              setCurrentPlugin(updatedPlugin)
+            }
+            break
+        }
+      }
     }, 1500)
   }
 
-  const handleParsedResponse = (parsed: ParsedAIResponse) => {
-    switch (parsed.type) {
-      case "missing-details":
-        setShowMissingDetails(parsed)
-        break
+  const simulateAIResponse = (userInput: string): Message => {
+    const lowerInput = userInput.toLowerCase()
 
-      case "plugin":
-      case "complex-task":
-        if (parsed.pluginName) {
-          setShowGenerationPipeline({
-            pluginName: parsed.pluginName,
-            isComplex: parsed.type === "complex-task",
-          })
+    if (
+      lowerInput.includes("question") ||
+      lowerInput.includes("what") ||
+      lowerInput.includes("how") ||
+      lowerInput.includes("why")
+    ) {
+      if (!lowerInput.includes("bot") && !lowerInput.includes("plugin") && !lowerInput.includes("discord")) {
+        return {
+          id: Date.now().toString(),
+          type: "ai",
+          content: "This AI is only for plugin making.",
+          timestamp: new Date(),
+          marks: { type: "question", content: "This AI is only for plugin making." },
         }
-        break
-
-      case "question":
-      case "out-of-scope":
-        // These are handled as regular chat messages
-        break
-    }
-  }
-
-  const handleGenerationComplete = (code: string, files?: { name: string; content: string }[]) => {
-    if (!showGenerationPipeline) return
-
-    const newPlugin: PluginCardData = {
-      id: Date.now().toString(),
-      name: showGenerationPipeline.pluginName,
-      code,
-      files: files || [],
-      isDeployed: false,
-      isComplex: showGenerationPipeline.isComplex,
-      usageInstructions: `Use the commands provided by ${showGenerationPipeline.pluginName} to interact with your Discord server.`,
-    }
-
-    setPlugins((prev) => [...prev, newPlugin])
-    setShowGenerationPipeline(null)
-  }
-
-  const handleMissingDetailsSubmit = (details: { [key: string]: string }) => {
-    const detailsText = Object.entries(details)
-      .map(([key, value]) => `${key}: ${value}`)
-      .join(", ")
-
-    const followUpMessage = AIMarksParser.formatMissingDetailsRequest(Object.keys(details), lastUserMessage)
-
-    // Add user's details as a message
-    const detailsMessage: ChatMessage = {
-      id: Date.now().toString(),
-      type: "user",
-      content: `${followUpMessage} Details: ${detailsText}`,
-      timestamp: new Date(),
-    }
-
-    setMessages((prev) => [...prev, detailsMessage])
-    setShowMissingDetails(null)
-
-    // Generate plugin with the provided details
-    setTimeout(() => {
-      const responseText = AIMarksParser.generateSampleResponse("simple")
-      const parsed = AIMarksParser.parseResponse(responseText)
-
-      const aiMessage: ChatMessage = {
-        id: (Date.now() + 2).toString(),
-        type: "ai",
-        content: responseText,
-        timestamp: new Date(),
-        parsedResponse: parsed,
       }
+    }
 
-      setMessages((prev) => [...prev, aiMessage])
-      handleParsedResponse(parsed)
-    }, 1000)
-  }
+    if (lowerInput.includes("ban") || lowerInput.includes("moderation")) {
+      return {
+        id: Date.now().toString(),
+        type: "ai",
+        content: "I'll create a bad word ban bot for you.",
+        timestamp: new Date(),
+        marks: {
+          type: "plugin-name",
+          content: "bad-word-ban-bot",
+          pluginName: "bad-word-ban-bot",
+        },
+      }
+    }
 
-  const handleMissingDetailsCancel = () => {
-    setShowMissingDetails(null)
-  }
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
+    return {
+      id: Date.now().toString(),
+      type: "ai",
+      content:
+        "I understand you want to create a Discord bot plugin. Could you provide more specific details about what functionality you need?",
+      timestamp: new Date(),
+      marks: {
+        type: "missing-details",
+        content: "Need more details",
+        missingDetails: ["functionality-type", "commands-needed"],
+      },
     }
   }
 
-  const handleDeploy = (pluginId: string) => {
-    setPlugins((prev) =>
-      prev.map((plugin) =>
-        plugin.id === pluginId ? { ...plugin, isDeployed: true, generationSteps: undefined } : plugin,
-      ),
-    )
+  const handleDetailSubmit = (detail: string, value: string) => {
+    setDetailInputs((prev) => ({ ...prev, [detail]: value }))
   }
 
-  const handleEdit = (pluginId: string) => {
-    console.log("Editing plugin:", pluginId)
-    // In a real implementation, this would open an editor
+  const handleDeployPlugin = (plugin: Plugin) => {
+    const deployedPlugin = { ...plugin, deployed: true }
+    setPlugins((prev) => [...prev, deployedPlugin])
+    setCurrentPlugin(null)
   }
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+      <header className="border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Bot className="h-8 w-8 text-accent" />
-            <h1 className="text-2xl font-bold text-foreground">Discord Plugin Creator</h1>
-            <Badge variant="secondary" className="ml-auto">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Bot className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <h1 className="text-xl font-bold">Discord Bot Plugin Maker</h1>
+            </div>
+            <Badge variant="secondary" className="bg-accent text-accent-foreground">
               AI Powered
             </Badge>
           </div>
@@ -253,134 +189,97 @@ export default function DiscordPluginCreator() {
       </header>
 
       <div className="container mx-auto px-4 py-6">
-        <div className="grid lg:grid-cols-3 gap-6 h-[calc(100vh-120px)]">
-          {/* Chat Interface */}
-          <div className="lg:col-span-2 flex flex-col">
-            <Card className="flex-1 flex flex-col">
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <Card className="h-[600px] flex flex-col">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Bot className="h-5 w-5" />
+                  <Bot className="w-5 h-5" />
                   AI Assistant
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col">
-                {/* Messages */}
                 <div className="flex-1 overflow-y-auto space-y-4 mb-4">
                   {messages.map((message) => (
-                    <div key={message.id}>
-                      {/* Regular chat message */}
-                      <div className={`flex ${message.type === "user" ? "justify-end" : "justify-start"} mb-2`}>
-                        <div
-                          className={`chat-bubble ${message.type === "user" ? "chat-bubble-user" : "chat-bubble-ai"}`}
-                        >
-                          {message.parsedResponse?.message ||
-                            (message.parsedResponse?.type === "plugin" ||
-                            message.parsedResponse?.type === "complex-task"
-                              ? `Creating ${message.parsedResponse.pluginName} plugin...`
-                              : message.content)}
-                        </div>
-                      </div>
-
-                      {/* Usage instructions */}
-                      {message.parsedResponse?.usageInstructions && (
-                        <div className="flex justify-start mb-2">
-                          <div className="chat-bubble chat-bubble-ai bg-blue-50 border border-blue-200">
-                            <div className="flex items-start gap-2">
-                              <MessageSquare className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                              <span className="text-blue-800">{message.parsedResponse.usageInstructions}</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    <ChatMessage key={message.id} message={message} />
                   ))}
-
                   {isGenerating && (
-                    <div className="flex justify-start">
-                      <div className="chat-bubble chat-bubble-ai">
-                        <div className="flex items-center gap-2">
-                          <div className="animate-spin h-4 w-4 border-2 border-muted-foreground border-t-transparent rounded-full"></div>
-                          Generating plugin...
-                        </div>
-                      </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Bot className="w-4 h-4 animate-pulse" />
+                      <span>AI is thinking...</span>
                     </div>
                   )}
-
-                  {/* Missing Details Form */}
-                  {showMissingDetails && (
-                    <div className="mb-4">
-                      <MissingDetailsForm
-                        details={showMissingDetails.missingDetails || []}
-                        pluginName={showMissingDetails.pluginName}
-                        onSubmit={handleMissingDetailsSubmit}
-                        onCancel={handleMissingDetailsCancel}
-                      />
-                    </div>
-                  )}
-
-                  {showGenerationPipeline && (
-                    <div className="mb-4">
-                      <GenerationPipeline
-                        pluginName={showGenerationPipeline.pluginName}
-                        isComplex={showGenerationPipeline.isComplex}
-                        onComplete={handleGenerationComplete}
-                      />
-                    </div>
-                  )}
-
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Input */}
+                {missingDetails.length > 0 && (
+                  <div className="mb-4 p-4 bg-muted/20 rounded-lg border border-border">
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      Please provide these details:
+                    </h4>
+                    <div className="space-y-3">
+                      {missingDetails.map((detail) => (
+                        <div key={detail}>
+                          <label className="text-sm font-medium capitalize">{detail.replace("-", " ")}</label>
+                          <Input
+                            placeholder={`Enter ${detail.replace("-", " ")}`}
+                            value={detailInputs[detail] || ""}
+                            onChange={(e) => handleDetailSubmit(detail, e.target.value)}
+                            className="mt-1"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-2">
                   <Input
+                    ref={inputRef}
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Describe the Discord plugin you want to create..."
-                    className="flex-1"
-                    disabled={!!showMissingDetails || !!showGenerationPipeline}
+                    placeholder="Describe the Discord bot plugin you want to create..."
+                    onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                    disabled={isGenerating}
                   />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={!inputValue.trim() || isGenerating || !!showMissingDetails || !!showGenerationPipeline}
-                  >
-                    <Send className="h-4 w-4" />
+                  <Button onClick={handleSendMessage} disabled={isGenerating || !inputValue.trim()} size="icon">
+                    <Send className="w-4 h-4" />
                   </Button>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Plugin Cards */}
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-foreground">Generated Plugins</h2>
-            {plugins.length === 0 ? (
-              <Card className="plugin-card">
-                <CardContent className="text-center py-8">
-                  <Code className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No plugins created yet</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Start a conversation to generate your first Discord bot plugin
-                  </p>
+          <div className="space-y-6">
+            {/* Current Plugin Card */}
+            {currentPlugin && (
+              <PluginCard plugin={currentPlugin} onDeploy={handleDeployPlugin} isGenerating={isGenerating} />
+            )}
+
+            {/* Generation Pipeline */}
+            {isGenerating && <GenerationPipeline />}
+
+            {/* Deployed Plugins */}
+            {plugins.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Created Plugins</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {plugins.map((plugin) => (
+                    <div key={plugin.id} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
+                      <div>
+                        <h4 className="font-medium">{plugin.name}</h4>
+                        <p className="text-sm text-muted-foreground">{plugin.lastModified.toLocaleDateString()}</p>
+                      </div>
+                      <Button size="sm" variant="outline">
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
-            ) : (
-              plugins.map((plugin) => (
-                <PluginCard
-                  key={plugin.id}
-                  id={plugin.id}
-                  name={plugin.name}
-                  code={plugin.code}
-                  files={plugin.files}
-                  isDeployed={plugin.isDeployed}
-                  isComplex={plugin.isComplex}
-                  generationSteps={plugin.generationSteps}
-                  usageInstructions={plugin.usageInstructions}
-                  onDeploy={handleDeploy}
-                  onEdit={handleEdit}
-                />
-              ))
             )}
           </div>
         </div>

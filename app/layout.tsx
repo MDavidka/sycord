@@ -1,24 +1,14 @@
-import type React from "react"
-import type { Metadata } from "next"
-import { Space_Grotesk, DM_Sans } from "next/font/google"
-import "./globals.css"
-
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-space-grotesk",
-})
-
-const dmSans = DM_Sans({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-dm-sans",
-})
+import type { Metadata } from 'next'
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
+import './globals.css'
+import Providers from './providers'
+import { Toaster } from 'react-hot-toast'
 
 export const metadata: Metadata = {
-  title: "Discord Plugin Creator - AI Powered Bot Builder",
-  description: "Create custom Discord bot plugins with AI assistance",
-  generator: "Discord Plugin Creator",
+  title: 'all in one bot',
+  description: 'Created by MDavid',
+  generator: '.',
 }
 
 export default function RootLayout({
@@ -27,8 +17,22 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${spaceGrotesk.variable} ${dmSans.variable} antialiased`}>
-      <body className="bg-background min-h-screen font-sans">{children}</body>
+    <html lang="en" className="dark bg-black">
+      <head>
+        <style>{`
+html {
+  font-family: ${GeistSans.style.fontFamily};
+  --font-sans: ${GeistSans.variable};
+  --font-mono: ${GeistMono.variable};
+}
+        `}</style>
+      </head>
+      <body className="bg-black min-h-screen">
+        <Providers>
+          <Toaster />
+          {children}
+        </Providers>
+      </body>
     </html>
   )
 }

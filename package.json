@@ -67,6 +67,7 @@
     "react-hot-toast": "latest",
     "react-markdown": "latest",
     "react-resizable-panels": "^2.1.7",
+    "react-syntax-highlighter": "latest",
     "recharts": "2.15.0",
     "snappy": "latest",
     "socks": "latest",

@@ -1,245 +1,114 @@
 "use client"
 
-import type React from "react"
-import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Play, CheckCircle, Edit, Eye, EyeOff, Clock, AlertCircle } from "lucide-react"
+import { Code, Play, Download, Edit, CheckCircle } from "lucide-react"
+import { useState } from "react"
 
-interface GenerationStep {
-  id: string
-  icon: React.ComponentType<any>
-  label: string
-  status: "pending" | "active" | "completed"
-}
-
-interface PluginFile {
-  name: string
-  content: string
-}
-
-interface PluginCardProps {
+interface Plugin {
   id: string
   name: string
   code: string
-  files?: PluginFile[]
-  isDeployed: boolean
-  isComplex?: boolean
-  generationSteps?: GenerationStep[]
+  deployed: boolean
+  lastModified: Date
   usageInstructions?: string
-  onDeploy: (id: string) => void
-  onEdit: (id: string) => void
 }
 
-export function PluginCard({
-  id,
-  name,
-  code,
-  files = [],
-  isDeployed,
-  isComplex = false,
-  generationSteps,
-  usageInstructions,
-  onDeploy,
-  onEdit,
-}: PluginCardProps) {
+interface PluginCardProps {
+  plugin: Plugin
+  onDeploy: (plugin: Plugin) => void
+  isGenerating?: boolean
+}
+
+export function PluginCard({ plugin, onDeploy, isGenerating }: PluginCardProps) {
   const [showCode, setShowCode] = useState(false)
   const [isDeploying, setIsDeploying] = useState(false)
-  const [deploySuccess, setDeploySuccess] = useState(false)
-  const [currentStep, setCurrentStep] = useState(0)
-  const [elapsedTime, setElapsedTime] = useState(0)
-
-  // Timer for generation process
-  useEffect(() => {
-    let interval: NodeJS.Timeout
-    if (generationSteps && !isDeployed) {
-      interval = setInterval(() => {
-        setElapsedTime((prev) => prev + 1)
-      }, 1000)
-    }
-    return () => clearInterval(interval)
-  }, [generationSteps, isDeployed])
-
-  // Auto-progress through generation steps
-  useEffect(() => {
-    if (generationSteps && currentStep < generationSteps.length) {
-      const timer = setTimeout(() => {
-        setCurrentStep((prev) => prev + 1)
-      }, 2000) // Each step takes 2 seconds
-      return () => clearTimeout(timer)
-    }
-  }, [currentStep, generationSteps])
 
   const handleDeploy = async () => {
     setIsDeploying(true)
-
     setTimeout(() => {
-      setDeploySuccess(true)
-      setTimeout(() => {
-        onDeploy(id)
-        setIsDeploying(false)
-        setDeploySuccess(false)
-      }, 1000) // Show checkmark for exactly 1 second
-    }, 500)
+      onDeploy(plugin)
+      setIsDeploying(false)
+    }, 1000)
   }
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
-  }
-
-  const getStepStatus = (stepIndex: number) => {
-    if (stepIndex < currentStep) return "completed"
-    if (stepIndex === currentStep) return "active"
-    return "pending"
-  }
-
-  const progressPercentage = generationSteps ? Math.min((currentStep / generationSteps.length) * 100, 100) : 100
 
   return (
     <Card className="plugin-card">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold">{name}</CardTitle>
-          <div className="flex items-center gap-2">
-            {isComplex && (
-              <Badge variant="destructive" className="text-xs relative">
-                <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                <AlertCircle className="h-3 w-3 mr-1" />
-                Complex task
-              </Badge>
-            )}
-            {generationSteps && !isDeployed && (
-              <Badge variant="secondary" className="text-xs">
-                <Clock className="h-3 w-3 mr-1" />
-                {formatTime(elapsedTime)}
-              </Badge>
-            )}
-          </div>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
+              <Code className="w-3 h-3 text-primary-foreground" />
+            </div>
+            {plugin.name}
+          </CardTitle>
+          {plugin.deployed ? (
+            <Badge variant="secondary" className="bg-accent text-accent-foreground">
+              <CheckCircle className="w-3 h-3 mr-1" />
+              Deployed
+            </Badge>
+          ) : (
+            <Badge variant="outline">Draft</Badge>
+          )}
         </div>
-
-        {/* Progress Bar */}
-        {generationSteps && !isDeployed && (
-          <div className="w-full bg-muted rounded-full h-2 mt-2">
-            <div
-              className="bg-accent h-2 rounded-full transition-all duration-500"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-        )}
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {usageInstructions && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start gap-2">
-              <div className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0">💡</div>
-              <p className="text-sm text-blue-800">{usageInstructions}</p>
-            </div>
-          </div>
-        )}
+        {plugin.code && (
+          <div>
+            <Button variant="ghost" size="sm" onClick={() => setShowCode(!showCode)} className="mb-2">
+              <Code className="w-4 h-4 mr-2" />
+              {showCode ? "Hide Code" : "Show Code"}
+            </Button>
 
-        {/* Generation Steps */}
-        {generationSteps && !isDeployed && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-muted-foreground mb-2">Generation Progress</h4>
-            {generationSteps.map((step, index) => {
-              const Icon = step.icon
-              const status = getStepStatus(index)
-
-              return (
-                <div
-                  key={step.id}
-                  className={`generation-step ${status} ${status === "active" ? "animate-pulse-glow" : ""}`}
-                >
-                  <div className="relative">
-                    <Icon className="h-4 w-4 text-muted-foreground" />
-                    <span className="absolute -bottom-1 -right-1 text-xs text-muted-foreground bg-background px-1 rounded">
-                      s1-small
-                    </span>
-                  </div>
-                  <span className="text-sm flex-1">{step.label}</span>
-                  {status === "completed" && <CheckCircle className="h-4 w-4 text-green-600" />}
-                  {status === "active" && (
-                    <div className="h-4 w-4 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {(showCode || isDeployed) && (code || files.length > 0) && (
-          <div className="border border-border rounded-lg overflow-hidden">
-            {isComplex && files.length > 0 ? (
-              <Tabs defaultValue={files[0]?.name || "main.py"} className="w-full">
-                <TabsList className="w-full justify-start rounded-none border-b bg-muted/30">
-                  {files.map((file) => (
-                    <TabsTrigger key={file.name} value={file.name} className="text-xs">
-                      {file.name}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-                {files.map((file) => (
-                  <TabsContent key={file.name} value={file.name} className="m-0">
-                    <pre className="p-4 text-xs bg-muted/30 overflow-x-auto max-h-64">
-                      <code>{file.content}</code>
-                    </pre>
-                  </TabsContent>
-                ))}
-              </Tabs>
-            ) : (
-              <pre className="p-4 text-xs bg-muted/30 overflow-x-auto max-h-64">
-                <code>{code}</code>
-              </pre>
+            {showCode && (
+              <div className="code-block max-h-40 overflow-y-auto">
+                <pre className="text-xs">
+                  <code>{plugin.code}</code>
+                </pre>
+              </div>
             )}
+          </div>
+        )}
+
+        {plugin.usageInstructions && (
+          <div className="p-3 bg-muted/20 rounded-lg border border-border">
+            <h4 className="text-sm font-medium mb-1">Usage Instructions</h4>
+            <p className="text-sm text-muted-foreground">{plugin.usageInstructions}</p>
           </div>
         )}
 
         <div className="flex gap-2">
-          {!isDeployed ? (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2 bg-transparent"
-                onClick={() => setShowCode(!showCode)}
-              >
-                {showCode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                {showCode ? "Hide Code" : "Show Code"}
-              </Button>
-
-              <Button
-                size="sm"
-                className="flex-1 relative"
-                onClick={handleDeploy}
-                disabled={isDeploying || (generationSteps && currentStep < generationSteps.length)}
-              >
-                {deploySuccess ? (
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span>Deployed!</span>
-                  </div>
-                ) : isDeploying ? (
-                  <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <Play className="h-4 w-4 mr-2" />
-                    Deploy
-                  </>
-                )}
-              </Button>
-            </>
+          {!plugin.deployed ? (
+            <Button onClick={handleDeploy} disabled={isDeploying || isGenerating || !plugin.code} className="flex-1">
+              {isDeploying ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
+                  Deploying...
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 mr-2" />
+                  Deploy
+                </>
+              )}
+            </Button>
           ) : (
-            <Button variant="secondary" size="sm" className="flex-1" onClick={() => onEdit(id)}>
-              <Edit className="h-4 w-4 mr-2" />
+            <Button variant="outline" className="flex-1 bg-transparent">
+              <Edit className="w-4 h-4 mr-2" />
               Edit
             </Button>
           )}
+
+          {plugin.code && (
+            <Button variant="outline" size="icon">
+              <Download className="w-4 h-4" />
+            </Button>
+          )}
         </div>
+
+        <div className="text-xs text-muted-foreground">Last modified: {plugin.lastModified.toLocaleString()}</div>
       </CardContent>
     </Card>
   )

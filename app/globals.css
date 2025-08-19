@@ -4,40 +4,42 @@
 
 @layer base {
   :root {
-    /* Updated design tokens to match the design brief */
-    --background: #ffffff;
-    --foreground: #1f2937;
-    --card: #f1f5f9;
-    --card-foreground: #1f2937;
-    --popover: #ffffff;
-    --popover-foreground: #1f2937;
-    --primary: #1f2937;
-    --primary-foreground: #ffffff;
-    --secondary: #6b7280;
-    --secondary-foreground: #ffffff;
-    --muted: #f1f5f9;
-    --muted-foreground: #6b7280;
-    --accent: #8b5cf6;
-    --accent-foreground: #ffffff;
-    --destructive: #ea580c;
-    --destructive-foreground: #ffffff;
-    --border: #e5e7eb;
-    --input: #f1f5f9;
-    --ring: rgba(139, 92, 246, 0.5);
-    --chart-1: #1f2937;
-    --chart-2: #8b5cf6;
-    --chart-3: #ea580c;
-    --chart-4: #6b7280;
-    --chart-5: #f97316;
-    --radius: 0.5rem;
-    --sidebar: #f1f5f9;
-    --sidebar-foreground: #1f2937;
-    --sidebar-primary: #1f2937;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #8b5cf6;
-    --sidebar-accent-foreground: #ffffff;
-    --sidebar-border: #e5e7eb;
-    --sidebar-ring: rgba(139, 92, 246, 0.5);
+    /* Updated design tokens to match green-focused developer theme */
+    --background: 220 13% 18%; /* #1f2937 - Dark background for main interface */
+    --foreground: 0 0% 100%; /* #ffffff - Main text color */
+    --card: 220 13% 23%; /* #374151 - Card background for chat messages and plugin cards */
+    --card-foreground: 0 0% 100%; /* #ffffff - Text color for card content */
+    --popover: 220 13% 23%; /* #374151 - Background for popovers */
+    --popover-foreground: 0 0% 100%; /* #ffffff - Text color for popover content */
+    --primary: 142 76% 36%; /* #15803d - Primary action color for buttons */
+    --primary-foreground: 0 0% 100%; /* #ffffff - Text color for primary actions */
+    --secondary: 84 81% 44%; /* #84cc16 - Accent color for interactive elements */
+    --secondary-foreground: 220 13% 18%; /* #1f2937 - Text color for secondary actions */
+    --muted: 220 9% 46%; /* #6b7280 - Muted text color */
+    --muted-foreground: 0 0% 100%; /* #ffffff - Text color for muted elements */
+    --accent: 84 81% 44%; /* #84cc16 - Bright accent for highlights */
+    --accent-foreground: 220 13% 18%; /* #1f2937 - Text color for accent elements */
+    --destructive: 0 84% 60%; /* #dc2626 - Color for error or destructive actions */
+    --destructive-foreground: 0 0% 100%; /* #ffffff - Text color for destructive actions */
+    --border: 220 13% 23%; /* #374151 - Border color for cards and input fields */
+    --input: 220 13% 18%; /* #2a2e35 - Input field background color */
+    --ring: 142 76% 36%; /* Focus ring color */
+    --radius: 0.5rem; /* Standard corner rounding */
+
+    /* Added chart and sidebar tokens for future components */
+    --chart-1: 142 76% 36%; /* #15803d */
+    --chart-2: 84 81% 44%; /* #84cc16 */
+    --chart-3: 0 84% 60%; /* #dc2626 */
+    --chart-4: 45 93% 47%; /* #f59e0b */
+    --chart-5: 142 76% 97%; /* #f0fdf4 */
+    --sidebar: 220 13% 18%; /* #1f2937 */
+    --sidebar-foreground: 0 0% 100%; /* #ffffff */
+    --sidebar-primary: 142 76% 36%; /* #15803d */
+    --sidebar-primary-foreground: 0 0% 100%; /* #ffffff */
+    --sidebar-accent: 84 81% 44%; /* #84cc16 */
+    --sidebar-accent-foreground: 220 13% 18%; /* #1f2937 */
+    --sidebar-border: 220 13% 23%; /* #374151 */
+    --sidebar-ring: 142 76% 36%; /* Focus ring color */
   }
 }
 
@@ -47,17 +49,16 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* Updated to light theme background */
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #ffffff 100%) !important;
+    /* Updated gradient to match new color scheme */
+    background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(220 13% 15%) 50%, hsl(var(--background)) 100%) !important;
     min-height: 100vh;
   }
 
   html {
-    /* Updated to light background */
-    background: #ffffff !important;
+    background: hsl(var(--background)) !important;
   }
 
-  /* Ensure all containers maintain light background */
+  /* Ensure all containers maintain dark background */
   #__next,
   [data-nextjs-scroll-focus-boundary] {
     background: transparent !important;
@@ -65,54 +66,58 @@
 }
 
 @layer components {
-  /* Updated component styles for light theme */
+  /* Updated component styles to use semantic tokens */
   .glass-card {
-    @apply bg-white/80 backdrop-blur-xl border border-gray-200 rounded-xl shadow-sm;
+    @apply bg-card/40 backdrop-blur-xl border border-border rounded-xl;
   }
 
-  .accent-border {
-    @apply border border-accent/30 shadow-[0_0_15px_rgba(139,92,246,0.1)];
+  .neon-border {
+    @apply border border-primary/30 shadow-[0_0_15px_hsl(var(--primary)/0.3)];
   }
 
   .hover-glow {
-    @apply transition-all duration-300 hover:shadow-[0_0_20px_rgba(139,92,246,0.2)] hover:border-accent/50;
+    @apply transition-all duration-300 hover:shadow-[0_0_20px_hsl(var(--primary)/0.4)] hover:border-primary/50;
   }
 
   .mobile-block {
-    @apply p-4 rounded-xl bg-white/90 border border-gray-200 backdrop-blur-sm;
+    @apply p-4 rounded-xl bg-card/60 border border-border backdrop-blur-sm;
   }
 
-  /* Added chat interface specific styles */
-  .chat-bubble {
-    @apply p-3 rounded-lg max-w-xs break-words;
+  /* Added new component styles for chat interface */
+  .chat-message {
+    @apply bg-card border border-border rounded-lg p-4 mb-4 animate-fade-in;
   }
 
-  .chat-bubble-user {
-    @apply bg-accent text-accent-foreground ml-auto;
+  .chat-message.user {
+    @apply bg-primary/10 border-primary/20;
   }
 
-  .chat-bubble-ai {
-    @apply bg-muted text-muted-foreground mr-auto;
+  .chat-message.ai {
+    @apply bg-card border-border;
   }
 
   .plugin-card {
-    @apply bg-card border border-border rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow;
+    @apply bg-card border border-border rounded-lg p-6 hover-glow transition-all duration-200;
+  }
+
+  .code-block {
+    @apply bg-muted/20 border border-border rounded-md p-4 font-mono text-sm;
   }
 
   .generation-step {
-    @apply flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border;
+    @apply flex items-center gap-3 p-3 rounded-lg bg-card/50 border border-border;
   }
 
   .generation-step.active {
-    @apply bg-accent/10 border-accent/30;
+    @apply bg-primary/10 border-primary/30 shadow-[0_0_10px_hsl(var(--primary)/0.2)];
   }
 
-  .generation-step.completed {
-    @apply bg-green-50 border-green-200;
+  .generation-step.complete {
+    @apply bg-accent/10 border-accent/30;
   }
 }
 
-/* Updated animations for light theme */
+/* Enhanced animations for better UX */
 .animate-fade-in {
   animation: fadeIn 0.5s ease-in-out;
 }
@@ -143,7 +148,7 @@
   }
 }
 
-/* Added pulsing animation for generation steps */
+/* Added pulse animation for active generation steps */
 .animate-pulse-glow {
   animation: pulseGlow 2s ease-in-out infinite;
 }
@@ -151,9 +156,9 @@
 @keyframes pulseGlow {
   0%,
   100% {
-    box-shadow: 0 0 5px rgba(139, 92, 246, 0.3);
+    box-shadow: 0 0 10px hsl(var(--primary) / 0.2);
   }
   50% {
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.4);
   }
 }
