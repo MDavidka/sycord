@@ -1,55 +1,39 @@
 "use client"
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, MessageSquare, Send, Eye, Edit3, Loader2, CheckCircle, FileText } from "lucide-react"
+import { ArrowLeft, MessageSquare, Send, Eye, Edit3, Loader2, Play, CheckCircle } from "lucide-react"
 import Image from "next/image"
 import type { UserAIFunction } from "@/lib/types"
-import { useSession } from "next-auth/react"
 
 interface ChatMessage {
   id: string
   role: "user" | "ai"
   content: string
-  type:
-    | "question"
-    | "plugin"
-    | "normal"
-    | "plugin-name"
-    | "details-request"
-    | "complex"
-    | "new-chat-suggestion"
-    | "usage"
-  code?: string | { [key: string]: string } // Support for multi-file code
-  pluginName?: string
-  detailsRequested?: string[]
-  isDeployed?: boolean
+  type: "question" | "plugin" | "normal" | "details" | "complex" | "newchat" | "usage"
+  code?: string | { [key: string]: string } // Support multi-file code structure
+  pluginName?: string // Added plugin name field
+  detailsRequested?: string[] // Track requested details
+  isDeployed?: boolean // Track deployment status
   timestamp: Date
-}
-
-interface DetailInput {
-  name: string
-  value: string
 }
 
 interface AIChatProps {
   isOpen: boolean
   onClose: () => void
   currentAIFunction?: UserAIFunction | null
-  serverId?: string
+  serverId?: string // Added server ID for saving context
 }
 
 export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }: AIChatProps) {
-  const { data: session } = useSession()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputValue, setInputValue] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [showSavePrompt, setShowSavePrompt] = useState(false)
   const [expandedCode, setExpandedCode] = useState<string | null>(null)
   const [editingPlugin, setEditingPlugin] = useState<string | null>(null)
-  const [detailInputs, setDetailInputs] = useState<DetailInput[]>([])
-  const [activeFileTab, setActiveFileTab] = useState<string>("main")
-  const [lastUserMessage, setLastUserMessage] = useState("")
-  const [currentPluginCode, setCurrentPluginCode] = useState<string | null>(null)
+  const [detailInputs, setDetailInputs] = useState<{ [key: string]: string }>({}) // Track detail inputs
+  const [activeTab, setActiveTab] = useState<string>("main") // Track active file tab for complex tasks
+  const [lastUserMessage, setLastUserMessage] = useState("") // Track last user message for follow-ups
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -62,33 +46,44 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
     const markPattern = /^\[(\d+(?:\.\d+)?)\]/
     const match = content.match(markPattern)
 
-    if (!match) return { type: "question", content, cleanContent: content }
+    if (!match) return { type: "question", content, pluginName: null, detailsRequested: [] }
 
     const mark = match[1]
     const cleanContent = content.replace(markPattern, "").trim()
 
     switch (mark) {
       case "1":
-        return { type: "question", content: cleanContent, cleanContent }
+        return { type: "question", content: cleanContent, pluginName: null, detailsRequested: [] }
       case "1.1":
-        return { type: "plugin-name", content: cleanContent, cleanContent, pluginName: cleanContent.substring(0, 20) }
+        return { type: "plugin", content: "", pluginName: cleanContent.substring(0, 20), detailsRequested: [] }
       case "2":
-        return { type: "plugin", content: cleanContent, cleanContent }
+        return { type: "plugin", content: cleanContent, pluginName: null, detailsRequested: [] }
       case "3":
-        const details = cleanContent.split(/\[3\]/).filter((d) => d.trim())
-        return { type: "details-request", content: cleanContent, cleanContent, detailsRequested: details }
+        const details = content.match(/\[3\]([^[]]+)/g)?.map((d) => d.replace("[3]", "")) || []
+        return { type: "details", content: "", pluginName: null, detailsRequested: details }
       case "4":
-        return { type: "complex", content: cleanContent, cleanContent }
+        return { type: "complex", content: cleanContent, pluginName: null, detailsRequested: [] }
       case "5":
-        return { type: "new-chat-suggestion", content: cleanContent, cleanContent }
+        return { type: "newchat", content: cleanContent, pluginName: null, detailsRequested: [] }
       case "6":
-        return { type: "usage", content: cleanContent, cleanContent }
+        return { type: "usage", content: cleanContent, pluginName: null, detailsRequested: [] }
       default:
-        if (mark.startsWith("4.")) {
-          return { type: "complex-file", content: cleanContent, cleanContent, fileNumber: mark }
-        }
-        return { type: "question", content: cleanContent, cleanContent }
+        return { type: "question", content: cleanContent, pluginName: null, detailsRequested: [] }
     }
+  }
+
+  const parseComplexCode = (content: string) => {
+    const filePattern = /\[4\.(\d+)\]\s*([^\n]+)\n([\s\S]*?)(?=\[4\.\d+\]|$)/g
+    const files: { [key: string]: string } = {}
+    let match
+
+    while ((match = filePattern.exec(content)) !== null) {
+      const fileName = match[2].trim()
+      const code = match[3].trim()
+      files[fileName] = code
+    }
+
+    return Object.keys(files).length > 0 ? files : null
   }
 
   const handleSendMessage = async () => {
@@ -103,32 +98,17 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
     }
 
     setMessages((prev) => [...prev, userMessage])
-    setLastUserMessage(inputValue)
+    setLastUserMessage(inputValue) // Store last user message
     setInputValue("")
     setIsGenerating(true)
 
     try {
-      let requestMessage = inputValue
-
-      // Handle detail inputs
-      if (detailInputs.length > 0) {
-        const detailsText = detailInputs.map((d) => `${d.name}: ${d.value}`).join(", ")
-        requestMessage = `I requested this feature before: ${lastUserMessage}, but missed these details: ${detailsText}`
-        setDetailInputs([])
-      }
-
-      // Handle follow-up with current code
-      if (currentPluginCode) {
-        requestMessage = `This is the current state of the code: <${currentPluginCode}>, please make this change: ${inputValue}`
-      }
-
       const response = await fetch("/api/ai/generate-plugin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: requestMessage,
-          serverId,
-          hasExistingCode: !!currentPluginCode,
+          message: inputValue,
+          context: messages.length > 0 ? messages[messages.length - 1] : null, // Send context for follow-ups
         }),
       })
 
@@ -142,20 +122,24 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
       const aiMessage: ChatMessage = {
         id: `msg_${Date.now()}_ai`,
         role: "ai",
-        content: parsed.cleanContent,
+        content: parsed.content,
         type: parsed.type as any,
         timestamp: new Date(),
+        pluginName: parsed.pluginName,
+        detailsRequested: parsed.detailsRequested,
+        isDeployed: false,
       }
 
-      // Handle different response types
-      if (parsed.type === "plugin-name") {
-        aiMessage.pluginName = parsed.pluginName
-      } else if (parsed.type === "details-request") {
-        aiMessage.detailsRequested = parsed.detailsRequested
-        setDetailInputs(parsed.detailsRequested?.map((name) => ({ name, value: "" })) || [])
-      } else if (parsed.type === "plugin" || parsed.type === "complex") {
-        aiMessage.code = content
-        setCurrentPluginCode(content)
+      if (parsed.type === "plugin" || parsed.type === "complex") {
+        if (parsed.type === "complex") {
+          const complexCode = parseComplexCode(content)
+          if (complexCode) {
+            aiMessage.code = complexCode
+            setActiveTab(Object.keys(complexCode)[0])
+          }
+        } else {
+          aiMessage.code = content
+        }
       }
 
       setMessages((prev) => [...prev, aiMessage])
@@ -174,9 +158,21 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
     }
   }
 
+  const handleDetailSubmission = async (messageId: string, details: string[]) => {
+    const detailAnswers = details.map((detail) => `${detail}: ${detailInputs[detail] || ""}`).join(", ")
+    const fullMessage = `I requested this feature before: ${lastUserMessage}, but missed this detail: ${detailAnswers}`
+
+    setInputValue(fullMessage)
+    setDetailInputs({})
+    await handleSendMessage()
+  }
+
   const handleDeployPlugin = async (messageId: string) => {
     const message = messages.find((m) => m.id === messageId)
     if (!message?.code) return
+
+    // Show checkmark animation
+    setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, isDeployed: true } : m)))
 
     try {
       const response = await fetch("/api/user-ai-functions", {
@@ -186,26 +182,16 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
           name: message.pluginName || "Untitled Plugin",
           description: "AI Generated Plugin",
           code: typeof message.code === "string" ? message.code : JSON.stringify(message.code),
-          serverId,
-          path: `dash-bot/users/${session?.user?.id}/servers/${serverId}/saved-plugins`,
+          serverId: serverId,
         }),
       })
 
-      if (response.ok) {
-        setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, isDeployed: true } : m)))
-
-        setTimeout(() => {
-          setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, isDeployed: false } : m)))
-        }, 1000)
+      if (!response.ok) {
+        throw new Error("Failed to save plugin")
       }
     } catch (error) {
-      console.error("Error deploying plugin:", error)
+      console.error("Error saving plugin:", error)
     }
-  }
-
-  const handleDetailSubmit = () => {
-    if (detailInputs.some((d) => !d.value.trim())) return
-    handleSendMessage()
   }
 
   const handleBack = () => {
@@ -220,8 +206,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
     setMessages([])
     setExpandedCode(null)
     setEditingPlugin(null)
-    setDetailInputs([])
-    setCurrentPluginCode(null)
   }
 
   if (!isOpen) return null
@@ -277,39 +261,34 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
                   <div className="max-w-[80%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
                     <p className="text-sm leading-relaxed">{message.content}</p>
                   </div>
-                ) : message.type === "details-request" ? (
+                ) : message.type === "details" ? (
                   <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl p-4 shadow-lg">
-                    <p className="text-sm mb-4">I need some additional details:</p>
+                    <p className="text-sm mb-4">Please provide the following details:</p>
                     <div className="space-y-3">
-                      {detailInputs.map((detail, index) => (
+                      {message.detailsRequested?.map((detail, index) => (
                         <div key={index}>
-                          <label className="block text-xs text-gray-400 mb-1">{detail.name}</label>
+                          <label className="block text-xs text-gray-400 mb-1">{detail}</label>
                           <input
                             type="text"
-                            value={detail.value}
-                            onChange={(e) =>
-                              setDetailInputs((prev) =>
-                                prev.map((d, i) => (i === index ? { ...d, value: e.target.value } : d)),
-                              )
-                            }
+                            value={detailInputs[detail] || ""}
+                            onChange={(e) => setDetailInputs((prev) => ({ ...prev, [detail]: e.target.value }))}
                             className="w-full bg-black/40 border border-white/20 rounded-lg px-3 py-2 text-sm text-white"
-                            placeholder={`Enter ${detail.name}`}
+                            placeholder={`Enter ${detail}`}
                           />
                         </div>
                       ))}
                       <Button
-                        onClick={handleDetailSubmit}
-                        disabled={detailInputs.some((d) => !d.value.trim())}
+                        onClick={() => handleDetailSubmission(message.id, message.detailsRequested || [])}
                         className="w-full bg-white text-black hover:bg-gray-200 mt-3"
                       >
                         Submit Details
                       </Button>
                     </div>
                   </div>
-                ) : message.type === "new-chat-suggestion" ? (
-                  <div className="max-w-[80%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl p-4 shadow-lg">
-                    <p className="text-sm mb-3">{message.content}</p>
-                    <Button onClick={handleNewChat} className="bg-white text-black hover:bg-gray-200">
+                ) : message.type === "newchat" ? (
+                  <div className="max-w-[80%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
+                    <p className="text-sm leading-relaxed mb-3">{message.content}</p>
+                    <Button onClick={handleNewChat} size="sm" className="bg-white text-black hover:bg-gray-200">
                       <MessageSquare className="h-4 w-4 mr-2" />
                       Start New Chat
                     </Button>
@@ -333,10 +312,10 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
                         )}
                       </div>
 
-                      <p className="text-sm mb-4">{message.content}</p>
+                      {message.content && <p className="text-sm mb-4">{message.content}</p>}
 
                       <div className="flex items-center space-x-2">
-                        {!message.isDeployed && !messages.find((m) => m.id === message.id)?.isDeployed ? (
+                        {!message.isDeployed ? (
                           <>
                             <Button
                               size="sm"
@@ -350,15 +329,16 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
                               onClick={() => handleDeployPlugin(message.id)}
                               className="flex-1 bg-white text-black hover:bg-gray-200 h-10"
                             >
-                              Deploy Plugin
+                              <Play className="h-4 w-4 mr-2" />
+                              Deploy
                             </Button>
                           </>
-                        ) : message.isDeployed ? (
-                          <div className="flex items-center justify-center w-full">
-                            <CheckCircle className="h-6 w-6 text-green-500" />
-                          </div>
                         ) : (
                           <>
+                            <div className="flex items-center space-x-2 text-green-400">
+                              <CheckCircle className="h-4 w-4" />
+                              <span className="text-xs">Deployed</span>
+                            </div>
                             <Button
                               size="sm"
                               variant="ghost"
@@ -385,22 +365,21 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
                         {typeof message.code === "object" ? (
                           <>
                             <div className="flex border-b border-white/10">
-                              {Object.keys(message.code).map((filename) => (
+                              {Object.keys(message.code).map((fileName) => (
                                 <button
-                                  key={filename}
-                                  onClick={() => setActiveFileTab(filename)}
+                                  key={fileName}
+                                  onClick={() => setActiveTab(fileName)}
                                   className={`px-4 py-2 text-xs border-r border-white/10 ${
-                                    activeFileTab === filename ? "bg-white/10" : "hover:bg-white/5"
+                                    activeTab === fileName ? "bg-white/10 text-white" : "text-gray-400 hover:text-white"
                                   }`}
                                 >
-                                  <FileText className="h-3 w-3 inline mr-1" />
-                                  {filename}
+                                  {fileName}
                                 </button>
                               ))}
                             </div>
                             <div className="p-4">
                               <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
-                                {message.code[activeFileTab]}
+                                {message.code[activeTab]}
                               </pre>
                             </div>
                           </>

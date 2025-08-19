@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { message, serverId, hasExistingCode } = await request.json()
+    const { message, context } = await request.json()
 
     if (!message) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 })
@@ -23,37 +23,40 @@ export async function POST(request: NextRequest) {
 
 MARKING SYSTEM:
 [1] - QUESTION: Non-code questions about Discord bots, Python, or development
-[1.1] - PLUGIN NAME: Generate a short plugin name (max 20 chars) like "ban-hammer" or "welcome-bot"
+[1.1] - PLUGIN NAME: Generate a short plugin name (max 20 chars) like "ban-hammer" or "music-bot"
 [2] - PLUGIN CODE: Generate complete Python code for Discord bot plugins
-[3] - DETAILS REQUEST: Request missing information like "[3]channel-id[3]command-name"
-[4] - COMPLEX TASK: Multi-file functions that need multiple Python files
-[4.1] - COMPLEX FILE: Individual files in complex tasks like "[4.1]main.py" then "[4.2]utils.py"
+[3] - DETAILS NEEDED: Request missing information like "[3]channel-id[3]command-name"
+[4] - COMPLEX TASK: Multi-file functions marked as "[4.1]main.py\n(code)\n[4.2]utils.py\n(code)"
 [5] - NEW CHAT: Suggest starting new chat for unrelated requests
-[6] - USAGE INSTRUCTIONS: How to use the generated plugin
+[6] - USAGE INSTRUCTIONS: Provide usage instructions as text
 
 RESPONSE RULES:
-- For QUESTIONS [1]: Answer helpfully. If unrelated to bots: "This AI should only be used to create plugins for Discord bots."
-- For PLUGIN NAMES [1.1]: Generate short, descriptive names without spaces
-- For PLUGIN CODE [2]: Generate complete, functional Python code with discord.py
-- For DETAILS [3]: Request specific missing info like channel IDs, command names, user IDs
-- For COMPLEX [4]: Use when multiple files are needed, then follow with [4.1], [4.2], etc.
-- For NEW CHAT [5]: When request is unrelated to current plugin context
-- For USAGE [6]: Provide setup instructions as text
+- For [1]: Answer questions, but if unrelated to bots: "This AI should only be used to create plugins for Discord bots."
+- For [1.1]: Only return the plugin name, nothing else
+- For [2]: Generate ONLY raw Python code, no explanations, no markdown
+- For [3]: List required details like "[3]channel-id[3]user-role[3]command-name"
+- For [4]: Use file structure with [4.1], [4.2], etc.
+- For [5]: Suggest new chat for unrelated follow-ups
+- For [6]: Provide clear usage instructions
 
-CODE REQUIREMENTS:
-- Use latest discord.py syntax with proper intents
-- Include complete imports and bot initialization
-- Add error handling and best practices
-- Generate production-ready, executable code
-- NO markdown formatting, NO explanations in code responses
-- Plugin names must be under 20 characters
+FOLLOW-UP DETECTION:
+- If user mentions "change", "modify", "update" existing code, continue with [2]
+- If request is completely unrelated to current context, use [5]
+- Always check if user is building on previous plugin or starting fresh
 
-FOLLOW-UP HANDLING:
-- If user has existing code context, modify the existing code
-- If request is unrelated to current plugin, suggest [5] new chat
-- Continue plugin development when user requests changes
+Generate complete, functional Python code using discord.py with proper intents, error handling, and best practices.`
 
-${hasExistingCode ? "CONTEXT: User has existing plugin code. Modify the existing code based on their request." : ""}`
+    const messages = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: message },
+    ]
+
+    if (context && context.code) {
+      messages.splice(1, 0, {
+        role: "assistant",
+        content: `Previous code context: ${typeof context.code === "string" ? context.code : JSON.stringify(context.code)}`,
+      })
+    }
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -63,16 +66,7 @@ ${hasExistingCode ? "CONTEXT: User has existing plugin code. Modify the existing
       },
       body: JSON.stringify({
         model: "llama3-70b-8192",
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt,
-          },
-          {
-            role: "user",
-            content: message,
-          },
-        ],
+        messages,
         temperature: 0.7,
         max_tokens: 4000,
       }),
@@ -89,49 +83,18 @@ ${hasExistingCode ? "CONTEXT: User has existing plugin code. Modify the existing
       return NextResponse.json({ error: "No response generated" }, { status: 500 })
     }
 
-    const markPattern = /^\[(\d+(?:\.\d+)?)\]/
-    const match = generatedContent.match(markPattern)
+    const isCode =
+      generatedContent.includes("import discord") ||
+      generatedContent.includes("discord.py") ||
+      generatedContent.includes("@bot.command") ||
+      generatedContent.startsWith("[2]") ||
+      generatedContent.startsWith("[4")
 
-    if (match) {
-      const mark = match[1]
-
-      // Handle complex multi-file responses
-      if (mark === "4" || mark.startsWith("4.")) {
-        const files: { [key: string]: string } = {}
-        const filePattern = /\[4\.(\d+)\]\s*([^[]+)/g
-        let fileMatch
-
-        while ((fileMatch = filePattern.exec(generatedContent)) !== null) {
-          const fileNumber = fileMatch[1]
-          const fileName = `file_${fileNumber}.py`
-          const codeStart = fileMatch.index + fileMatch[0].length
-          const nextFileIndex = generatedContent.indexOf(`[4.${Number.parseInt(fileNumber) + 1}]`, codeStart)
-          const codeEnd = nextFileIndex === -1 ? generatedContent.length : nextFileIndex
-          const code = generatedContent.substring(codeStart, codeEnd).trim()
-
-          files[fileName] = code
-        }
-
-        if (Object.keys(files).length > 0) {
-          return NextResponse.json({ code: files, type: "complex" })
-        }
-      }
-
-      // Handle single file code responses
-      if (mark === "2" || mark === "1.1") {
-        const isCode =
-          generatedContent.includes("import discord") ||
-          generatedContent.includes("discord.py") ||
-          generatedContent.includes("@bot.command")
-
-        if (isCode) {
-          return NextResponse.json({ code: generatedContent, type: mark === "1.1" ? "plugin-name" : "plugin" })
-        }
-      }
+    if (isCode) {
+      return NextResponse.json({ code: generatedContent })
+    } else {
+      return NextResponse.json({ response: generatedContent })
     }
-
-    // Default to response for questions and other types
-    return NextResponse.json({ response: generatedContent })
   } catch (error) {
     console.error("AI Plugin Generation Error:", error)
     return NextResponse.json({ error: "Failed to generate response" }, { status: 500 })
