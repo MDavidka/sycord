@@ -313,7 +313,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     setInputValue("")
 
     // This is a temporary simple check. A more robust solution might be needed.
-    const isPluginRequest = ["make", "create", "build", "generate"].some(keyword => content.toLowerCase().startsWith(keyword))
+    const isPluginRequest = ["make", "create", "build", "generate", "bot", "plugin"].some(keyword => content.toLowerCase().includes(keyword))
 
     if (isPluginRequest) {
       runGenerationPipeline(content, currentHistory)
