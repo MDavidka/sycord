@@ -209,16 +209,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       })
       if (!planResponse.ok) throw new Error("Failed to generate plan")
       const plan = (await planResponse.json()).response
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `msg_${Date.now()}_plan`,
-          role: "ai",
-          type: "ai_question",
-          content: `**Plan:**\n${plan}`,
-          timestamp: new Date(),
-        },
-      ])
+      // The plan is no longer displayed in the chat, only used for the next step.
       setPipelineState({ active: true, step: 2 })
 
       // Step 2: Generate Code from Plan
@@ -235,7 +226,14 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       setPipelineState({ active: true, step: 3 })
 
       // Step 3: Review Code
-      const reviewMessage = `Please review the following code that was generated.\n\n${rawCodeResponse}`
+      const codeMatch = rawCodeResponse.match(/\[2\]([\s\S]*?)\[2\]/s)
+      const codeToReview = codeMatch ? codeMatch[1].trim() : ""
+
+      if (!codeToReview) {
+        throw new Error("Could not extract code for review.")
+      }
+
+      const reviewMessage = `Please review the following Python code:\n\n\`\`\`python\n${codeToReview}\n\`\`\``
       const reviewResponse = await fetch("/api/ai/generate-plugin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -275,7 +273,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         ...prev,
         {
           id: `msg_${Date.now()}_error`,
-          role: "ai",
+          role: "assistant",
           type: "ai_error",
           content: `Sorry, an error occurred during generation: ${error.message}`,
           timestamp: new Date(),
@@ -288,6 +286,11 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       setPipelineState({ active: false, step: 0 })
       setIsGenerating(false)
     }
+  }
+
+  const handleSendClick = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault()
+    handleSendMessage()
   }
 
   const handleSendMessage = async (messageContent?: string) => {
@@ -607,7 +610,8 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
               }}
             />
             <Button
-              onClick={handleSendMessage}
+              onClick={handleSendClick}
+              onTouchEnd={handleSendClick}
               disabled={!inputValue.trim() || isGenerating}
               className="bg-white text-black hover:bg-gray-200 h-10 w-10 p-0 rounded-full flex-shrink-0"
             >
