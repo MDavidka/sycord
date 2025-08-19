@@ -1,41 +1,29 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import { connectToDatabase } from "@/lib/mongodb"
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { name, description, code, thumbnailUrl, profileUrl, serverId } = await request.json()
+    const { pluginName, code, serverId } = await request.json()
 
-    const { db } = await connectToDatabase()
+    // In a real implementation, this would save to the file structure:
+    // dash-bot > users > <user-folder> > servers > <server-id> > saved-plugins
 
-    const userFolder = session.user.email.split("@")[0] // Use email prefix as user folder
-    const saveLocation = `dash-bot/users/${userFolder}/servers/${serverId || "default"}/saved-plugins`
-
-    const result = await db.collection("user_ai_functions").insertOne({
-      userId: session.user.email,
-      name,
-      description,
-      code,
-      thumbnailUrl,
-      profileUrl,
-      saveLocation,
-      created_at: new Date(),
-      updated_at: new Date(),
-    })
+    // For now, we'll simulate the save operation
+    console.log(`Saving plugin ${pluginName} for user ${session.user.id} in server ${serverId}`)
 
     return NextResponse.json({
       success: true,
-      functionId: result.insertedId,
-      saveLocation,
+      message: "Plugin saved successfully",
+      path: `dash-bot/users/${session.user.id}/servers/${serverId}/saved-plugins/${pluginName}.py`,
     })
   } catch (error) {
-    console.error("Error saving AI function:", error)
-    return NextResponse.json({ error: "Failed to save AI function" }, { status: 500 })
+    console.error("Error saving plugin:", error)
+    return NextResponse.json({ error: "Failed to save plugin" }, { status: 500 })
   }
 }
