@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, MessageSquare, Send, Eye, Edit3, Loader2, Play, CheckCircle } from "lucide-react"
+import { ArrowLeft, MessageSquare, Send, Eye, Edit3, Loader2, Play, Check } from "lucide-react"
 import Image from "next/image"
 import type { UserAIFunction } from "@/lib/types"
 
@@ -9,19 +9,20 @@ interface ChatMessage {
   id: string
   role: "user" | "ai"
   content: string
-  type: "question" | "plugin" | "normal" | "details" | "complex" | "newchat" | "usage"
-  code?: string | { [key: string]: string } // Support multi-file code structure
-  pluginName?: string // Added plugin name field
-  detailsRequested?: string[] // Track requested details
-  isDeployed?: boolean // Track deployment status
+  type: "question" | "plugin" | "normal" | "detail-request" | "complex" | "new-chat-suggestion" | "usage"
+  code?: string
+  pluginName?: string
+  files?: { name: string; code: string }[]
+  detailRequests?: string[]
   timestamp: Date
+  isDeployed?: boolean
 }
 
 interface AIChatProps {
   isOpen: boolean
   onClose: () => void
   currentAIFunction?: UserAIFunction | null
-  serverId?: string // Added server ID for saving context
+  serverId?: string
 }
 
 export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }: AIChatProps) {
@@ -31,9 +32,15 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
   const [showSavePrompt, setShowSavePrompt] = useState(false)
   const [expandedCode, setExpandedCode] = useState<string | null>(null)
   const [editingPlugin, setEditingPlugin] = useState<string | null>(null)
-  const [detailInputs, setDetailInputs] = useState<{ [key: string]: string }>({}) // Track detail inputs
-  const [activeTab, setActiveTab] = useState<string>("main") // Track active file tab for complex tasks
-  const [lastUserMessage, setLastUserMessage] = useState("") // Track last user message for follow-ups
+  const [pluginMetadata, setPluginMetadata] = useState({
+    name: "",
+    description: "",
+    thumbnailUrl: "",
+    profileUrl: "",
+  })
+  const [detailInputs, setDetailInputs] = useState<{ [key: string]: string }>({})
+  const [activeTab, setActiveTab] = useState<{ [messageId: string]: number }>({})
+  const [lastUserMessage, setLastUserMessage] = useState("")
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -43,51 +50,83 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
   }, [messages])
 
   const parseAIResponse = (content: string) => {
-    const markPattern = /^\[(\d+(?:\.\d+)?)\]/
-    const match = content.match(markPattern)
-
-    if (!match) return { type: "question", content, pluginName: null, detailsRequested: [] }
-
-    const mark = match[1]
-    const cleanContent = content.replace(markPattern, "").trim()
-
-    switch (mark) {
-      case "1":
-        return { type: "question", content: cleanContent, pluginName: null, detailsRequested: [] }
-      case "1.1":
-        return { type: "plugin", content: "", pluginName: cleanContent.substring(0, 20), detailsRequested: [] }
-      case "2":
-        return { type: "plugin", content: cleanContent, pluginName: null, detailsRequested: [] }
-      case "3":
-        const details = content.match(/\[3\]([^[]]+)/g)?.map((d) => d.replace("[3]", "")) || []
-        return { type: "details", content: "", pluginName: null, detailsRequested: details }
-      case "4":
-        return { type: "complex", content: cleanContent, pluginName: null, detailsRequested: [] }
-      case "5":
-        return { type: "newchat", content: cleanContent, pluginName: null, detailsRequested: [] }
-      case "6":
-        return { type: "usage", content: cleanContent, pluginName: null, detailsRequested: [] }
-      default:
-        return { type: "question", content: cleanContent, pluginName: null, detailsRequested: [] }
-    }
-  }
-
-  const parseComplexCode = (content: string) => {
-    const filePattern = /\[4\.(\d+)\]\s*([^\n]+)\n([\s\S]*?)(?=\[4\.\d+\]|$)/g
-    const files: { [key: string]: string } = {}
-    let match
-
-    while ((match = filePattern.exec(content)) !== null) {
-      const fileName = match[2].trim()
-      const code = match[3].trim()
-      files[fileName] = code
+    const markers = {
+      question: content.match(/^\[1\]/),
+      pluginName: content.match(/^\[1\.1\]([^[]+)\[1\.1\]/),
+      plugin: content.match(/^\[2\]/),
+      detailRequest: content.match(/^\[3\](.+)/),
+      complex: content.match(/^\[4\]/),
+      newChatSuggestion: content.match(/^\[5\]/),
+      usage: content.match(/^\[6\]/),
     }
 
-    return Object.keys(files).length > 0 ? files : null
+    let messageType: ChatMessage["type"] = "normal"
+    let pluginName = ""
+    let detailRequests: string[] = []
+    let files: { name: string; code: string }[] = []
+
+    if (markers.question) {
+      messageType = "question"
+      content = content.replace(/^\[1\]\s*/, "")
+    } else if (markers.pluginName) {
+      pluginName = markers.pluginName[1].trim()
+      content = content.replace(/^\[1\.1\][^[]+\[1\.1\]\s*/, "")
+    } else if (markers.plugin) {
+      messageType = "plugin"
+      content = content.replace(/^\[2\]\s*/, "")
+    } else if (markers.detailRequest) {
+      messageType = "detail-request"
+      const detailMatch = content.match(/\[3\]([^[]+)/g)
+      if (detailMatch) {
+        detailRequests = detailMatch.map((match) => match.replace(/\[3\]/, "").trim())
+      }
+      content = ""
+    } else if (markers.complex) {
+      messageType = "complex"
+      content = content.replace(/^\[4\]\s*/, "")
+
+      // Parse multi-file structure [4.1], [4.2], etc.
+      const fileMatches = content.match(/\[4\.\d+\]\s*([^\n]+)\n([\s\S]*?)(?=\[4\.\d+\]|$)/g)
+      if (fileMatches) {
+        files = fileMatches.map((match) => {
+          const [, fileName, code] = match.match(/\[4\.\d+\]\s*([^\n]+)\n([\s\S]*)/) || []
+          return { name: fileName?.trim() || "file.py", code: code?.trim() || "" }
+        })
+      }
+    } else if (markers.newChatSuggestion) {
+      messageType = "new-chat-suggestion"
+      content = content.replace(/^\[5\]\s*/, "")
+    } else if (markers.usage) {
+      messageType = "usage"
+      content = content.replace(/^\[6\]\s*/, "")
+    }
+
+    return { messageType, content, pluginName, detailRequests, files }
   }
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (isFollowUp = false, detailAnswers?: { [key: string]: string }) => {
     if (!inputValue.trim() || isGenerating) return
+
+    let messageToSend = inputValue
+
+    if (detailAnswers) {
+      const lastMessage = messages[messages.length - 1]
+      if (lastMessage?.type === "detail-request") {
+        const detailString = Object.entries(detailAnswers)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join(", ")
+        messageToSend = `I requested this feature before: "${lastUserMessage}", but missed these details: ${detailString}`
+      }
+    } else if (isFollowUp && messages.some((m) => m.type === "plugin" && m.isDeployed)) {
+      const lastDeployedPlugin = messages.filter((m) => m.type === "plugin" && m.isDeployed).pop()
+      if (lastDeployedPlugin?.code) {
+        messageToSend = `This is the current state of the code: ${lastDeployedPlugin.code}. Please make this change: ${inputValue}`
+      }
+    }
+
+    if (!isFollowUp) {
+      setLastUserMessage(inputValue)
+    }
 
     const userMessage: ChatMessage = {
       id: `msg_${Date.now()}_user`,
@@ -98,8 +137,8 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
     }
 
     setMessages((prev) => [...prev, userMessage])
-    setLastUserMessage(inputValue) // Store last user message
     setInputValue("")
+    setDetailInputs({})
     setIsGenerating(true)
 
     try {
@@ -107,8 +146,9 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: inputValue,
-          context: messages.length > 0 ? messages[messages.length - 1] : null, // Send context for follow-ups
+          message: messageToSend,
+          serverId,
+          isFollowUp,
         }),
       })
 
@@ -117,29 +157,18 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
       const data = await response.json()
       const content = data.code || data.response || ""
 
-      const parsed = parseAIResponse(content)
+      const { messageType, content: parsedContent, pluginName, detailRequests, files } = parseAIResponse(content)
 
       const aiMessage: ChatMessage = {
         id: `msg_${Date.now()}_ai`,
         role: "ai",
-        content: parsed.content,
-        type: parsed.type as any,
+        content: parsedContent,
+        type: messageType,
+        code: messageType === "plugin" ? content : undefined,
+        pluginName: pluginName || undefined,
+        detailRequests: detailRequests.length > 0 ? detailRequests : undefined,
+        files: files.length > 0 ? files : undefined,
         timestamp: new Date(),
-        pluginName: parsed.pluginName,
-        detailsRequested: parsed.detailsRequested,
-        isDeployed: false,
-      }
-
-      if (parsed.type === "plugin" || parsed.type === "complex") {
-        if (parsed.type === "complex") {
-          const complexCode = parseComplexCode(content)
-          if (complexCode) {
-            aiMessage.code = complexCode
-            setActiveTab(Object.keys(complexCode)[0])
-          }
-        } else {
-          aiMessage.code = content
-        }
       }
 
       setMessages((prev) => [...prev, aiMessage])
@@ -158,32 +187,24 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
     }
   }
 
-  const handleDetailSubmission = async (messageId: string, details: string[]) => {
-    const detailAnswers = details.map((detail) => `${detail}: ${detailInputs[detail] || ""}`).join(", ")
-    const fullMessage = `I requested this feature before: ${lastUserMessage}, but missed this detail: ${detailAnswers}`
-
-    setInputValue(fullMessage)
-    setDetailInputs({})
-    await handleSendMessage()
-  }
-
-  const handleDeployPlugin = async (messageId: string) => {
+  const handleSavePlugin = async (messageId: string) => {
     const message = messages.find((m) => m.id === messageId)
-    if (!message?.code) return
-
-    // Show checkmark animation
-    setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, isDeployed: true } : m)))
+    if (!message?.code && !message?.files) return
 
     try {
+      const pluginData = {
+        name: message.pluginName || "Untitled Plugin",
+        description: "AI Generated Plugin",
+        code: message.code,
+        files: message.files,
+        serverId,
+        userId: "current-user", // This should come from session
+      }
+
       const response = await fetch("/api/user-ai-functions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: message.pluginName || "Untitled Plugin",
-          description: "AI Generated Plugin",
-          code: typeof message.code === "string" ? message.code : JSON.stringify(message.code),
-          serverId: serverId,
-        }),
+        body: JSON.stringify(pluginData),
       })
 
       if (!response.ok) {
@@ -206,6 +227,53 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
     setMessages([])
     setExpandedCode(null)
     setEditingPlugin(null)
+    setDetailInputs({})
+    setActiveTab({})
+  }
+
+  const handleDetailSubmit = (messageId: string) => {
+    const message = messages.find((m) => m.id === messageId)
+    if (!message?.detailRequests) return
+
+    const answers = message.detailRequests.reduce(
+      (acc, detail) => {
+        acc[detail] = detailInputs[`${messageId}_${detail}`] || ""
+        return acc
+      },
+      {} as { [key: string]: string },
+    )
+
+    handleSendMessage(false, answers)
+  }
+
+  const handleDeployPlugin = async (messageId: string) => {
+    const message = messages.find((m) => m.id === messageId)
+    if (!message?.code && !message?.files) return
+
+    setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, isDeployed: true } : m)))
+
+    try {
+      const pluginData = {
+        name: message.pluginName || "Untitled Plugin",
+        description: "AI Generated Plugin",
+        code: message.code,
+        files: message.files,
+        serverId,
+        userId: "current-user", // This should come from session
+      }
+
+      const response = await fetch("/api/user-ai-functions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pluginData),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to save plugin")
+      }
+    } catch (error) {
+      console.error("Error saving plugin:", error)
+    }
   }
 
   if (!isOpen) return null
@@ -261,31 +329,36 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
                   <div className="max-w-[80%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
                     <p className="text-sm leading-relaxed">{message.content}</p>
                   </div>
-                ) : message.type === "details" ? (
+                ) : message.type === "detail-request" ? (
                   <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl p-4 shadow-lg">
-                    <p className="text-sm mb-4">Please provide the following details:</p>
+                    <p className="text-sm mb-4">I need some additional details:</p>
                     <div className="space-y-3">
-                      {message.detailsRequested?.map((detail, index) => (
+                      {message.detailRequests?.map((detail, index) => (
                         <div key={index}>
                           <label className="block text-xs text-gray-400 mb-1">{detail}</label>
                           <input
                             type="text"
-                            value={detailInputs[detail] || ""}
-                            onChange={(e) => setDetailInputs((prev) => ({ ...prev, [detail]: e.target.value }))}
-                            className="w-full bg-black/40 border border-white/20 rounded-lg px-3 py-2 text-sm text-white"
+                            value={detailInputs[`${message.id}_${detail}`] || ""}
+                            onChange={(e) =>
+                              setDetailInputs((prev) => ({
+                                ...prev,
+                                [`${message.id}_${detail}`]: e.target.value,
+                              }))
+                            }
+                            className="w-full bg-white/5 border border-white/20 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-400"
                             placeholder={`Enter ${detail}`}
                           />
                         </div>
                       ))}
                       <Button
-                        onClick={() => handleDetailSubmission(message.id, message.detailsRequested || [])}
-                        className="w-full bg-white text-black hover:bg-gray-200 mt-3"
+                        onClick={() => handleDetailSubmit(message.id)}
+                        className="bg-white text-black hover:bg-gray-200 text-sm px-4 py-2"
                       >
                         Submit Details
                       </Button>
                     </div>
                   </div>
-                ) : message.type === "newchat" ? (
+                ) : message.type === "new-chat-suggestion" ? (
                   <div className="max-w-[80%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
                     <p className="text-sm leading-relaxed mb-3">{message.content}</p>
                     <Button onClick={handleNewChat} size="sm" className="bg-white text-black hover:bg-gray-200">
@@ -301,7 +374,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
                           <span className="text-xs font-mono">PY</span>
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-medium">{message.pluginName || "Generated Plugin"}</h3>
+                          <h3 className="font-medium text-sm">{message.pluginName || "Generated Plugin"}</h3>
                           <p className="text-xs text-gray-400">AI Generated Discord Bot Plugin</p>
                         </div>
                         {message.type === "complex" && (
@@ -327,7 +400,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
                             </Button>
                             <Button
                               onClick={() => handleDeployPlugin(message.id)}
-                              className="flex-1 bg-white text-black hover:bg-gray-200 h-10"
+                              className="flex-1 bg-white text-black hover:bg-gray-200 h-8"
                             >
                               <Play className="h-4 w-4 mr-2" />
                               Deploy
@@ -336,7 +409,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
                         ) : (
                           <>
                             <div className="flex items-center space-x-2 text-green-400">
-                              <CheckCircle className="h-4 w-4" />
+                              <Check className="h-4 w-4" />
                               <span className="text-xs">Deployed</span>
                             </div>
                             <Button
@@ -360,33 +433,35 @@ export default function AIChat({ isOpen, onClose, currentAIFunction, serverId }:
                       </div>
                     </div>
 
-                    {expandedCode === message.id && message.code && (
+                    {expandedCode === message.id && (
                       <div className="border-t border-white/10 bg-black/40">
-                        {typeof message.code === "object" ? (
+                        {message.files && message.files.length > 1 ? (
                           <>
                             <div className="flex border-b border-white/10">
-                              {Object.keys(message.code).map((fileName) => (
+                              {message.files.map((file, index) => (
                                 <button
-                                  key={fileName}
-                                  onClick={() => setActiveTab(fileName)}
+                                  key={index}
+                                  onClick={() => setActiveTab((prev) => ({ ...prev, [message.id]: index }))}
                                   className={`px-4 py-2 text-xs border-r border-white/10 ${
-                                    activeTab === fileName ? "bg-white/10 text-white" : "text-gray-400 hover:text-white"
+                                    (activeTab[message.id] || 0) === index
+                                      ? "bg-white/10 text-white"
+                                      : "text-gray-400 hover:text-white"
                                   }`}
                                 >
-                                  {fileName}
+                                  {file.name}
                                 </button>
                               ))}
                             </div>
                             <div className="p-4">
                               <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
-                                {message.code[activeTab]}
+                                {message.files[activeTab[message.id] || 0]?.code}
                               </pre>
                             </div>
                           </>
                         ) : (
                           <div className="p-4">
                             <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
-                              {message.code}
+                              {message.code || message.files?.[0]?.code}
                             </pre>
                           </div>
                         )}

@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { message, context } = await request.json()
+    const { message, serverId, isFollowUp } = await request.json()
 
     if (!message) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 })
@@ -19,44 +19,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "API key not configured" }, { status: 500 })
     }
 
-    const systemPrompt = `You are an AI assistant specialized in Discord bot development. Your task is to analyze user requests and respond with appropriate markings:
+    const systemPrompt = `You are an AI assistant specialized in Discord bot development. Your task is to analyze user requests and respond with appropriate markers:
 
 MARKING SYSTEM:
-[1] - QUESTION: Non-code questions about Discord bots, Python, or development
-[1.1] - PLUGIN NAME: Generate a short plugin name (max 20 chars) like "ban-hammer" or "music-bot"
-[2] - PLUGIN CODE: Generate complete Python code for Discord bot plugins
-[3] - DETAILS NEEDED: Request missing information like "[3]channel-id[3]command-name"
-[4] - COMPLEX TASK: Multi-file functions marked as "[4.1]main.py\n(code)\n[4.2]utils.py\n(code)"
-[5] - NEW CHAT: Suggest starting new chat for unrelated requests
-[6] - USAGE INSTRUCTIONS: Provide usage instructions as text
+- [1] QUESTION: Non-code questions about Discord bots, Python, or development
+- [1.1]plugin-name[1.1] PLUGIN NAME: Generate a short plugin name (max 20 chars) for code requests
+- [2] PLUGIN CODE: Generate complete Python Discord bot code
+- [3]detail-name REQUEST DETAILS: Ask for missing information (max 6 details)
+- [4] COMPLEX TASK: Multi-file functions that need [4.1]filename.py, [4.2]filename.py structure
+- [5] NEW CHAT: Suggest starting new chat for unrelated requests
+- [6] USAGE: Usage instructions as text bubbles
 
 RESPONSE RULES:
-- For [1]: Answer questions, but if unrelated to bots: "This AI should only be used to create plugins for Discord bots."
-- For [1.1]: Only return the plugin name, nothing else
-- For [2]: Generate ONLY raw Python code, no explanations, no markdown
-- For [3]: List required details like "[3]channel-id[3]user-role[3]command-name"
-- For [4]: Use file structure with [4.1], [4.2], etc.
-- For [5]: Suggest new chat for unrelated follow-ups
-- For [6]: Provide clear usage instructions
+1. For questions unrelated to Discord bots: "[1]This AI should only be used to create plugins for Discord bots."
+2. For plugin requests: First respond with [1.1]plugin-name[1.1], then [2] with raw Python code
+3. For missing details: "[3]channel-id[3]command-name" (list all needed details)
+4. For complex tasks: "[4][4.1]main.py\n(code)\n[4.2]utils.py\n(code)"
+5. For follow-ups to existing code: Continue the existing implementation
+6. For unrelated follow-ups: "[5]If you want a whole new function, start a new chat"
 
-FOLLOW-UP DETECTION:
-- If user mentions "change", "modify", "update" existing code, continue with [2]
-- If request is completely unrelated to current context, use [5]
-- Always check if user is building on previous plugin or starting fresh
+CODE REQUIREMENTS:
+- Use latest discord.py syntax with proper intents
+- Complete, executable Python code only
+- No markdown formatting, no explanations
+- Include all imports and bot initialization
+- Production-ready with error handling
 
-Generate complete, functional Python code using discord.py with proper intents, error handling, and best practices.`
-
-    const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: message },
-    ]
-
-    if (context && context.code) {
-      messages.splice(1, 0, {
-        role: "assistant",
-        content: `Previous code context: ${typeof context.code === "string" ? context.code : JSON.stringify(context.code)}`,
-      })
-    }
+${isFollowUp ? "This is a follow-up request to modify existing code. Continue the current implementation unless the request is completely unrelated." : "This is a new request. Analyze if it needs code generation or is just a question."}`
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -66,7 +55,16 @@ Generate complete, functional Python code using discord.py with proper intents, 
       },
       body: JSON.stringify({
         model: "llama3-70b-8192",
-        messages,
+        messages: [
+          {
+            role: "system",
+            content: systemPrompt,
+          },
+          {
+            role: "user",
+            content: message,
+          },
+        ],
         temperature: 0.7,
         max_tokens: 4000,
       }),
@@ -87,8 +85,8 @@ Generate complete, functional Python code using discord.py with proper intents, 
       generatedContent.includes("import discord") ||
       generatedContent.includes("discord.py") ||
       generatedContent.includes("@bot.command") ||
-      generatedContent.startsWith("[2]") ||
-      generatedContent.startsWith("[4")
+      generatedContent.match(/^\[2\]/) ||
+      generatedContent.match(/^\[4\]/)
 
     if (isCode) {
       return NextResponse.json({ code: generatedContent })
