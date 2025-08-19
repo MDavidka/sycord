@@ -15,7 +15,7 @@ interface PluginFile {
 
 interface ChatMessage {
   id: string
-  role: "user" | "ai"
+  role: "user" | "assistant"
   timestamp: Date
   type:
     | "user"
@@ -48,7 +48,7 @@ const parseAIResponse = (rawResponse: string): ChatMessage[] => {
   if (rawResponse.startsWith("[1]")) {
     messages.push({
       id: `msg_${Date.now()}`,
-      role: "ai",
+      role: "assistant",
       type: "ai_question",
       content: rawResponse.replace("[1]", "").trim(),
       timestamp,
@@ -59,7 +59,7 @@ const parseAIResponse = (rawResponse: string): ChatMessage[] => {
   if (rawResponse.startsWith("[W]")) {
     messages.push({
       id: `msg_${Date.now()}`,
-      role: "ai",
+      role: "assistant",
       type: "ai_follow_up_warning",
       content: rawResponse.replace("[W]", "").trim(),
       timestamp,
@@ -70,7 +70,7 @@ const parseAIResponse = (rawResponse: string): ChatMessage[] => {
   if (rawResponse.startsWith("[5]")) {
     messages.push({
       id: `msg_${Date.now()}`,
-      role: "ai",
+      role: "assistant",
       type: "ai_out_of_scope",
       content: rawResponse.replace("[5]", "").trim(),
       timestamp,
@@ -84,7 +84,7 @@ const parseAIResponse = (rawResponse: string): ChatMessage[] => {
     const details = missingDetailsMatch.map((d) => d.replace(/\[3\]/g, ""))
     messages.push({
       id: `msg_${Date.now()}`,
-      role: "ai",
+      role: "assistant",
       type: "ai_missing_details",
       content: "I need a bit more information to create your plugin. Please provide the following details:",
       missingDetails: details,
@@ -106,7 +106,7 @@ const parseAIResponse = (rawResponse: string): ChatMessage[] => {
     if (usageMatch) {
       messages.push({
         id: `msg_${Date.now()}_usage`,
-        role: "ai",
+        role: "assistant",
         type: "ai_usage_instructions",
         content: usageMatch[1].trim(),
         timestamp,
@@ -126,7 +126,7 @@ const parseAIResponse = (rawResponse: string): ChatMessage[] => {
     if (pluginFiles.length > 0) {
       messages.push({
         id: `msg_${Date.now()}_plugin`,
-        role: "ai",
+        role: "assistant",
         type: "ai_plugin",
         content: `Plugin generated: ${pluginName}`,
         pluginName: pluginName,
@@ -140,7 +140,7 @@ const parseAIResponse = (rawResponse: string): ChatMessage[] => {
   if (messages.length === 0 && rawResponse.length > 0) {
     messages.push({
       id: `msg_${Date.now()}_question`,
-      role: "ai",
+      role: "assistant",
       type: "ai_question",
       content: rawResponse,
       timestamp,
@@ -148,7 +148,7 @@ const parseAIResponse = (rawResponse: string): ChatMessage[] => {
   } else if (messages.length === 0) {
     messages.push({
       id: `msg_${Date.now()}_error`,
-      role: "ai",
+      role: "assistant",
       type: "ai_error",
       content: "Sorry, I received an empty response. Please try again.",
       timestamp,
@@ -161,19 +161,16 @@ const parseAIResponse = (rawResponse: string): ChatMessage[] => {
 export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputValue, setInputValue] = useState("")
-  const [isGenerating, setIsGenerating] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false) // Will be controlled by pipelineState
   const [showSavePrompt, setShowSavePrompt] = useState(false)
-  const [expandedCode, setExpandedCode] = useState<string | null>(null)
-  const [editingPlugin, setEditingPlugin] = useState<string | null>(null)
-  const [pluginMetadata, setPluginMetadata] = useState({
-    name: "",
-    description: "",
-    thumbnailUrl: "",
-    profileUrl: "",
-  })
   const [activeTabs, setActiveTabs] = useState<Record<string, string>>({})
   const [missingDetailsInput, setMissingDetailsInput] = useState<Record<string, Record<string, string>>>({})
   const [submittedDetails, setSubmittedDetails] = useState<string[]>([])
+
+  // New state for the real pipeline
+  const [pipelineState, setPipelineState] = useState({ active: false, step: 0 })
+  const [elapsedTime, setElapsedTime] = useState(0)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -181,6 +178,117 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+
+  // Effect to manage the pipeline timer
+  useEffect(() => {
+    if (pipelineState.active) {
+      timerRef.current = setInterval(() => {
+        setElapsedTime((prev) => prev + 1)
+      }, 1000)
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current)
+      setElapsedTime(0)
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [pipelineState.active])
+
+  const runGenerationPipeline = async (initialPrompt: string, history: ChatMessage[]) => {
+    setPipelineState({ active: true, step: 1 })
+    setIsGenerating(true)
+
+    let finalMessages: ChatMessage[] = []
+
+    try {
+      // Step 1: Generate Plan
+      const planResponse = await fetch("/api/ai/generate-plugin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: initialPrompt, mode: "plan", history }),
+      })
+      if (!planResponse.ok) throw new Error("Failed to generate plan")
+      const plan = (await planResponse.json()).response
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `msg_${Date.now()}_plan`,
+          role: "ai",
+          type: "ai_question",
+          content: `**Plan:**\n${plan}`,
+          timestamp: new Date(),
+        },
+      ])
+      setPipelineState({ active: true, step: 2 })
+
+      // Step 2: Generate Code from Plan
+      const codeMessage = `Based on the following plan, please generate the plugin code.\n\n**Plan:**\n${plan}\n\n**Original Request:**\n${initialPrompt}`
+      const codeResponse = await fetch("/api/ai/generate-plugin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: codeMessage, mode: "code", history }),
+      })
+      if (!codeResponse.ok) throw new Error("Failed to generate code")
+      const rawCodeResponse = (await codeResponse.json()).response
+      const codeMessages = parseAIResponse(rawCodeResponse)
+      setMessages((prev) => [...prev, ...codeMessages])
+      setPipelineState({ active: true, step: 3 })
+
+      // Step 3: Review Code
+      const reviewMessage = `Please review the following code that was generated.\n\n${rawCodeResponse}`
+      const reviewResponse = await fetch("/api/ai/generate-plugin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: reviewMessage, mode: "review", history }),
+      })
+      if (!reviewResponse.ok) throw new Error("Failed to review code")
+      const rawReviewedResponse = (await reviewResponse.json()).response
+      const reviewedMessages = parseAIResponse(rawReviewedResponse)
+
+      // Find the plugin message and update it with the reviewed code
+      setMessages((prev) => {
+        const newMessages = [...prev]
+        const pluginMsgIndex = newMessages.findIndex((m) => m.type === "ai_plugin")
+        if (pluginMsgIndex !== -1) {
+          const reviewedPlugin = reviewedMessages.find((m) => m.type === "ai_plugin")
+          if (reviewedPlugin) {
+            newMessages[pluginMsgIndex] = reviewedPlugin
+          }
+          const reviewedUsage = reviewedMessages.find((m) => m.type === "ai_usage_instructions")
+          if (reviewedUsage) {
+             const usageMsgIndex = newMessages.findIndex((m) => m.type === "ai_usage_instructions")
+             if(usageMsgIndex !== -1) newMessages[usageMsgIndex] = reviewedUsage
+             else newMessages.push(reviewedUsage)
+          }
+        } else {
+           newMessages.push(...reviewedMessages)
+        }
+        return newMessages
+      })
+      setPipelineState({ active: true, step: 4 })
+
+      finalMessages = reviewedMessages
+
+    } catch (error) {
+      console.error("Pipeline Error:", error)
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `msg_${Date.now()}_error`,
+          role: "ai",
+          type: "ai_error",
+          content: `Sorry, an error occurred during generation: ${error.message}`,
+          timestamp: new Date(),
+        },
+      ])
+    } finally {
+      // Finish pipeline
+      setPipelineState({ active: true, step: 5 })
+      await new Promise(resolve => setTimeout(resolve, 1500)) // Show "Finished" for a moment
+      setPipelineState({ active: false, step: 0 })
+      setIsGenerating(false)
+    }
+  }
 
   const handleSendMessage = async (messageContent?: string) => {
     const content = messageContent || inputValue
@@ -194,40 +302,37 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       timestamp: new Date(),
     }
 
-    const currentMessages = [...messages, userMessage]
-    setMessages(currentMessages)
+    const currentHistory = messages.map(m => ({role: m.role, content: m.content}))
+
+    setMessages((prev) => [...prev, userMessage])
     setInputValue("")
-    setIsGenerating(true)
 
-    try {
-      const response = await fetch("/api/ai/generate-plugin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: content,
-          history: currentMessages.slice(0, -1),
-        }),
-      })
+    // This is a temporary simple check. A more robust solution might be needed.
+    const isPluginRequest = ["make", "create", "build", "generate"].some(keyword => content.toLowerCase().startsWith(keyword))
 
-      if (!response.ok) throw new Error("Failed to generate response")
-
-      const data = await response.json()
-      const rawResponse = data.response || ""
-
-      const newAiMessages = parseAIResponse(rawResponse)
-      setMessages((prev) => [...prev, ...newAiMessages])
-    } catch (error) {
-      console.error("Error:", error)
-      const errorMessage: ChatMessage = {
-        id: `msg_${Date.now()}_error`,
-        role: "ai",
-        type: "ai_error",
-        content: "Sorry, I encountered an error. Please try again.",
-        timestamp: new Date(),
+    if (isPluginRequest) {
+      runGenerationPipeline(content, currentHistory)
+    } else {
+      // Handle simple Q&A without the pipeline
+      setIsGenerating(true)
+      try {
+        const response = await fetch("/api/ai/generate-plugin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: content, history: currentHistory }),
+        })
+        if (!response.ok) throw new Error("API request failed")
+        const data = await response.json()
+        const newAiMessages = parseAIResponse(data.response || "")
+        setMessages((prev) => [...prev, ...newAiMessages])
+      } catch (error) {
+        setMessages((prev) => [...prev, {
+          id: `msg_${Date.now()}_error`, role: "ai", type: "ai_error",
+          content: "Sorry, I encountered an error.", timestamp: new Date()
+        }])
+      } finally {
+        setIsGenerating(false)
       }
-      setMessages((prev) => [...prev, errorMessage])
-    } finally {
-      setIsGenerating(false)
     }
   }
 
@@ -467,16 +572,25 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
             })
           )}
 
-          {isGenerating && (
+          {pipelineState.active ? (
             <div className="flex justify-start">
-              <GenerationPipeline />
+              <GenerationPipeline currentStep={pipelineState.step - 1} elapsedTime={elapsedTime} />
             </div>
-          )}
+          ) : isGenerating ? (
+            <div className="flex justify-start">
+              <div className="bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Generating response...</span>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="border-t border-white/10 p-4 bg-[#101010]/40 backdrop-blur-sm">
+        <div className="relative z-20 border-t border-white/10 p-4 bg-[#101010]/40 backdrop-blur-sm">
           <div className="flex items-end space-x-3">
             <textarea
               ref={inputRef}

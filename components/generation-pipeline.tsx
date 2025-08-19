@@ -1,5 +1,4 @@
 "use client"
-import { useState, useEffect } from "react"
 import { User, Lightbulb, Wrench, Bug, Check } from "lucide-react"
 
 const pipelineSteps = [
@@ -10,28 +9,12 @@ const pipelineSteps = [
   { icon: Check, label: "Finishing code", progress: 100 },
 ]
 
-export default function GenerationPipeline() {
-  const [currentStep, setCurrentStep] = useState(0)
-  const [elapsedTime, setElapsedTime] = useState(0)
+interface GenerationPipelineProps {
+  currentStep: number // 0-4
+  elapsedTime: number
+}
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setElapsedTime((prev) => prev + 1)
-    }, 1000)
-
-    const stepIntervals = pipelineSteps.map((_, index) => {
-      // Stagger the steps
-      return setTimeout(() => {
-        setCurrentStep(index)
-      }, index * 2000) // Move to next step every 2 seconds
-    })
-
-    return () => {
-      clearInterval(timer)
-      stepIntervals.forEach(clearTimeout)
-    }
-  }, [])
-
+export default function GenerationPipeline({ currentStep, elapsedTime }: GenerationPipelineProps) {
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60)
       .toString()
@@ -41,13 +24,13 @@ export default function GenerationPipeline() {
   }
 
   const activeStep = pipelineSteps[currentStep]
-  const progress = activeStep.progress
+  const progress = activeStep?.progress || 0
 
   return (
     <div className="max-w-[90%] w-full bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden shadow-lg">
       <div className="p-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="font-medium text-white">Generating Plugin...</h3>
+          <h3 className="font-medium text-white">{activeStep?.label || "Generating..."}</h3>
           <span className="text-xs text-gray-400 font-mono">{formatTime(elapsedTime)}</span>
         </div>
         <div className="w-full bg-black/20 rounded-full h-2 mb-4 overflow-hidden">
