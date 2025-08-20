@@ -376,7 +376,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                                 value={detailInputs[detail] || ""}
                                 onChange={(e) => setDetailInputs((prev) => ({ ...prev, [detail]: e.target.value }))}
                                 placeholder={`Enter ${detail}`}
-                                className="bg-black/40 border-white/20 text-white"
+                                className="bg-black/40 border-white/20 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent min-h-[44px] max-h-32"
                               />
                             </div>
                           ))}
@@ -616,6 +616,63 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
             </div>
           </div>
         )}
+
+        <div className="border-t border-white/10 p-4 bg-[#101010]/80 backdrop-blur-sm">
+          <div className="flex items-end space-x-3">
+            <div className="flex-1">
+              <textarea
+                ref={inputRef}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    const hasExistingPlugins = messages.some((m) => m.type === "plugin" || m.type === "complex")
+                    handleSendMessage(hasExistingPlugins)
+                  }
+                }}
+                placeholder={
+                  messages.some((m) => m.type === "plugin" || m.type === "complex")
+                    ? "Continue working on your plugin..."
+                    : "Ask about Discord bots or request a plugin..."
+                }
+                disabled={isGenerating}
+                className="w-full bg-black/40 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent min-h-[44px] max-h-32"
+                rows={1}
+                style={{
+                  height: "auto",
+                  minHeight: "44px",
+                }}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement
+                  target.style.height = "auto"
+                  target.style.height = Math.min(target.scrollHeight, 128) + "px"
+                }}
+              />
+            </div>
+            <Button
+              onClick={() => {
+                const hasExistingPlugins = messages.some((m) => m.type === "plugin" || m.type === "complex")
+                handleSendMessage(hasExistingPlugins)
+              }}
+              disabled={!inputValue.trim() || isGenerating}
+              className="h-11 w-11 p-0 bg-white text-black hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl"
+            >
+              {isGenerating ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                  />
+                </svg>
+              )}
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   )
