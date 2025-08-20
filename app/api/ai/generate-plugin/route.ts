@@ -16,6 +16,14 @@ export async function POST(request: NextRequest) {
 
     let generatedContent = ''
 
+    // --- Start of Prompts ---
+    const planPrompt = 'You are an expert Python and discord.py developer. The user wants to create a Discord bot plugin. Your task is to generate a detailed step-by-step plan for creating this plugin. The plan must be a maximum of 20 lines and cover the main features requested.'
+
+    const codePrompt = `Your task is to write a Python discord.py Cog based on a plan.\n\n**RULES:**\n- Your response MUST contain a plugin name. Use the format: \`[1.1]plugin-name[1.1]\`\n- Your response MUST contain the full Python code. Use the format: \`[2]\\ncode_here\\n[2]\`\n- Your response MUST contain usage instructions. Use the format: \`[6]usage_instructions[6]\`\n- Do NOT write any other text or explanations.`
+
+    const reviewPrompt = `You are a code reviewer. The user provides Python code. Your task is to find and fix all bugs.\n\n**RULES:**\n- Your response MUST contain the full, corrected Python code.\n- You MUST use this format: \`[2]\\ncorrected_code_here\\n[2]\`\n- Do NOT write any other text, tags, or explanations.`
+    // --- End of Prompts ---
+
     if (provider === 'google') {
       const apiKey = process.env.GOOGLE_API_KEY
       if (!apiKey) {
@@ -24,10 +32,6 @@ export async function POST(request: NextRequest) {
 
       const modelName = "gemini-2.0-flash-lite"
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`
-
-      const planPrompt = 'You are an expert Python and discord.py developer. The user wants to create a Discord bot plugin. Your task is to generate a detailed step-by-step plan for creating this plugin. The plan must be a maximum of 20 lines and cover the main features requested.'
-      const codePrompt = `You are S1, an expert AI assistant creating a discord.py plugin. You MUST follow these rules exactly:\n1. Generate a unique, descriptive, kebab-case \`plugin-name\` no more than 20 characters.\n2. Generate the full, complete, and operational Python code for a single Cog.\n3. Generate clear, simple usage instructions.\n\nYour response MUST be ONLY in the following format. Do NOT include any other text, explanations, or markdown.\n\n[1.1]plugin-name-here[1.1]\n[6]Usage instructions here.[6]\n[2]\n# All python code goes here\nimport discord\nfrom discord.ext import commands\n\nclass MyCog(commands.Cog):\n  # ... rest of the code\n\nasync def setup(bot):\n  await bot.add_cog(MyCog(bot))\n[2]`
-      const reviewPrompt = `You are a senior code reviewer. Your task is to find and fix bugs in the provided Python code.\n\nYour response MUST be ONLY the corrected, full Python code inside a [2] tag. Do NOT include any other text, tags, or explanations.\n\n[2]\n# corrected python code here\n[2]`
 
       let instructions = codePrompt;
       if (mode === 'plan') instructions = planPrompt;
@@ -62,12 +66,6 @@ export async function POST(request: NextRequest) {
       if (!apiKey) {
         return NextResponse.json({ error: "Groq API key not configured" }, { status: 500 })
       }
-
-      const planPrompt = 'You are an expert Python and discord.py developer. The user wants to create a Discord bot plugin. Your task is to generate a detailed step-by-step plan for creating this plugin. The plan must be a maximum of 20 lines and cover the main features requested.'
-
-      const codePrompt = `You are S1, an expert AI assistant creating a discord.py plugin. You MUST follow these rules exactly:\n1. Generate a unique, descriptive, kebab-case \`plugin-name\` no more than 20 characters.\n2. Generate the full, complete, and operational Python code for a single Cog.\n3. Generate clear, simple usage instructions.\n\nYour response MUST be ONLY in the following format. Do NOT include any other text, explanations, or markdown.\n\n[1.1]plugin-name-here[1.1]\n[6]Usage instructions here.[6]\n[2]\n# All python code goes here\nimport discord\nfrom discord.ext import commands\n\nclass MyCog(commands.Cog):\n  # ... rest of the code\n\nasync def setup(bot):\n  await bot.add_cog(MyCog(bot))\n[2]`
-
-      const reviewPrompt = `You are a senior code reviewer. Your task is to find and fix bugs in the provided Python code.\n\n You MUST return the full, corrected code. Your response MUST be ONLY in the following format, including the original plugin name. Do NOT include any other text or explanations.\n\n[1.1]original-plugin-name-here[1.1]\n[6]Updated usage instructions if necessary.[6]\n[2]\n# All corrected python code goes here\nimport discord\nfrom discord.ext import commands\n\nclass MyCog(commands.Cog):\n  # ... rest of the corrected code\n\nasync def setup(bot):\n  await bot.add_cog(MyCog(bot))\n[2]`
 
       let systemPrompt = codePrompt
       if (mode === 'plan') systemPrompt = planPrompt
