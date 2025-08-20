@@ -205,7 +205,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     const response = await fetch("/api/ai/generate-plugin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: initialPrompt, mode: "plan", history }),
+      body: JSON.stringify({ message: initialPrompt, mode: "plan", history, provider: "google" }),
     })
     if (!response.ok) throw new Error("Failed to generate plan")
     const plan = ((await response.json()).response) || ""
@@ -218,7 +218,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     const response = await fetch("/api/ai/generate-plugin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, mode: "code", history }),
+      body: JSON.stringify({ message, mode: "code", history, provider: "google" }),
     })
     if (!response.ok) throw new Error("Failed to generate code")
     const rawCodeResponse = ((await response.json()).response) || ""
@@ -239,7 +239,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     const response = await fetch("/api/ai/generate-plugin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, mode: "review", history }),
+      body: JSON.stringify({ message, mode: "review", history, provider: "google" }),
     })
     if (!response.ok) throw new Error("Failed to review code")
     const rawReviewedResponse = ((await response.json()).response) || ""
@@ -352,7 +352,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         const response = await fetch("/api/ai/generate-plugin", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: content, history: currentHistory }),
+          body: JSON.stringify({ message: content, history: currentHistory, provider: "google" }),
         })
         if (!response.ok) throw new Error("API request failed")
         const data = await response.json()
