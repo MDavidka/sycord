@@ -250,27 +250,19 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     setPipelineArtifacts({ plan: "", rawCodeResponse: "", error: null })
 
     try {
-      // Step 1: Generate Plan
+      // Step 1: Generate Plan (Silent)
       const plan = await generatePlan(initialPrompt, history)
       setPipelineArtifacts(prev => ({ ...prev, plan }))
       setPipelineState({ active: true, step: 2 })
 
-      // Step 2: Generate Code
+      // Step 2: Generate Code (Silent)
       const rawCodeResponse = await generateCode(plan, initialPrompt, history)
       setPipelineArtifacts(prev => ({ ...prev, rawCodeResponse }))
-      const codeMessages = parseAIResponse(rawCodeResponse)
-
-      const pluginMessage = codeMessages.find(m => m.type === 'ai_plugin')
-      if (!pluginMessage) {
-        // If the AI didn't return a plugin, just show what it did return and stop.
-        setMessages(prev => [...prev, ...codeMessages])
-        throw new Error("AI did not generate a plugin from the plan.")
-      }
-
-      setMessages(prev => [...prev, ...codeMessages])
       setPipelineState({ active: true, step: 3 })
 
-      // Step 3: Review Code
+      // Step 3: Review Code (Silent)
+      const initialCodeMessages = parseAIResponse(rawCodeResponse)
+      const pluginMessage = initialCodeMessages.find(m => m.type === 'ai_plugin')
       const codeToReview = pluginMessage?.pluginFiles?.[0]?.code
       const pluginName = pluginMessage?.pluginName
       if (!codeToReview || !pluginName) {
@@ -280,16 +272,24 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       const reviewedCode = await reviewCode(codeToReview, pluginName, history)
       setPipelineState({ active: true, step: 4 })
 
-      // Update UI with reviewed code
-      setMessages(prev => {
-        const newMessages = [...prev]
-        const pluginMsgIndex = newMessages.findIndex(m => m.id === pluginMessage.id)
-        if (pluginMsgIndex !== -1) {
-          const newPluginFile = { fileName: newMessages[pluginMsgIndex].pluginFiles[0].fileName, code: reviewedCode };
-          newMessages[pluginMsgIndex].pluginFiles = [newPluginFile];
-        }
-        return newMessages
-      })
+      // Step 4: Finishing - Render the final, reviewed code
+      // We need to reconstruct the final message payload
+      const finalPluginMessage: ChatMessage = {
+        id: `msg_${Date.now()}_plugin`,
+        role: "assistant",
+        type: "ai_plugin",
+        content: `Plugin generated: ${pluginName}`,
+        pluginName: pluginName,
+        pluginFiles: [{ fileName: `${pluginName}.py`, code: reviewedCode }],
+        timestamp: new Date(),
+      }
+      const finalUsageMessage = initialCodeMessages.find(m => m.type === 'ai_usage_instructions')
+
+      const finalMessages: ChatMessage[] = []
+      if(finalUsageMessage) finalMessages.push(finalUsageMessage)
+      finalMessages.push(finalPluginMessage)
+
+      setMessages(prev => [...prev, ...finalMessages])
 
     } catch (error) {
       console.error("Pipeline Error:", error)

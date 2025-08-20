@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       const modelName = "gemini-2.0-flash-lite"
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`
 
-      const planPrompt = 'You are an expert Python and discord.py developer...' // This prompt is simple and less critical
+      const planPrompt = 'You are an expert Python and discord.py developer. The user wants to create a Discord bot plugin. Your task is to generate a detailed step-by-step plan for creating this plugin. The plan must be a maximum of 20 lines and cover the main features requested.'
       const codePrompt = `You are S1, an expert AI assistant creating a discord.py plugin. You MUST follow these rules exactly:\n1. Generate a unique, descriptive, kebab-case \`plugin-name\` no more than 20 characters.\n2. Generate the full, complete, and operational Python code for a single Cog.\n3. Generate clear, simple usage instructions.\n\nYour response MUST be ONLY in the following format. Do NOT include any other text, explanations, or markdown.\n\n[1.1]plugin-name-here[1.1]\n[6]Usage instructions here.[6]\n[2]\n# All python code goes here\nimport discord\nfrom discord.ext import commands\n\nclass MyCog(commands.Cog):\n  # ... rest of the code\n\nasync def setup(bot):\n  await bot.add_cog(MyCog(bot))\n[2]`
       const reviewPrompt = `You are a senior code reviewer. Your task is to find and fix bugs in the provided Python code.\n\nYour response MUST be ONLY the corrected, full Python code inside a [2] tag. Do NOT include any other text, tags, or explanations.\n\n[2]\n# corrected python code here\n[2]`
 
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Groq API key not configured" }, { status: 500 })
       }
 
-      const planPrompt = 'You are an expert Python and discord.py developer...' // Unchanged
+      const planPrompt = 'You are an expert Python and discord.py developer. The user wants to create a Discord bot plugin. Your task is to generate a detailed step-by-step plan for creating this plugin. The plan must be a maximum of 20 lines and cover the main features requested.'
 
       const codePrompt = `You are S1, an expert AI assistant creating a discord.py plugin. You MUST follow these rules exactly:\n1. Generate a unique, descriptive, kebab-case \`plugin-name\` no more than 20 characters.\n2. Generate the full, complete, and operational Python code for a single Cog.\n3. Generate clear, simple usage instructions.\n\nYour response MUST be ONLY in the following format. Do NOT include any other text, explanations, or markdown.\n\n[1.1]plugin-name-here[1.1]\n[6]Usage instructions here.[6]\n[2]\n# All python code goes here\nimport discord\nfrom discord.ext import commands\n\nclass MyCog(commands.Cog):\n  # ... rest of the code\n\nasync def setup(bot):\n  await bot.add_cog(MyCog(bot))\n[2]`
 
