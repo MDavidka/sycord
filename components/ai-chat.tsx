@@ -46,6 +46,12 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
   const [currentStep, setCurrentStep] = useState(0)
   const [showPipeline, setShowPipeline] = useState(false)
   const [activeTab, setActiveTab] = useState<{ [messageId: string]: string }>({})
+  const [generationTimer, setGenerationTimer] = useState(0)
+  const [generatingPluginData, setGeneratingPluginData] = useState<{
+    name: string
+    description: string
+    startTime: number
+  } | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -61,6 +67,18 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+    if (showPipeline && generatingPluginData) {
+      interval = setInterval(() => {
+        setGenerationTimer(Date.now() - generatingPluginData.startTime)
+      }, 100)
+    }
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [showPipeline, generatingPluginData])
 
   const parseAIResponse = (content: string): ChatMessage => {
     const messageId = `msg_${Date.now()}_ai`
@@ -167,12 +185,19 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       originalMessage.toLowerCase().includes("make")
 
     if (isPluginRequest && !isFollowUp) {
+      setGeneratingPluginData({
+        name: "New Plugin",
+        description: originalMessage,
+        startTime: Date.now(),
+      })
+      setGenerationTimer(0)
       setShowPipeline(true)
       setGenerationSteps(pipelineSteps.map((step) => ({ ...step, status: "pending" })))
       setCurrentStep(0)
 
       const progressPipeline = async () => {
         const stepTimings = [1200, 2000, 1800, 1500, 1000]
+        const stepPercentages = [20, 40, 60, 80, 100]
 
         for (let i = 0; i < pipelineSteps.length; i++) {
           setGenerationSteps((prev) =>
@@ -236,7 +261,11 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsGenerating(false)
-      setTimeout(() => setShowPipeline(false), 500)
+      setTimeout(() => {
+        setShowPipeline(false)
+        setGeneratingPluginData(null)
+        setGenerationTimer(0)
+      }, 500)
     }
   }
 
@@ -336,6 +365,104 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {showPipeline && generatingPluginData && (
+            <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden shadow-lg">
+              <div className="border-b border-white/10 p-4 bg-black/20">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 relative">
+                      <Image src="/s1-logo.png" alt="S1" width={32} height={32} className="object-contain" />
+                      <span className="absolute -bottom-1 -right-1 text-[8px] text-gray-400 font-mono">s1-small</span>
+                    </div>
+                    <span className="text-sm font-medium">Generating Plugin</span>
+                  </div>
+                  <span className="text-xs text-gray-400 font-mono">
+                    {Math.floor(generationTimer / 60000)
+                      .toString()
+                      .padStart(2, "0")}
+                    :
+                    {Math.floor((generationTimer % 60000) / 1000)
+                      .toString()
+                      .padStart(2, "0")}
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {generationSteps.map((step, idx) => (
+                    <div key={step.id} className="flex items-center space-x-3">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all duration-300 ${
+                          step.status === "completed"
+                            ? "bg-green-500/20 border border-green-500/40"
+                            : step.status === "active"
+                              ? "bg-blue-500/20 border border-blue-500/40 animate-pulse shadow-lg shadow-blue-500/20"
+                              : "bg-gray-600/20 border border-gray-600/40"
+                        }`}
+                      >
+                        {step.status === "completed" ? (
+                          <span className="text-green-400">✓</span>
+                        ) : (
+                          <span className={`${step.status === "active" ? "animate-pulse" : ""}`}>{step.icon}</span>
+                        )}
+                      </div>
+                      <span
+                        className={`text-sm transition-colors duration-300 ${
+                          step.status === "active"
+                            ? "text-blue-300 font-medium"
+                            : step.status === "completed"
+                              ? "text-green-300"
+                              : "text-gray-400"
+                        }`}
+                      >
+                        {step.label}
+                      </span>
+                      {step.status === "active" && (
+                        <div className="flex-1 flex justify-end">
+                          <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 bg-gray-700/50 rounded-full h-2 overflow-hidden">
+                  <div
+                    className={`h-2 rounded-full transition-all duration-500 ease-out ${
+                      currentStep === generationSteps.length - 1 && generationSteps[currentStep]?.status === "completed"
+                        ? "bg-gradient-to-r from-green-500 to-green-400 shadow-lg shadow-green-500/30"
+                        : "bg-gradient-to-r from-blue-500 to-green-500"
+                    }`}
+                    style={{ width: `${Math.min(((currentStep + 1) / generationSteps.length) * 100, 100)}%` }}
+                  />
+                </div>
+
+                <div className="mt-2 text-xs text-gray-400 text-center">
+                  Step {currentStep + 1} of {generationSteps.length} •{" "}
+                  {Math.round(((currentStep + 1) / generationSteps.length) * 100)}% Complete
+                </div>
+              </div>
+
+              <div className="p-4">
+                <div className="flex items-center space-x-3 mb-3">
+                  <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
+                    <span className="text-xs font-mono">PY</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium">{generatingPluginData.name}</h3>
+                    <p className="text-xs text-gray-400">{generatingPluginData.description}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-center py-4">
+                  <div className="flex items-center space-x-2 text-gray-400">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Generating code...</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
               <div className="w-16 h-16 relative mb-4 opacity-50">
@@ -398,77 +525,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                     </div>
                   ) : (
                     <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden shadow-lg">
-                      {showPipeline && message.id === messages[messages.length - 1]?.id && (
-                        <div className="border-b border-white/10 p-4 bg-black/20">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 relative">
-                                <Image src="/s1-logo.png" alt="S1" width={32} height={32} className="object-contain" />
-                                <span className="absolute -bottom-1 -right-1 text-[8px] text-gray-400 font-mono">
-                                  s1-small
-                                </span>
-                              </div>
-                              <span className="text-sm font-medium">Generating Plugin</span>
-                            </div>
-                            <span className="text-xs text-gray-400 font-mono">
-                              00:{String(Math.floor((currentStep + 1) * 12)).padStart(2, "0")}
-                            </span>
-                          </div>
-
-                          <div className="space-y-3">
-                            {generationSteps.map((step, idx) => (
-                              <div key={step.id} className="flex items-center space-x-3">
-                                <div
-                                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all duration-300 ${
-                                    step.status === "completed"
-                                      ? "bg-green-500/20 border border-green-500/40"
-                                      : step.status === "active"
-                                        ? "bg-blue-500/20 border border-blue-500/40 animate-pulse shadow-lg shadow-blue-500/20"
-                                        : "bg-gray-600/20 border border-gray-600/40"
-                                  }`}
-                                >
-                                  {step.status === "completed" ? (
-                                    <span className="text-green-400">✓</span>
-                                  ) : (
-                                    <span className={`${step.status === "active" ? "animate-pulse" : ""}`}>
-                                      {step.icon}
-                                    </span>
-                                  )}
-                                </div>
-                                <span
-                                  className={`text-sm transition-colors duration-300 ${
-                                    step.status === "active"
-                                      ? "text-blue-300 font-medium"
-                                      : step.status === "completed"
-                                        ? "text-green-300"
-                                        : "text-gray-400"
-                                  }`}
-                                >
-                                  {step.label}
-                                </span>
-                                {step.status === "active" && (
-                                  <div className="flex-1 flex justify-end">
-                                    <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-
-                          <div className="mt-4 bg-gray-700/50 rounded-full h-2 overflow-hidden">
-                            <div
-                              className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-500 ease-out"
-                              style={{ width: `${((currentStep + 1) / generationSteps.length) * 100}%` }}
-                            />
-                          </div>
-
-                          <div className="mt-2 text-xs text-gray-400 text-center">
-                            Step {currentStep + 1} of {generationSteps.length} •{" "}
-                            {Math.round(((currentStep + 1) / generationSteps.length) * 100)}% Complete
-                          </div>
-                        </div>
-                      )}
-
                       <div className="p-4">
                         <div className="flex items-center space-x-3 mb-3">
                           <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
