@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, MessageSquare, Send, Eye, Edit3, Loader2, Play, CheckCircle } from "lucide-react"
+import { ArrowLeft, MessageSquare, Eye, Edit3, Loader2, Play, CheckCircle } from "lucide-react"
 import Image from "next/image"
 import type { UserAIFunction } from "@/lib/types"
 
@@ -51,7 +51,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const pipelineSteps: GenerationStep[] = [
-    { id: "collect", label: "Information collected", icon: "👥", status: "pending" },
+    { id: "collect", label: "Information collected", icon: "🧑‍🧒", status: "pending" },
     { id: "plan", label: "Planning structure", icon: "💡", status: "pending" },
     { id: "code", label: "Making Python Cog", icon: "🔧", status: "pending" },
     { id: "debug", label: "Finding bugs / optimizing", icon: "🐞", status: "pending" },
@@ -159,21 +159,22 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     setInputValue("")
     setIsGenerating(true)
 
-    // Start pipeline if this looks like a plugin request
     const isPluginRequest =
       originalMessage.toLowerCase().includes("plugin") ||
       originalMessage.toLowerCase().includes("bot") ||
-      originalMessage.toLowerCase().includes("command")
+      originalMessage.toLowerCase().includes("command") ||
+      originalMessage.toLowerCase().includes("create") ||
+      originalMessage.toLowerCase().includes("make")
 
     if (isPluginRequest && !isFollowUp) {
       setShowPipeline(true)
       setGenerationSteps(pipelineSteps.map((step) => ({ ...step, status: "pending" })))
       setCurrentStep(0)
 
-      // Simulate pipeline progression
       const progressPipeline = async () => {
+        const stepTimings = [1200, 2000, 1800, 1500, 1000]
+
         for (let i = 0; i < pipelineSteps.length; i++) {
-          await new Promise((resolve) => setTimeout(resolve, 800))
           setGenerationSteps((prev) =>
             prev.map((step, idx) => ({
               ...step,
@@ -181,6 +182,15 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
             })),
           )
           setCurrentStep(i)
+
+          await new Promise((resolve) => setTimeout(resolve, stepTimings[i]))
+
+          setGenerationSteps((prev) =>
+            prev.map((step, idx) => ({
+              ...step,
+              status: idx <= i ? "completed" : "pending",
+            })),
+          )
         }
       }
       progressPipeline()
@@ -206,7 +216,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
       setMessages((prev) => [...prev, aiMessage])
 
-      // Handle detail requests
       if (aiMessage.type === "detail-request" && aiMessage.missingDetails) {
         setShowDetailInputs(aiMessage.id)
         const initialInputs: { [key: string]: string } = {}
@@ -227,7 +236,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsGenerating(false)
-      setShowPipeline(false)
+      setTimeout(() => setShowPipeline(false), 500)
     }
   }
 
@@ -389,33 +398,47 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                     </div>
                   ) : (
                     <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden shadow-lg">
-                      {/* Pipeline display */}
                       {showPipeline && message.id === messages[messages.length - 1]?.id && (
                         <div className="border-b border-white/10 p-4 bg-black/20">
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="text-sm font-medium">Generating Plugin</span>
-                            <span className="text-xs text-gray-400">
-                              00:{String(Math.floor(currentStep * 0.8)).padStart(2, "0")}
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 relative">
+                                <Image src="/s1-logo.png" alt="S1" width={32} height={32} className="object-contain" />
+                                <span className="absolute -bottom-1 -right-1 text-[8px] text-gray-400 font-mono">
+                                  s1-small
+                                </span>
+                              </div>
+                              <span className="text-sm font-medium">Generating Plugin</span>
+                            </div>
+                            <span className="text-xs text-gray-400 font-mono">
+                              00:{String(Math.floor((currentStep + 1) * 12)).padStart(2, "0")}
                             </span>
                           </div>
-                          <div className="space-y-2">
+
+                          <div className="space-y-3">
                             {generationSteps.map((step, idx) => (
                               <div key={step.id} className="flex items-center space-x-3">
                                 <div
-                                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all duration-300 ${
                                     step.status === "completed"
-                                      ? "bg-green-500"
+                                      ? "bg-green-500/20 border border-green-500/40"
                                       : step.status === "active"
-                                        ? "bg-blue-500 animate-pulse"
-                                        : "bg-gray-600"
+                                        ? "bg-blue-500/20 border border-blue-500/40 animate-pulse shadow-lg shadow-blue-500/20"
+                                        : "bg-gray-600/20 border border-gray-600/40"
                                   }`}
                                 >
-                                  {step.status === "completed" ? "✓" : step.icon}
+                                  {step.status === "completed" ? (
+                                    <span className="text-green-400">✓</span>
+                                  ) : (
+                                    <span className={`${step.status === "active" ? "animate-pulse" : ""}`}>
+                                      {step.icon}
+                                    </span>
+                                  )}
                                 </div>
                                 <span
-                                  className={`text-sm ${
+                                  className={`text-sm transition-colors duration-300 ${
                                     step.status === "active"
-                                      ? "text-blue-300"
+                                      ? "text-blue-300 font-medium"
                                       : step.status === "completed"
                                         ? "text-green-300"
                                         : "text-gray-400"
@@ -423,14 +446,25 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                                 >
                                   {step.label}
                                 </span>
+                                {step.status === "active" && (
+                                  <div className="flex-1 flex justify-end">
+                                    <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
-                          <div className="mt-3 bg-gray-700 rounded-full h-2">
+
+                          <div className="mt-4 bg-gray-700/50 rounded-full h-2 overflow-hidden">
                             <div
-                              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                              className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-500 ease-out"
                               style={{ width: `${((currentStep + 1) / generationSteps.length) * 100}%` }}
                             />
+                          </div>
+
+                          <div className="mt-2 text-xs text-gray-400 text-center">
+                            Step {currentStep + 1} of {generationSteps.length} •{" "}
+                            {Math.round(((currentStep + 1) / generationSteps.length) * 100)}% Complete
                           </div>
                         </div>
                       )}
@@ -552,40 +586,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
           )}
 
           <div ref={messagesEndRef} />
-        </div>
-
-        <div className="border-t border-white/10 p-4 bg-[#101010]/40 backdrop-blur-sm">
-          <div className="flex items-end space-x-3">
-            <textarea
-              ref={inputRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder={
-                messages.some((m) => m.type === "plugin" || m.type === "complex")
-                  ? "Continue working on this plugin..."
-                  : "Ask a question or request a plugin..."
-              }
-              className="flex-1 bg-[#101010]/60 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-2 text-white placeholder-gray-400 resize-none min-h-[40px] max-h-32 text-base focus:outline-none focus:ring-2 focus:ring-white/20"
-              style={{ fontSize: "16px" }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault()
-                  const hasExistingPlugin = messages.some((m) => m.type === "plugin" || m.type === "complex")
-                  handleSendMessage(hasExistingPlugin)
-                }
-              }}
-            />
-            <Button
-              onClick={() => {
-                const hasExistingPlugin = messages.some((m) => m.type === "plugin" || m.type === "complex")
-                handleSendMessage(hasExistingPlugin)
-              }}
-              disabled={!inputValue.trim() || isGenerating}
-              className="bg-white text-black hover:bg-gray-200 h-10 w-10 p-0 rounded-full flex-shrink-0"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
 
         {showSavePrompt && (
