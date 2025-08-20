@@ -195,77 +195,110 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       setGenerationSteps(pipelineSteps.map((step) => ({ ...step, status: "pending" })))
       setCurrentStep(0)
 
-      const progressPipeline = async () => {
-        const stepTimings = [1200, 2000, 1800, 1500, 1000]
-        const stepPercentages = [20, 40, 60, 80, 100]
-
-        for (let i = 0; i < pipelineSteps.length; i++) {
+      try {
+        // Execute 5-step generation process
+        for (let step = 1; step <= 5; step++) {
           setGenerationSteps((prev) =>
-            prev.map((step, idx) => ({
-              ...step,
-              status: idx === i ? "active" : idx < i ? "completed" : "pending",
+            prev.map((s, idx) => ({
+              ...s,
+              status: idx === step - 1 ? "active" : idx < step - 1 ? "completed" : "pending",
             })),
           )
-          setCurrentStep(i)
+          setCurrentStep(step - 1)
 
-          await new Promise((resolve) => setTimeout(resolve, stepTimings[i]))
+          const response = await fetch("/api/ai/generate-plugin", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: originalMessage,
+              followUp: isFollowUp,
+              lastCode: null,
+              step: step,
+            }),
+          })
+
+          if (!response.ok) throw new Error("Failed to generate response")
+
+          const data = await response.json()
+
+          // Only add the final step response as a message
+          if (step === 3 && data.response.includes("[2]")) {
+            const aiMessage = parseAIResponse(data.response)
+            setMessages((prev) => [...prev, aiMessage])
+          }
+
+          // Wait for step timing
+          const stepTimings = [1200, 2000, 1800, 1500, 1000]
+          await new Promise((resolve) => setTimeout(resolve, stepTimings[step - 1]))
 
           setGenerationSteps((prev) =>
-            prev.map((step, idx) => ({
-              ...step,
-              status: idx <= i ? "completed" : "pending",
+            prev.map((s, idx) => ({
+              ...s,
+              status: idx < step ? "completed" : "pending",
             })),
           )
         }
+      } catch (error) {
+        console.error("Error:", error)
+        const errorMessage: ChatMessage = {
+          id: `msg_${Date.now()}_error`,
+          role: "ai",
+          content: "Sorry, I encountered an error during generation. Please try again.",
+          type: "question",
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, errorMessage])
+      } finally {
+        setIsGenerating(false)
+        setTimeout(() => {
+          setShowPipeline(false)
+          setGeneratingPluginData(null)
+          setGenerationTimer(0)
+        }, 1000)
       }
-      progressPipeline()
-    }
+    } else {
+      // Handle non-plugin requests normally
+      try {
+        const lastPluginMessage = messages.findLast((m) => m.type === "plugin" || m.type === "complex")
 
-    try {
-      const lastPluginMessage = messages.findLast((m) => m.type === "plugin" || m.type === "complex")
-
-      const response = await fetch("/api/ai/generate-plugin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: originalMessage,
-          followUp: isFollowUp,
-          lastCode: lastPluginMessage?.code || Object.values(lastPluginMessage?.complexFiles || {})[0],
-        }),
-      })
-
-      if (!response.ok) throw new Error("Failed to generate response")
-
-      const data = await response.json()
-      const aiMessage = parseAIResponse(data.response)
-
-      setMessages((prev) => [...prev, aiMessage])
-
-      if (aiMessage.type === "detail-request" && aiMessage.missingDetails) {
-        setShowDetailInputs(aiMessage.id)
-        const initialInputs: { [key: string]: string } = {}
-        aiMessage.missingDetails.forEach((detail) => {
-          initialInputs[detail] = ""
+        const response = await fetch("/api/ai/generate-plugin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: originalMessage,
+            followUp: isFollowUp,
+            lastCode: lastPluginMessage?.code || Object.values(lastPluginMessage?.complexFiles || {})[0],
+          }),
         })
-        setDetailInputs(initialInputs)
+
+        if (!response.ok) throw new Error("Failed to generate response")
+
+        const data = await response.json()
+        const aiMessage = parseAIResponse(data.response)
+
+        setMessages((prev) => [...prev, aiMessage])
+
+        if (aiMessage.type === "detail-request" && aiMessage.missingDetails) {
+          setShowDetailInputs(aiMessage.id)
+          const initialInputs: { [key: string]: string } = {}
+          aiMessage.missingDetails.forEach((detail) => {
+            initialInputs[detail] = ""
+          })
+          setDetailInputs(initialInputs)
+        }
+      } catch (error) {
+        console.error("Error:", error)
+        const errorMessage: ChatMessage = {
+          id: `msg_${Date.now()}_error`,
+          role: "ai",
+          content: "Sorry, I encountered an error. Please try again.",
+          type: "question",
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, errorMessage])
+      } finally {
+        setIsGenerating(false)
       }
-    } catch (error) {
-      console.error("Error:", error)
-      const errorMessage: ChatMessage = {
-        id: `msg_${Date.now()}_error`,
-        role: "ai",
-        content: "Sorry, I encountered an error. Please try again.",
-        type: "question",
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, errorMessage])
-    } finally {
-      setIsGenerating(false)
-      setTimeout(() => {
-        setShowPipeline(false)
-        setGeneratingPluginData(null)
-        setGenerationTimer(0)
-      }, 500)
     }
   }
 
@@ -337,13 +370,13 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
   return (
     <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm">
-      <div className="h-full w-full bg-[#101010]/95 backdrop-blur-xl text-white flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#101010]/80 backdrop-blur-sm">
+      <div className="h-full w-full bg-gradient-to-br from-[#0a0a0a]/95 via-[#101010]/95 to-[#0f0f0f]/95 backdrop-blur-xl text-white flex flex-col border border-white/5">
+        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-gradient-to-r from-[#101010]/90 via-[#0f0f0f]/90 to-[#101010]/90 backdrop-blur-md">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleBack}
-            className="h-10 w-10 p-0 text-white hover:bg-white/10 rounded-full bg-white/5"
+            className="h-10 w-10 p-0 text-white hover:bg-white/10 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 transition-all duration-200 hover:border-white/20"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -358,7 +391,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
             variant="ghost"
             size="sm"
             onClick={handleNewChat}
-            className="h-10 w-10 p-0 text-white hover:bg-white/10 rounded-full bg-white/5"
+            className="h-10 w-10 p-0 text-white hover:bg-white/10 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 transition-all duration-200 hover:border-white/20"
           >
             <MessageSquare className="h-5 w-5" />
           </Button>
@@ -366,8 +399,8 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {showPipeline && generatingPluginData && (
-            <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden shadow-lg">
-              <div className="border-b border-white/10 p-4 bg-black/20">
+            <div className="max-w-[90%] bg-gradient-to-br from-[#101010]/80 via-[#0f0f0f]/80 to-[#101010]/80 backdrop-blur-md border border-white/20 rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
+              <div className="border-b border-white/10 p-4 bg-gradient-to-r from-black/30 via-transparent to-black/30">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 relative">
@@ -442,7 +475,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                 </div>
               </div>
 
-              <div className="p-4">
+              <div className="p-4 bg-gradient-to-b from-transparent to-black/20">
                 <div className="flex items-center space-x-3 mb-3">
                   <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
                     <span className="text-xs font-mono">PY</span>
@@ -673,7 +706,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
           </div>
         )}
 
-        <div className="border-t border-white/10 p-4 bg-[#101010]/80 backdrop-blur-sm">
+        <div className="border-t border-white/10 p-4 bg-gradient-to-r from-[#101010]/90 via-[#0f0f0f]/90 to-[#101010]/90 backdrop-blur-md">
           <div className="flex items-end space-x-3">
             <div className="flex-1">
               <textarea
@@ -693,7 +726,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                     : "Ask about Discord bots or request a plugin..."
                 }
                 disabled={isGenerating}
-                className="w-full bg-black/40 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-transparent min-h-[44px] max-h-32"
+                className="w-full bg-black/40 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 min-h-[44px] max-h-32 transition-all duration-200"
                 rows={1}
                 style={{
                   height: "auto",
@@ -712,7 +745,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                 handleSendMessage(hasExistingPlugins)
               }}
               disabled={!inputValue.trim() || isGenerating}
-              className="h-11 w-11 p-0 bg-white text-black hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl"
+              className="h-11 w-11 p-0 bg-gradient-to-r from-white to-gray-100 text-black hover:from-gray-100 hover:to-white disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
             >
               {isGenerating ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
