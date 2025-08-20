@@ -226,15 +226,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     return rawCodeResponse
   }
 
-  const reviewCode = async (rawCodeResponse: string, history: ChatMessage[]) => {
-    const pluginMessage = parseAIResponse(rawCodeResponse).find(m => m.type === 'ai_plugin')
-    const pluginName = pluginMessage?.pluginName
-    const codeToReview = pluginMessage?.pluginFiles?.[0]?.code
-
-    if (!codeToReview || !pluginName) {
-      throw new Error("Could not extract plugin details for review.")
-    }
-
+  const reviewCode = async (codeToReview: string, pluginName: string, history: ChatMessage[]) => {
     const message = `Plugin Name: ${pluginName}\n\nPlease review the following Python code:\n${codeToReview}`
     const response = await fetch("/api/ai/generate-plugin", {
       method: "POST",
@@ -244,7 +236,12 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     if (!response.ok) throw new Error("Failed to review code")
     const rawReviewedResponse = ((await response.json()).response) || ""
     if (!rawReviewedResponse) throw new Error("AI failed to provide a review.")
-    return rawReviewedResponse
+
+    const reviewedCodeMatch = rawReviewedResponse.match(/\[2\]([\s\S]*?)\[2\]/s)
+    const reviewedCode = reviewedCodeMatch ? reviewedCodeMatch[1].trim() : ""
+    if (!reviewedCode) throw new Error("Review AI failed to return valid code.")
+
+    return reviewedCode
   }
 
   const runGenerationPipeline = async (initialPrompt: string, history: ChatMessage[]) => {
@@ -262,37 +259,34 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       const rawCodeResponse = await generateCode(plan, initialPrompt, history)
       setPipelineArtifacts(prev => ({ ...prev, rawCodeResponse }))
       const codeMessages = parseAIResponse(rawCodeResponse)
+
+      const pluginMessage = codeMessages.find(m => m.type === 'ai_plugin')
+      if (!pluginMessage) {
+        // If the AI didn't return a plugin, just show what it did return and stop.
+        setMessages(prev => [...prev, ...codeMessages])
+        throw new Error("AI did not generate a plugin from the plan.")
+      }
+
       setMessages(prev => [...prev, ...codeMessages])
       setPipelineState({ active: true, step: 3 })
 
       // Step 3: Review Code
-      const rawReviewedResponse = await reviewCode(rawCodeResponse, history)
-      const reviewedMessages = parseAIResponse(rawReviewedResponse)
+      const codeToReview = pluginMessage?.pluginFiles?.[0]?.code
+      const pluginName = pluginMessage?.pluginName
+      if (!codeToReview || !pluginName) {
+        throw new Error("Could not extract plugin details for review.")
+      }
 
+      const reviewedCode = await reviewCode(codeToReview, pluginName, history)
       setPipelineState({ active: true, step: 4 })
 
       // Update UI with reviewed code
       setMessages(prev => {
         const newMessages = [...prev]
-        const pluginMsgIndex = newMessages.findIndex(m => m.type === 'ai_plugin')
+        const pluginMsgIndex = newMessages.findIndex(m => m.id === pluginMessage.id)
         if (pluginMsgIndex !== -1) {
-          const reviewedPlugin = reviewedMessages.find(m => m.type === 'ai_plugin')
-          if (reviewedPlugin) {
-            reviewedPlugin.id = newMessages[pluginMsgIndex].id
-            newMessages[pluginMsgIndex] = reviewedPlugin
-          }
-          const reviewedUsage = reviewedMessages.find(m => m.type === 'ai_usage_instructions')
-          if (reviewedUsage) {
-            const usageMsgIndex = newMessages.findIndex(m => m.type === 'ai_usage_instructions')
-            if (usageMsgIndex !== -1) {
-              reviewedUsage.id = newMessages[usageMsgIndex].id
-              newMessages[usageMsgIndex] = reviewedUsage
-            } else {
-              newMessages.push(reviewedUsage)
-            }
-          }
-        } else {
-          newMessages.push(...reviewedMessages)
+          const newPluginFile = { fileName: newMessages[pluginMsgIndex].pluginFiles[0].fileName, code: reviewedCode };
+          newMessages[pluginMsgIndex].pluginFiles = [newPluginFile];
         }
         return newMessages
       })
