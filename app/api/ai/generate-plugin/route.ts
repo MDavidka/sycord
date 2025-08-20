@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Google API key not configured" }, { status: 500 })
       }
 
-      const modelName = "gemini-1.5-flash-latest"
+      const modelName = "gemini-2.0-flash-lite"
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`
 
       const planPrompt = 'You are an expert Python and discord.py developer...' // This prompt is simple and less critical
