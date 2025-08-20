@@ -1,7 +1,8 @@
 "use client"
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, MessageSquare, Send, Eye, Save, Edit3, Loader2 } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { ArrowLeft, MessageSquare, Send, Eye, Edit3, Loader2, Play, CheckCircle } from "lucide-react"
 import Image from "next/image"
 import type { UserAIFunction } from "@/lib/types"
 
@@ -9,8 +10,12 @@ interface ChatMessage {
   id: string
   role: "user" | "ai"
   content: string
-  type: "question" | "plugin" | "normal"
+  type: "question" | "plugin" | "normal" | "detail-request" | "complex" | "new-chat-suggestion"
   code?: string
+  pluginName?: string
+  usageInstructions?: string
+  missingDetails?: string[]
+  complexFiles?: { [key: string]: string }
   timestamp: Date
 }
 
@@ -20,6 +25,13 @@ interface AIChatProps {
   currentAIFunction?: UserAIFunction | null
 }
 
+interface GenerationStep {
+  id: string
+  label: string
+  icon: string
+  status: "pending" | "active" | "completed"
+}
+
 export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputValue, setInputValue] = useState("")
@@ -27,27 +39,118 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
   const [showSavePrompt, setShowSavePrompt] = useState(false)
   const [expandedCode, setExpandedCode] = useState<string | null>(null)
   const [editingPlugin, setEditingPlugin] = useState<string | null>(null)
-  const [pluginMetadata, setPluginMetadata] = useState({
-    name: "",
-    description: "",
-    thumbnailUrl: "",
-    profileUrl: "",
-  })
+  const [deployedPlugins, setDeployedPlugins] = useState<Set<string>>(new Set())
+  const [detailInputs, setDetailInputs] = useState<{ [key: string]: string }>({})
+  const [showDetailInputs, setShowDetailInputs] = useState<string | null>(null)
+  const [generationSteps, setGenerationSteps] = useState<GenerationStep[]>([])
+  const [currentStep, setCurrentStep] = useState(0)
+  const [showPipeline, setShowPipeline] = useState(false)
+  const [activeTab, setActiveTab] = useState<{ [messageId: string]: string }>({})
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  const pipelineSteps: GenerationStep[] = [
+    { id: "collect", label: "Information collected", icon: "👥", status: "pending" },
+    { id: "plan", label: "Planning structure", icon: "💡", status: "pending" },
+    { id: "code", label: "Making Python Cog", icon: "🔧", status: "pending" },
+    { id: "debug", label: "Finding bugs / optimizing", icon: "🐞", status: "pending" },
+    { id: "finish", label: "Finishing code", icon: "✅", status: "pending" },
+  ]
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() || isGenerating) return
+  const parseAIResponse = (content: string): ChatMessage => {
+    const messageId = `msg_${Date.now()}_ai`
+    let messageType: ChatMessage["type"] = "normal"
+    let parsedContent = content
+    let code: string | undefined
+    let pluginName: string | undefined
+    let usageInstructions: string | undefined
+    let missingDetails: string[] = []
+    const complexFiles: { [key: string]: string } = {}
+
+    // Parse [1] - Questions/explanations
+    if (content.startsWith("[1]")) {
+      messageType = "question"
+      parsedContent = content.replace(/^\[1\]\s*/, "").replace(/\[1\]$/, "")
+    }
+
+    // Parse [1.1] - Plugin name
+    const pluginNameMatch = content.match(/\[1\.1\](.*?)\[1\.1\]/)
+    if (pluginNameMatch) {
+      pluginName = pluginNameMatch[1].substring(0, 20) // Max 20 characters
+      parsedContent = content.replace(/\[1\.1\].*?\[1\.1\]/, "")
+    }
+
+    // Parse [2] - Plugin code
+    if (content.includes("[2]")) {
+      messageType = "plugin"
+      const codeMatch = content.match(/\[2\]([\s\S]*?)(?=\[|$)/)
+      if (codeMatch) {
+        code = codeMatch[1].trim()
+        parsedContent = "Plugin generated successfully!"
+      }
+    }
+
+    // Parse [3] - Missing details
+    const detailMatches = content.match(/\[3\](.*?)\[3\]/g)
+    if (detailMatches) {
+      messageType = "detail-request"
+      missingDetails = detailMatches.map((match) => match.replace(/\[3\]/g, ""))
+      parsedContent = `I need the following details: ${missingDetails.join(", ")}`
+    }
+
+    // Parse [4] - Complex tasks
+    if (content.includes("[4]")) {
+      messageType = "complex"
+      const fileMatches = content.match(/\[4\.\d+\](.*?)\n([\s\S]*?)(?=\[4\.\d+\]|$)/g)
+      if (fileMatches) {
+        fileMatches.forEach((match) => {
+          const [, filename, fileContent] = match.match(/\[4\.\d+\](.*?)\n([\s\S]*)/) || []
+          if (filename && fileContent) {
+            complexFiles[filename.trim()] = fileContent.trim()
+          }
+        })
+      }
+      parsedContent = "Complex plugin with multiple files generated!"
+    }
+
+    // Parse [5] - New chat suggestion
+    if (content.startsWith("[5]")) {
+      messageType = "new-chat-suggestion"
+      parsedContent = content.replace(/^\[5\]\s*/, "")
+    }
+
+    // Parse [6] - Usage instructions
+    const usageMatch = content.match(/\[6\](.*?)(?=\[|$)/s)
+    if (usageMatch) {
+      usageInstructions = usageMatch[1].trim()
+    }
+
+    return {
+      id: messageId,
+      role: "ai",
+      content: parsedContent,
+      type: messageType,
+      code,
+      pluginName,
+      usageInstructions,
+      missingDetails,
+      complexFiles,
+      timestamp: new Date(),
+    }
+  }
+
+  const handleSendMessage = async (isFollowUp = false, originalMessage = inputValue) => {
+    if (!originalMessage.trim() || isGenerating) return
 
     const userMessage: ChatMessage = {
       id: `msg_${Date.now()}_user`,
       role: "user",
-      content: inputValue,
+      content: originalMessage,
       type: "normal",
       timestamp: new Date(),
     }
@@ -56,33 +159,62 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     setInputValue("")
     setIsGenerating(true)
 
+    // Start pipeline if this looks like a plugin request
+    const isPluginRequest =
+      originalMessage.toLowerCase().includes("plugin") ||
+      originalMessage.toLowerCase().includes("bot") ||
+      originalMessage.toLowerCase().includes("command")
+
+    if (isPluginRequest && !isFollowUp) {
+      setShowPipeline(true)
+      setGenerationSteps(pipelineSteps.map((step) => ({ ...step, status: "pending" })))
+      setCurrentStep(0)
+
+      // Simulate pipeline progression
+      const progressPipeline = async () => {
+        for (let i = 0; i < pipelineSteps.length; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 800))
+          setGenerationSteps((prev) =>
+            prev.map((step, idx) => ({
+              ...step,
+              status: idx === i ? "active" : idx < i ? "completed" : "pending",
+            })),
+          )
+          setCurrentStep(i)
+        }
+      }
+      progressPipeline()
+    }
+
     try {
+      const lastPluginMessage = messages.findLast((m) => m.type === "plugin" || m.type === "complex")
+
       const response = await fetch("/api/ai/generate-plugin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: inputValue }),
+        body: JSON.stringify({
+          message: originalMessage,
+          followUp: isFollowUp,
+          lastCode: lastPluginMessage?.code || Object.values(lastPluginMessage?.complexFiles || {})[0],
+        }),
       })
 
       if (!response.ok) throw new Error("Failed to generate response")
 
       const data = await response.json()
-      const content = data.code || data.response || ""
-
-      const isPluginCode =
-        content.includes("import discord") || content.includes("discord.py") || content.includes("@bot.command")
-      const messageType = isPluginCode ? "plugin" : "question"
-      const displayContent = isPluginCode ? "Plugin generated successfully!" : content.replace(/^\[1\]\s*/, "")
-
-      const aiMessage: ChatMessage = {
-        id: `msg_${Date.now()}_ai`,
-        role: "ai",
-        content: displayContent,
-        type: messageType,
-        code: isPluginCode ? content : undefined,
-        timestamp: new Date(),
-      }
+      const aiMessage = parseAIResponse(data.response)
 
       setMessages((prev) => [...prev, aiMessage])
+
+      // Handle detail requests
+      if (aiMessage.type === "detail-request" && aiMessage.missingDetails) {
+        setShowDetailInputs(aiMessage.id)
+        const initialInputs: { [key: string]: string } = {}
+        aiMessage.missingDetails.forEach((detail) => {
+          initialInputs[detail] = ""
+        })
+        setDetailInputs(initialInputs)
+      }
     } catch (error) {
       console.error("Error:", error)
       const errorMessage: ChatMessage = {
@@ -95,37 +227,59 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsGenerating(false)
+      setShowPipeline(false)
     }
   }
 
-  const handleSavePlugin = async (messageId: string) => {
+  const handleSubmitDetails = (messageId: string) => {
     const message = messages.find((m) => m.id === messageId)
-    if (!message?.code) return
+    if (!message || !message.missingDetails) return
+
+    const detailsText = message.missingDetails
+      .map((detail) => `${detail}: ${detailInputs[detail] || "Not provided"}`)
+      .join(", ")
+
+    const originalRequest = messages[messages.length - 2]?.content || ""
+    const fullRequest = `I requested this feature before: ${originalRequest}, but missed these details: ${detailsText}`
+
+    setShowDetailInputs(null)
+    setDetailInputs({})
+    handleSendMessage(false, fullRequest)
+  }
+
+  const handleDeployPlugin = async (messageId: string) => {
+    const message = messages.find((m) => m.id === messageId)
+    if (!message?.code && !message?.complexFiles) return
 
     try {
       const response = await fetch("/api/user-ai-functions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: pluginMetadata.name || "Untitled Plugin",
-          description: pluginMetadata.description || "AI Generated Plugin",
-          code: message.code,
-          thumbnailUrl: pluginMetadata.thumbnailUrl,
-          profileUrl: pluginMetadata.profileUrl,
+          name: message.pluginName || "Untitled Plugin",
+          description: message.content,
+          code: message.code || JSON.stringify(message.complexFiles),
+          isComplex: !!message.complexFiles,
         }),
       })
 
       if (response.ok) {
-        setEditingPlugin(null)
-        setPluginMetadata({ name: "", description: "", thumbnailUrl: "", profileUrl: "" })
+        setDeployedPlugins((prev) => new Set([...prev, messageId]))
+        setTimeout(() => {
+          setDeployedPlugins((prev) => {
+            const newSet = new Set(prev)
+            newSet.delete(messageId)
+            return newSet
+          })
+        }, 1000)
       }
     } catch (error) {
-      console.error("Error saving plugin:", error)
+      console.error("Error deploying plugin:", error)
     }
   }
 
   const handleBack = () => {
-    if (messages.some((m) => m.type === "plugin")) {
+    if (messages.some((m) => m.type === "plugin" || m.type === "complex")) {
       setShowSavePrompt(true)
     } else {
       onClose()
@@ -136,6 +290,9 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     setMessages([])
     setExpandedCode(null)
     setEditingPlugin(null)
+    setDeployedPlugins(new Set())
+    setShowDetailInputs(null)
+    setDetailInputs({})
   }
 
   if (!isOpen) return null
@@ -182,93 +339,203 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
             </div>
           ) : (
             messages.map((message) => (
-              <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                {message.role === "user" ? (
-                  <div className="max-w-[80%] bg-white/90 backdrop-blur-sm text-gray-900 rounded-2xl px-4 py-3 shadow-lg">
-                    <p className="text-sm leading-relaxed">{message.content}</p>
-                  </div>
-                ) : message.type === "question" ? (
-                  <div className="max-w-[80%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
-                    <p className="text-sm leading-relaxed">{message.content}</p>
-                  </div>
-                ) : (
-                  <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden shadow-lg">
-                    <div className="p-4">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
-                          <span className="text-xs font-mono">PY</span>
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-medium">
-                            {editingPlugin === message.id ? (
-                              <input
-                                type="text"
-                                value={pluginMetadata.name}
-                                onChange={(e) => setPluginMetadata((prev) => ({ ...prev, name: e.target.value }))}
-                                placeholder="Plugin name"
-                                className="bg-transparent border-b border-white/20 outline-none text-white placeholder-gray-400"
-                              />
-                            ) : (
-                              pluginMetadata.name || "Unknown Plugin"
-                            )}
-                          </h3>
-                          <p className="text-xs text-gray-400">
-                            {editingPlugin === message.id ? (
-                              <input
-                                type="text"
-                                value={pluginMetadata.description}
-                                onChange={(e) =>
-                                  setPluginMetadata((prev) => ({ ...prev, description: e.target.value }))
-                                }
-                                placeholder="Plugin description"
-                                className="bg-transparent border-b border-white/20 outline-none text-gray-400 placeholder-gray-500 w-full"
-                              />
-                            ) : (
-                              pluginMetadata.description || "AI Generated Discord Bot Plugin"
-                            )}
-                          </p>
-                        </div>
-                      </div>
-
-                      <p className="text-sm mb-4">{message.content}</p>
-
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setExpandedCode(expandedCode === message.id ? null : message.id)}
-                          className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleSavePlugin(message.id)}
-                          className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
-                        >
-                          <Save className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setEditingPlugin(editingPlugin === message.id ? null : message.id)}
-                          className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
-                        >
-                          <Edit3 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    {expandedCode === message.id && message.code && (
-                      <div className="border-t border-white/10 bg-black/40 p-4">
-                        <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
-                          {message.code}
-                        </pre>
-                      </div>
-                    )}
+              <div key={message.id}>
+                {message.usageInstructions && (
+                  <div className="mb-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                    <p className="text-sm text-blue-300">{message.usageInstructions}</p>
                   </div>
                 )}
+
+                <div className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                  {message.role === "user" ? (
+                    <div className="max-w-[80%] bg-white/90 backdrop-blur-sm text-gray-900 rounded-2xl px-4 py-3 shadow-lg">
+                      <p className="text-sm leading-relaxed">{message.content}</p>
+                    </div>
+                  ) : message.type === "question" ? (
+                    <div className="max-w-[80%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
+                      <p className="text-sm leading-relaxed">{message.content}</p>
+                    </div>
+                  ) : message.type === "detail-request" ? (
+                    <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-orange-500/30 rounded-2xl p-4 shadow-lg">
+                      <p className="text-sm mb-4">{message.content}</p>
+                      {showDetailInputs === message.id && message.missingDetails && (
+                        <div className="space-y-3">
+                          {message.missingDetails.map((detail, idx) => (
+                            <div key={idx}>
+                              <label className="text-xs text-gray-400 mb-1 block">{detail}</label>
+                              <Input
+                                value={detailInputs[detail] || ""}
+                                onChange={(e) => setDetailInputs((prev) => ({ ...prev, [detail]: e.target.value }))}
+                                placeholder={`Enter ${detail}`}
+                                className="bg-black/40 border-white/20 text-white"
+                              />
+                            </div>
+                          ))}
+                          <Button
+                            onClick={() => handleSubmitDetails(message.id)}
+                            className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                          >
+                            Submit Details
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ) : message.type === "new-chat-suggestion" ? (
+                    <div className="max-w-[80%] bg-[#101010]/60 backdrop-blur-sm border border-purple-500/30 rounded-2xl p-4 shadow-lg">
+                      <p className="text-sm mb-3">{message.content}</p>
+                      <Button onClick={handleNewChat} className="bg-purple-500 hover:bg-purple-600 text-white">
+                        Start New Chat
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden shadow-lg">
+                      {/* Pipeline display */}
+                      {showPipeline && message.id === messages[messages.length - 1]?.id && (
+                        <div className="border-b border-white/10 p-4 bg-black/20">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-sm font-medium">Generating Plugin</span>
+                            <span className="text-xs text-gray-400">
+                              00:{String(Math.floor(currentStep * 0.8)).padStart(2, "0")}
+                            </span>
+                          </div>
+                          <div className="space-y-2">
+                            {generationSteps.map((step, idx) => (
+                              <div key={step.id} className="flex items-center space-x-3">
+                                <div
+                                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                                    step.status === "completed"
+                                      ? "bg-green-500"
+                                      : step.status === "active"
+                                        ? "bg-blue-500 animate-pulse"
+                                        : "bg-gray-600"
+                                  }`}
+                                >
+                                  {step.status === "completed" ? "✓" : step.icon}
+                                </div>
+                                <span
+                                  className={`text-sm ${
+                                    step.status === "active"
+                                      ? "text-blue-300"
+                                      : step.status === "completed"
+                                        ? "text-green-300"
+                                        : "text-gray-400"
+                                  }`}
+                                >
+                                  {step.label}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-3 bg-gray-700 rounded-full h-2">
+                            <div
+                              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${((currentStep + 1) / generationSteps.length) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="p-4">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
+                            <span className="text-xs font-mono">PY</span>
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-medium">{message.pluginName || "Generated Plugin"}</h3>
+                            <p className="text-xs text-gray-400">{message.content}</p>
+                            {message.type === "complex" && (
+                              <div className="flex items-center mt-1">
+                                <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
+                                <span className="text-xs text-red-400">Complex Task</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2 mb-4">
+                          {!deployedPlugins.has(message.id) ? (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setExpandedCode(expandedCode === message.id ? null : message.id)}
+                                className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleDeployPlugin(message.id)}
+                                className="flex-1 bg-white text-black hover:bg-gray-200 h-10"
+                              >
+                                <Play className="h-4 w-4 mr-2" />
+                                Deploy
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setExpandedCode(expandedCode === message.id ? null : message.id)}
+                                className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setEditingPlugin(editingPlugin === message.id ? null : message.id)}
+                                className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
+                              >
+                                <Edit3 className="h-4 w-4" />
+                              </Button>
+                              <div className="flex-1 flex items-center justify-center">
+                                <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                                <span className="text-sm text-green-400">Deployed</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {expandedCode === message.id && (message.code || message.complexFiles) && (
+                        <div className="border-t border-white/10 bg-black/40">
+                          {message.complexFiles ? (
+                            <div>
+                              <div className="flex border-b border-white/10">
+                                {Object.keys(message.complexFiles).map((filename) => (
+                                  <button
+                                    key={filename}
+                                    onClick={() => setActiveTab((prev) => ({ ...prev, [message.id]: filename }))}
+                                    className={`px-4 py-2 text-sm border-r border-white/10 ${
+                                      (activeTab[message.id] || Object.keys(message.complexFiles!)[0]) === filename
+                                        ? "bg-white/10 text-white"
+                                        : "text-gray-400 hover:text-white"
+                                    }`}
+                                  >
+                                    {filename}
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="p-4">
+                                <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
+                                  {message.complexFiles[activeTab[message.id] || Object.keys(message.complexFiles)[0]]}
+                                </pre>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-4">
+                              <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
+                                {message.code}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             ))
           )}
@@ -293,18 +560,26 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
               ref={inputRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Ask a question or request a plugin..."
+              placeholder={
+                messages.some((m) => m.type === "plugin" || m.type === "complex")
+                  ? "Continue working on this plugin..."
+                  : "Ask a question or request a plugin..."
+              }
               className="flex-1 bg-[#101010]/60 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-2 text-white placeholder-gray-400 resize-none min-h-[40px] max-h-32 text-base focus:outline-none focus:ring-2 focus:ring-white/20"
               style={{ fontSize: "16px" }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault()
-                  handleSendMessage()
+                  const hasExistingPlugin = messages.some((m) => m.type === "plugin" || m.type === "complex")
+                  handleSendMessage(hasExistingPlugin)
                 }
               }}
             />
             <Button
-              onClick={handleSendMessage}
+              onClick={() => {
+                const hasExistingPlugin = messages.some((m) => m.type === "plugin" || m.type === "complex")
+                handleSendMessage(hasExistingPlugin)
+              }}
               disabled={!inputValue.trim() || isGenerating}
               className="bg-white text-black hover:bg-gray-200 h-10 w-10 p-0 rounded-full flex-shrink-0"
             >

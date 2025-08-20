@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { message } = await request.json()
+    const { message, followUp, lastCode } = await request.json()
 
     if (!message) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 })
@@ -18,6 +18,35 @@ export async function POST(request: NextRequest) {
     if (!apiKey) {
       return NextResponse.json({ error: "API key not configured" }, { status: 500 })
     }
+
+    const systemPrompt = `You are an AI assistant specialized in Discord bot plugin development. You must classify every response with specific markers:
+
+MARKING SYSTEM:
+[1] - Questions/explanations (displayed as chat bubble)
+[1.1] - Plugin name (max 20 characters, displayed in plugin card header)
+[2] - Plugin code (displayed in plugin card)
+[3] - Missing details request (triggers input fields)
+[4] - Complex multi-file tasks
+[5] - New chat suggestion
+[6] - Usage instructions (displayed as text above plugin cards)
+
+RESPONSE RULES:
+1. For QUESTIONS: Start with [1] followed by your answer
+2. For PLUGIN REQUESTS: 
+   - Generate [1.1]plugin-name[1.1] (max 20 chars)
+   - Generate [2] followed by complete Python code
+   - Add [6] usage instructions if needed
+3. For MISSING DETAILS: Use [3]detail-name[3] format (max 6 details)
+4. For COMPLEX TASKS: Use [4] then [4.1]main.py, [4.2]extra.py format
+5. For UNRELATED REQUESTS: Use [5] with suggestion to start new chat
+
+${followUp ? `FOLLOW-UP MODE: Continue working on this existing code:\n${lastCode}\n\nUser's follow-up request: ${message}` : ""}
+
+IMPORTANT: 
+- Always add setup function: "async def setup(bot): await bot.add_cog(PluginName(bot))"
+- Use proper discord.py cog structure
+- Plugin names must be under 20 characters
+- Markers like [1], [2] etc. are for frontend parsing - don't explain them`
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -30,24 +59,7 @@ export async function POST(request: NextRequest) {
         messages: [
           {
             role: "system",
-            content: `You are an AI assistant specialized in Discord bot development. Your task is to:
-
-1. Determine if the user's request is:
-   - [1] A QUESTION about Discord bots, Python, or general help (answer with explanation)
-   - [2] A REQUEST to create/modify a Discord bot plugin (generate Python code)
-
-2. For QUESTIONS [1]: Provide helpful answers about Discord bots, Python, or development. If the question is unrelated to bot development, respond: "This AI should only be used to create plugins for Discord bots."
-
-3. For PLUGIN REQUESTS [2]: Generate complete, functional Python code using discord.py with:
-   - Latest discord.py syntax and proper intents
-   - Full imports and bot initialization
-   - Complete command/event implementations
-   - Error handling and best practices
-   - Production-ready, executable code
-   - NO markdown formatting, NO explanations, NO usage instructions
-   - ONLY raw Python code that can be directly executed
-
-The code must be complete and functional, requiring only a Discord bot token to run.`,
+            content: systemPrompt,
           },
           {
             role: "user",
@@ -70,16 +82,10 @@ The code must be complete and functional, requiring only a Discord bot token to 
       return NextResponse.json({ error: "No response generated" }, { status: 500 })
     }
 
-    const isCode =
-      generatedContent.includes("import discord") ||
-      generatedContent.includes("discord.py") ||
-      generatedContent.includes("@bot.command")
-
-    if (isCode) {
-      return NextResponse.json({ code: generatedContent })
-    } else {
-      return NextResponse.json({ response: generatedContent })
-    }
+    return NextResponse.json({
+      response: generatedContent,
+      isFollowUp: !!followUp,
+    })
   } catch (error) {
     console.error("AI Plugin Generation Error:", error)
     return NextResponse.json({ error: "Failed to generate response" }, { status: 500 })
