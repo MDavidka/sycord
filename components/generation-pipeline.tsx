@@ -40,23 +40,27 @@ export default function GenerationPipeline({ currentStep, elapsedTime }: Generat
           />
         </div>
         <div className="flex justify-around text-xs text-gray-400">
-          {pipelineSteps.map((step, index) => (
-            <div
-              key={index}
-              className={`flex flex-col items-center transition-all duration-300 ${
-                currentStep >= index ? "text-white" : ""
-              }`}
-            >
+          {pipelineSteps.map((step, index) => {
+            const isCompleted = index < currentStep
+            const isActive = index === currentStep
+            return (
               <div
-                className={`h-8 w-8 rounded-full flex items-center justify-center transition-all duration-300 ${
-                  currentStep === index ? "bg-white/10 animate-pulse" : "bg-transparent"
-                } ${currentStep > index ? "bg-white/10" : ""}`}
+                key={index}
+                className={`flex flex-col items-center transition-all duration-300 ${
+                  isActive || isCompleted ? "text-white" : ""
+                }`}
               >
-                <step.icon className="h-4 w-4" />
+                <div
+                  className={`h-8 w-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                    isActive ? "bg-white/10 animate-pulse" : isCompleted ? "bg-white/10" : "bg-transparent"
+                  }`}
+                >
+                  <step.icon className="h-4 w-4" />
+                </div>
+                <span className="mt-1 text-center text-[10px]">{step.label}</span>
               </div>
-              <span className="mt-1 text-center text-[10px]">{step.label}</span>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </div>
