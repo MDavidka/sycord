@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input"
 import { ArrowLeft, MessageSquare, Edit3, Loader2, Play, CheckCircle } from "lucide-react"
 import Image from "next/image"
 import type { UserAIFunction } from "@/lib/types"
-import type { JSX } from "react/jsx-runtime" // Import JSX to fix the undeclared variable error
 
 interface ChatMessage {
   id: string
@@ -29,7 +28,7 @@ interface AIChatProps {
 interface GenerationStep {
   id: string
   label: string
-  icon: JSX.Element
+  icon: string
   status: "pending" | "active" | "completed"
 }
 
@@ -52,19 +51,19 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     name: string
     description: string
     startTime: number
-    finalCode?: string
-    finalPluginName?: string
+    code?: string
+    pluginName?: string
   } | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const pipelineSteps: GenerationStep[] = [
-    { id: "collect", label: "Information collected", icon: <ArrowLeft />, status: "pending" },
-    { id: "plan", label: "Planning structure", icon: <Edit3 />, status: "pending" },
-    { id: "code", label: "Making Python Cog", icon: <Play />, status: "pending" },
-    { id: "debug", label: "Finding bugs / optimizing", icon: <CheckCircle />, status: "pending" },
-    { id: "finish", label: "Finishing code", icon: <Loader2 />, status: "pending" },
+    { id: "collect", label: "Information collected", icon: "🧑‍🧒", status: "pending" },
+    { id: "plan", label: "Planning structure", icon: "💡", status: "pending" },
+    { id: "code", label: "Making Python Cog", icon: "🔧", status: "pending" },
+    { id: "debug", label: "Finding bugs / optimizing", icon: "🐞", status: "pending" },
+    { id: "finish", label: "Finishing code", icon: "✅", status: "pending" },
   ]
 
   useEffect(() => {
@@ -224,24 +223,21 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
           const data = await response.json()
 
-          // Only add the final step response as a message with code
           if (step === 5 && data.response.includes("[2]")) {
             const aiMessage = parseAIResponse(data.response)
-            setMessages((prev) => [...prev, aiMessage])
-
             setGeneratingPluginData((prev) =>
               prev
                 ? {
                     ...prev,
-                    finalCode: aiMessage.code,
-                    finalPluginName: aiMessage.pluginName,
+                    code: aiMessage.code,
+                    pluginName: aiMessage.pluginName || "Generated Plugin",
                   }
                 : null,
             )
           }
 
-          // Wait for step timing
-          const stepTimings = [1200, 2000, 1800, 1500, 1000]
+          // Wait for step timing with realistic delays
+          const stepTimings = [1500, 2200, 2800, 2000, 1800]
           await new Promise((resolve) => setTimeout(resolve, stepTimings[step - 1]))
 
           setGenerationSteps((prev) =>
@@ -267,7 +263,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
           setShowPipeline(false)
           setGeneratingPluginData(null)
           setGenerationTimer(0)
-        }, 1000)
+        }, 2000)
       }
     } else {
       // Handle non-plugin requests normally
@@ -312,6 +308,34 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       } finally {
         setIsGenerating(false)
       }
+    }
+  }
+
+  const handleDeployPipelinePlugin = async () => {
+    if (!generatingPluginData?.code) return
+
+    try {
+      const response = await fetch("/api/user-ai-functions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: generatingPluginData.pluginName || "Untitled Plugin",
+          description: generatingPluginData.description,
+          code: generatingPluginData.code,
+          isComplex: false,
+        }),
+      })
+
+      if (response.ok) {
+        // Show success feedback
+        setTimeout(() => {
+          setShowPipeline(false)
+          setGeneratingPluginData(null)
+          setGenerationTimer(0)
+        }, 1000)
+      }
+    } catch (error) {
+      console.error("Error deploying plugin:", error)
     }
   }
 
@@ -578,8 +602,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
           {showPipeline && generatingPluginData && (
             <div className="flex justify-start">
-              <div className="max-w-[90%] bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-                {/* Header with status and timer */}
+              <div className="max-w-[90%] bg-black/30 backdrop-blur-xl border border-white/20 rounded-2xl overflow-hidden shadow-2xl">
                 <div className="px-6 py-4 border-b border-white/10">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -603,11 +626,10 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                   </div>
                 </div>
 
-                {/* Status bar with white-grey gradient */}
-                <div className="px-6 py-4">
-                  <div className="bg-gray-700/60 rounded-full h-2 overflow-hidden border border-white/10">
+                <div className="px-6 py-3 bg-gradient-to-r from-transparent via-white/5 to-transparent">
+                  <div className="bg-gray-800/60 rounded-full h-2 overflow-hidden border border-white/10">
                     <div
-                      className="h-2 rounded-full transition-all duration-700 ease-out bg-gradient-to-r from-gray-400 to-white shadow-sm"
+                      className="h-2 rounded-full transition-all duration-700 ease-out bg-gradient-to-r from-gray-400 via-gray-300 to-white shadow-lg"
                       style={{ width: `${Math.min(((currentStep + 1) / generationSteps.length) * 100, 100)}%` }}
                     />
                   </div>
@@ -617,24 +639,22 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                   </div>
                 </div>
 
-                {/* Pipeline steps with grey flat icons in connected dots */}
                 <div className="px-6 py-4">
                   <div className="flex items-center justify-between relative">
-                    {/* Connection line */}
-                    <div className="absolute top-4 left-4 right-4 h-px bg-gray-600/40"></div>
+                    <div className="absolute top-4 left-4 right-4 h-px bg-gray-600/30"></div>
 
                     {generationSteps.map((step, idx) => (
                       <div key={step.id} className="flex flex-col items-center space-y-2 relative z-10">
                         <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all duration-300 border-2 ${
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all duration-300 ${
                             step.status === "completed"
-                              ? "bg-gray-600 border-gray-500 text-white"
+                              ? "bg-gray-600 border-2 border-gray-500 text-white"
                               : step.status === "active"
-                                ? "bg-gray-700 border-gray-600 text-white animate-pulse"
-                                : "bg-gray-800 border-gray-700 text-gray-500"
+                                ? "bg-gray-500 border-2 border-gray-400 text-white animate-pulse"
+                                : "bg-gray-700 border-2 border-gray-600 text-gray-400"
                           }`}
                         >
-                          {step.icon}
+                          <span className="text-xs">{step.icon}</span>
                         </div>
                         <span
                           className={`text-[10px] text-center max-w-12 leading-tight transition-colors duration-300 ${
@@ -642,7 +662,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                               ? "text-gray-300 font-medium"
                               : step.status === "completed"
                                 ? "text-gray-400"
-                                : "text-gray-600"
+                                : "text-gray-500"
                           }`}
                         >
                           {step.label.split(" ")[0]}
@@ -652,44 +672,30 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                   </div>
                 </div>
 
-                {generatingPluginData.finalCode && (
-                  <div className="px-6 py-4 border-t border-white/10">
+                {generatingPluginData.code && currentStep === 4 && (
+                  <div className="border-t border-white/10 p-4">
                     <div className="mb-3">
-                      <h3 className="font-medium text-white text-sm">
-                        {generatingPluginData.finalPluginName || "Generated Plugin"}
+                      <h3 className="text-sm font-medium text-white mb-1">
+                        {generatingPluginData.pluginName || "Generated Plugin"}
                       </h3>
-                      <p className="text-xs text-gray-400">Plugin generated successfully</p>
+                      <p className="text-xs text-gray-400">Plugin generation completed</p>
                     </div>
 
-                    <div className="border border-white/10 rounded-xl bg-black/40 backdrop-blur-sm overflow-hidden">
-                      <div className="p-4 max-h-64 overflow-y-auto">
+                    <div className="mb-4 border border-white/10 rounded-xl bg-black/40 backdrop-blur-sm overflow-hidden">
+                      <div className="p-4 max-h-48 overflow-y-auto">
                         <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono">
-                          {generatingPluginData.finalCode}
+                          {generatingPluginData.code}
                         </pre>
                       </div>
                     </div>
 
-                    <div className="mt-4">
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          // Deploy the plugin from pipeline card
-                          if (generatingPluginData.finalCode) {
-                            const tempMessage = {
-                              id: `pipeline_${Date.now()}`,
-                              code: generatingPluginData.finalCode,
-                              pluginName: generatingPluginData.finalPluginName,
-                              content: generatingPluginData.description,
-                            }
-                            handleDeployPlugin(tempMessage.id)
-                          }
-                        }}
-                        className="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 h-10 font-medium transition-all duration-200"
-                      >
-                        <Play className="h-4 w-4 mr-2" />
-                        Deploy Plugin
-                      </Button>
-                    </div>
+                    <Button
+                      onClick={handleDeployPipelinePlugin}
+                      className="w-full bg-gradient-to-r from-white to-gray-100 text-black hover:from-gray-100 hover:to-white h-10 font-medium shadow-lg hover:shadow-xl transition-all duration-200"
+                    >
+                      <Play className="h-4 w-4 mr-2" />
+                      Deploy Plugin
+                    </Button>
                   </div>
                 )}
               </div>
