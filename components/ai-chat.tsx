@@ -221,8 +221,8 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
           const data = await response.json()
 
-          // Only add the final step response as a message
-          if (step === 3 && data.response.includes("[2]")) {
+          // Only add the final step response as a message with code
+          if (step === 5 && data.response.includes("[2]")) {
             const aiMessage = parseAIResponse(data.response)
             setMessages((prev) => [...prev, aiMessage])
           }

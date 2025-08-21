@@ -116,14 +116,15 @@ async function handleStepGeneration(
 - Error handling needed
 - Any dependencies required
 Respond with [1] followed by your planning thoughts.`,
-    3: `Generate the actual Discord.py cog code. Use proper cog structure with:
+    3: `Start generating the Discord.py cog code structure. Think through the implementation but don't return the code yet.
+Respond with [1] followed by your progress update about what you're working on.`,
+    4: "Review and optimize the code structure you've planned. Think about potential bugs and improvements. Respond with [1] followed by your analysis.",
+    5: `Now finalize and return the complete Discord.py cog code. Use proper cog structure with:
 - Class inheriting from commands.Cog
 - Proper command decorators
 - Error handling
 - Setup function at the end
 Respond with [1.1]plugin-name[1.1] followed by [2] and the complete Python code.`,
-    4: "Review the generated code for potential bugs, optimizations, or improvements. Respond with [1] followed by your analysis.",
-    5: "Finalize the code with any improvements if needed. If no changes needed, confirm the code is ready. Respond with [1] followed by your final assessment.",
   }
 
   const systemPrompt = `You are handling step ${step} of a 5-step Discord bot plugin generation process.
@@ -133,14 +134,16 @@ STEP ${step}: ${stepPrompts[step as keyof typeof stepPrompts]}
 User's original request: ${message}
 ${followUp ? `Existing code to work with: ${lastCode}` : ""}
 
+CRITICAL RULES:
+- Steps 1-4: Only return [1] with explanations/progress updates
+- Step 5 ONLY: Return [1.1]plugin-name[1.1] followed by [2] with complete code
+- Plugin names must be under 20 characters
+- Always include setup function: "async def setup(bot): await bot.add_cog(PluginName(bot))"
+
 MARKING SYSTEM:
-[1] - Questions/explanations
-[1.1] - Plugin name (max 20 characters)
-[2] - Plugin code
-[3] - Missing details request
-[4] - Complex multi-file tasks
-[5] - New chat suggestion
-[6] - Usage instructions`
+[1] - Questions/explanations/progress updates
+[1.1] - Plugin name (max 20 characters) - ONLY in step 5
+[2] - Plugin code - ONLY in step 5`
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
