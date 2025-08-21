@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { ArrowLeft, MessageSquare, Edit3, Loader2, Play, CheckCircle } from "lucide-react"
 import Image from "next/image"
 import type { UserAIFunction } from "@/lib/types"
+import type { JSX } from "react/jsx-runtime" // Import JSX to fix the undeclared variable error
 
 interface ChatMessage {
   id: string
@@ -28,7 +29,7 @@ interface AIChatProps {
 interface GenerationStep {
   id: string
   label: string
-  icon: string
+  icon: JSX.Element
   status: "pending" | "active" | "completed"
 }
 
@@ -51,17 +52,19 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     name: string
     description: string
     startTime: number
+    finalCode?: string
+    finalPluginName?: string
   } | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const pipelineSteps: GenerationStep[] = [
-    { id: "collect", label: "Information collected", icon: "🧑‍🧒", status: "pending" },
-    { id: "plan", label: "Planning structure", icon: "💡", status: "pending" },
-    { id: "code", label: "Making Python Cog", icon: "🔧", status: "pending" },
-    { id: "debug", label: "Finding bugs / optimizing", icon: "🐞", status: "pending" },
-    { id: "finish", label: "Finishing code", icon: "✅", status: "pending" },
+    { id: "collect", label: "Information collected", icon: <ArrowLeft />, status: "pending" },
+    { id: "plan", label: "Planning structure", icon: <Edit3 />, status: "pending" },
+    { id: "code", label: "Making Python Cog", icon: <Play />, status: "pending" },
+    { id: "debug", label: "Finding bugs / optimizing", icon: <CheckCircle />, status: "pending" },
+    { id: "finish", label: "Finishing code", icon: <Loader2 />, status: "pending" },
   ]
 
   useEffect(() => {
@@ -225,6 +228,16 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
           if (step === 5 && data.response.includes("[2]")) {
             const aiMessage = parseAIResponse(data.response)
             setMessages((prev) => [...prev, aiMessage])
+
+            setGeneratingPluginData((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    finalCode: aiMessage.code,
+                    finalPluginName: aiMessage.pluginName,
+                  }
+                : null,
+            )
           }
 
           // Wait for step timing
@@ -565,8 +578,9 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
           {showPipeline && generatingPluginData && (
             <div className="flex justify-start">
-              <div className="max-w-[90%] bg-gradient-to-br from-black/70 via-gray-900/50 to-black/70 backdrop-blur-2xl border border-white/30 rounded-2xl overflow-hidden shadow-2xl">
-                <div className="px-6 py-4 bg-gradient-to-r from-white/10 via-white/15 to-white/10 border-b border-white/20">
+              <div className="max-w-[90%] bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                {/* Header with status and timer */}
+                <div className="px-6 py-4 border-b border-white/10">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-8 relative">
@@ -589,10 +603,11 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                   </div>
                 </div>
 
-                <div className="px-6 py-4 bg-gradient-to-r from-transparent via-white/5 to-transparent">
-                  <div className="bg-gray-800/60 rounded-full h-2 overflow-hidden border border-white/10">
+                {/* Status bar with white-grey gradient */}
+                <div className="px-6 py-4">
+                  <div className="bg-gray-700/60 rounded-full h-2 overflow-hidden border border-white/10">
                     <div
-                      className="h-2 rounded-full transition-all duration-700 ease-out bg-gradient-to-r from-blue-500 via-purple-500 to-green-500 shadow-lg"
+                      className="h-2 rounded-full transition-all duration-700 ease-out bg-gradient-to-r from-gray-400 to-white shadow-sm"
                       style={{ width: `${Math.min(((currentStep + 1) / generationSteps.length) * 100, 100)}%` }}
                     />
                   </div>
@@ -602,34 +617,32 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                   </div>
                 </div>
 
+                {/* Pipeline steps with grey flat icons in connected dots */}
                 <div className="px-6 py-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between relative">
+                    {/* Connection line */}
+                    <div className="absolute top-4 left-4 right-4 h-px bg-gray-600/40"></div>
+
                     {generationSteps.map((step, idx) => (
-                      <div key={step.id} className="flex flex-col items-center space-y-2">
+                      <div key={step.id} className="flex flex-col items-center space-y-2 relative z-10">
                         <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-all duration-300 ${
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all duration-300 border-2 ${
                             step.status === "completed"
-                              ? "bg-green-500/20 border border-green-500/40 text-green-400 shadow-lg shadow-green-500/20"
+                              ? "bg-gray-600 border-gray-500 text-white"
                               : step.status === "active"
-                                ? "bg-blue-500/20 border border-blue-500/40 text-blue-400 animate-pulse shadow-lg shadow-blue-500/20"
-                                : "bg-gray-600/20 border border-gray-600/30 text-gray-500"
+                                ? "bg-gray-700 border-gray-600 text-white animate-pulse"
+                                : "bg-gray-800 border-gray-700 text-gray-500"
                           }`}
                         >
-                          {step.status === "completed" ? (
-                            "✓"
-                          ) : step.status === "active" ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <div className="w-2 h-2 rounded-full bg-gray-500" />
-                          )}
+                          {step.icon}
                         </div>
                         <span
                           className={`text-[10px] text-center max-w-12 leading-tight transition-colors duration-300 ${
                             step.status === "active"
-                              ? "text-blue-300 font-medium"
+                              ? "text-gray-300 font-medium"
                               : step.status === "completed"
-                                ? "text-green-300"
-                                : "text-gray-500"
+                                ? "text-gray-400"
+                                : "text-gray-600"
                           }`}
                         >
                           {step.label.split(" ")[0]}
@@ -638,6 +651,47 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                     ))}
                   </div>
                 </div>
+
+                {generatingPluginData.finalCode && (
+                  <div className="px-6 py-4 border-t border-white/10">
+                    <div className="mb-3">
+                      <h3 className="font-medium text-white text-sm">
+                        {generatingPluginData.finalPluginName || "Generated Plugin"}
+                      </h3>
+                      <p className="text-xs text-gray-400">Plugin generated successfully</p>
+                    </div>
+
+                    <div className="border border-white/10 rounded-xl bg-black/40 backdrop-blur-sm overflow-hidden">
+                      <div className="p-4 max-h-64 overflow-y-auto">
+                        <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono">
+                          {generatingPluginData.finalCode}
+                        </pre>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          // Deploy the plugin from pipeline card
+                          if (generatingPluginData.finalCode) {
+                            const tempMessage = {
+                              id: `pipeline_${Date.now()}`,
+                              code: generatingPluginData.finalCode,
+                              pluginName: generatingPluginData.finalPluginName,
+                              content: generatingPluginData.description,
+                            }
+                            handleDeployPlugin(tempMessage.id)
+                          }
+                        }}
+                        className="w-full bg-white/10 hover:bg-white/20 text-white border border-white/20 h-10 font-medium transition-all duration-200"
+                      >
+                        <Play className="h-4 w-4 mr-2" />
+                        Deploy Plugin
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
