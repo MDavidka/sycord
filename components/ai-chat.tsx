@@ -459,7 +459,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                       </Button>
                     </div>
                   ) : (
-                    <div className="max-w-[90%] bg-gradient-to-br from-[#101010]/80 via-[#0f0f0f]/80 to-[#101010]/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+                    <div className="max-w-[90%] bg-gradient-to-br from-black/60 via-gray-900/40 to-black/60 backdrop-blur-xl border border-white/20 rounded-2xl overflow-hidden shadow-2xl">
                       <div className="p-4">
                         <div className="flex items-center space-x-3 mb-3">
                           <div className="w-12 h-12 bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl flex items-center justify-center shadow-lg">
@@ -552,10 +552,21 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
             ))
           )}
 
+          {isGenerating && !showPipeline && (
+            <div className="flex justify-start">
+              <div className="bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm">Generating response...</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {showPipeline && generatingPluginData && (
             <div className="flex justify-start">
-              <div className="max-w-[90%] bg-gradient-to-br from-black/40 via-gray-900/20 to-black/40 backdrop-blur-xl border border-white/20 rounded-2xl overflow-hidden shadow-2xl">
-                <div className="px-6 py-4 bg-gradient-to-r from-white/5 via-white/10 to-white/5 border-b border-white/10">
+              <div className="max-w-[90%] bg-gradient-to-br from-black/70 via-gray-900/50 to-black/70 backdrop-blur-2xl border border-white/30 rounded-2xl overflow-hidden shadow-2xl">
+                <div className="px-6 py-4 bg-gradient-to-r from-white/10 via-white/15 to-white/10 border-b border-white/20">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-8 relative">
@@ -566,7 +577,7 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                         {generationSteps[currentStep]?.label || "Generating Plugin"}
                       </span>
                     </div>
-                    <div className="text-xs text-gray-400 font-mono bg-black/30 px-2 py-1 rounded-md">
+                    <div className="text-xs text-gray-300 font-mono bg-black/40 px-3 py-1 rounded-lg border border-white/10">
                       {Math.floor(generationTimer / 60000)
                         .toString()
                         .padStart(2, "0")}
@@ -578,10 +589,10 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                   </div>
                 </div>
 
-                <div className="px-6 py-3 bg-gradient-to-r from-transparent via-white/5 to-transparent">
-                  <div className="bg-gray-800/50 rounded-full h-2 overflow-hidden">
+                <div className="px-6 py-4 bg-gradient-to-r from-transparent via-white/5 to-transparent">
+                  <div className="bg-gray-800/60 rounded-full h-2 overflow-hidden border border-white/10">
                     <div
-                      className="h-2 rounded-full transition-all duration-500 ease-out bg-gradient-to-r from-blue-500 via-purple-500 to-green-500"
+                      className="h-2 rounded-full transition-all duration-700 ease-out bg-gradient-to-r from-blue-500 via-purple-500 to-green-500 shadow-lg"
                       style={{ width: `${Math.min(((currentStep + 1) / generationSteps.length) * 100, 100)}%` }}
                     />
                   </div>
@@ -596,24 +607,24 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                     {generationSteps.map((step, idx) => (
                       <div key={step.id} className="flex flex-col items-center space-y-2">
                         <div
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all duration-300 ${
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-all duration-300 ${
                             step.status === "completed"
-                              ? "bg-green-500/20 border border-green-500/40 text-green-400"
+                              ? "bg-green-500/20 border border-green-500/40 text-green-400 shadow-lg shadow-green-500/20"
                               : step.status === "active"
                                 ? "bg-blue-500/20 border border-blue-500/40 text-blue-400 animate-pulse shadow-lg shadow-blue-500/20"
-                                : "bg-gray-600/20 border border-gray-600/40 text-gray-500"
+                                : "bg-gray-600/20 border border-gray-600/30 text-gray-500"
                           }`}
                         >
                           {step.status === "completed" ? (
-                            <CheckCircle className="h-5 w-5" />
+                            "✓"
                           ) : step.status === "active" ? (
-                            <Loader2 className="h-5 w-5 animate-spin" />
+                            <Loader2 className="h-3 w-3 animate-spin" />
                           ) : (
-                            <div className="w-5 h-5 rounded-full bg-current opacity-50" />
+                            <div className="w-2 h-2 rounded-full bg-gray-500" />
                           )}
                         </div>
                         <span
-                          className={`text-xs text-center max-w-16 leading-tight transition-colors duration-300 ${
+                          className={`text-[10px] text-center max-w-12 leading-tight transition-colors duration-300 ${
                             step.status === "active"
                               ? "text-blue-300 font-medium"
                               : step.status === "completed"
@@ -621,22 +632,11 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                                 : "text-gray-500"
                           }`}
                         >
-                          {step.label}
+                          {step.label.split(" ")[0]}
                         </span>
                       </div>
                     ))}
                   </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {isGenerating && !showPipeline && (
-            <div className="flex justify-start">
-              <div className="bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
-                <div className="flex items-center space-x-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">Generating response...</span>
                 </div>
               </div>
             </div>
