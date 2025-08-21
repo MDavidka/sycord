@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft, MessageSquare, Eye, Edit3, Loader2, Play, CheckCircle } from "lucide-react"
+import { ArrowLeft, MessageSquare, Edit3, Loader2, Play, CheckCircle } from "lucide-react"
 import Image from "next/image"
 import type { UserAIFunction } from "@/lib/types"
 
@@ -398,104 +398,6 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {showPipeline && generatingPluginData && (
-            <div className="max-w-[90%] bg-gradient-to-br from-[#101010]/80 via-[#0f0f0f]/80 to-[#101010]/80 backdrop-blur-md border border-white/20 rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
-              <div className="border-b border-white/10 p-4 bg-gradient-to-r from-black/30 via-transparent to-black/30">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 relative">
-                      <Image src="/s1-logo.png" alt="S1" width={32} height={32} className="object-contain" />
-                      <span className="absolute -bottom-1 -right-1 text-[8px] text-gray-400 font-mono">s1-small</span>
-                    </div>
-                    <span className="text-sm font-medium">Generating Plugin</span>
-                  </div>
-                  <span className="text-xs text-gray-400 font-mono">
-                    {Math.floor(generationTimer / 60000)
-                      .toString()
-                      .padStart(2, "0")}
-                    :
-                    {Math.floor((generationTimer % 60000) / 1000)
-                      .toString()
-                      .padStart(2, "0")}
-                  </span>
-                </div>
-
-                <div className="space-y-3">
-                  {generationSteps.map((step, idx) => (
-                    <div key={step.id} className="flex items-center space-x-3">
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all duration-300 ${
-                          step.status === "completed"
-                            ? "bg-green-500/20 border border-green-500/40"
-                            : step.status === "active"
-                              ? "bg-blue-500/20 border border-blue-500/40 animate-pulse shadow-lg shadow-blue-500/20"
-                              : "bg-gray-600/20 border border-gray-600/40"
-                        }`}
-                      >
-                        {step.status === "completed" ? (
-                          <span className="text-green-400">✓</span>
-                        ) : (
-                          <span className={`${step.status === "active" ? "animate-pulse" : ""}`}>{step.icon}</span>
-                        )}
-                      </div>
-                      <span
-                        className={`text-sm transition-colors duration-300 ${
-                          step.status === "active"
-                            ? "text-blue-300 font-medium"
-                            : step.status === "completed"
-                              ? "text-green-300"
-                              : "text-gray-400"
-                        }`}
-                      >
-                        {step.label}
-                      </span>
-                      {step.status === "active" && (
-                        <div className="flex-1 flex justify-end">
-                          <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-4 bg-gray-700/50 rounded-full h-2 overflow-hidden">
-                  <div
-                    className={`h-2 rounded-full transition-all duration-500 ease-out ${
-                      currentStep === generationSteps.length - 1 && generationSteps[currentStep]?.status === "completed"
-                        ? "bg-gradient-to-r from-green-500 to-green-400 shadow-lg shadow-green-500/30"
-                        : "bg-gradient-to-r from-blue-500 to-green-500"
-                    }`}
-                    style={{ width: `${Math.min(((currentStep + 1) / generationSteps.length) * 100, 100)}%` }}
-                  />
-                </div>
-
-                <div className="mt-2 text-xs text-gray-400 text-center">
-                  Step {currentStep + 1} of {generationSteps.length} •{" "}
-                  {Math.round(((currentStep + 1) / generationSteps.length) * 100)}% Complete
-                </div>
-              </div>
-
-              <div className="p-4 bg-gradient-to-b from-transparent to-black/20">
-                <div className="flex items-center space-x-3 mb-3">
-                  <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
-                    <span className="text-xs font-mono">PY</span>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium">{generatingPluginData.name}</h3>
-                    <p className="text-xs text-gray-400">{generatingPluginData.description}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-center py-4">
-                  <div className="flex items-center space-x-2 text-gray-400">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">Generating code...</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
               <div className="w-16 h-16 relative mb-4 opacity-50">
@@ -557,14 +459,14 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                       </Button>
                     </div>
                   ) : (
-                    <div className="max-w-[90%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl overflow-hidden shadow-lg">
+                    <div className="max-w-[90%] bg-gradient-to-br from-[#101010]/80 via-[#0f0f0f]/80 to-[#101010]/80 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
                       <div className="p-4">
                         <div className="flex items-center space-x-3 mb-3">
-                          <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
-                            <span className="text-xs font-mono">PY</span>
+                          <div className="w-12 h-12 bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl flex items-center justify-center shadow-lg">
+                            <span className="text-xs font-mono text-white">PY</span>
                           </div>
                           <div className="flex-1">
-                            <h3 className="font-medium">{message.pluginName || "Generated Plugin"}</h3>
+                            <h3 className="font-medium text-white">{message.pluginName || "Generated Plugin"}</h3>
                             <p className="text-xs text-gray-400">{message.content}</p>
                             {message.type === "complex" && (
                               <div className="flex items-center mt-1">
@@ -575,87 +477,74 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                           </div>
                         </div>
 
-                        <div className="flex items-center space-x-2 mb-4">
+                        {(message.code || message.complexFiles) && (
+                          <div className="mb-4 border border-white/10 rounded-xl bg-black/40 backdrop-blur-sm overflow-hidden">
+                            {message.complexFiles ? (
+                              <div>
+                                <div className="flex border-b border-white/10">
+                                  {Object.keys(message.complexFiles).map((filename) => (
+                                    <button
+                                      key={filename}
+                                      onClick={() => setActiveTab((prev) => ({ ...prev, [message.id]: filename }))}
+                                      className={`px-4 py-2 text-sm border-r border-white/10 transition-colors ${
+                                        (activeTab[message.id] || Object.keys(message.complexFiles!)[0]) === filename
+                                          ? "bg-white/10 text-white"
+                                          : "text-gray-400 hover:text-white"
+                                      }`}
+                                    >
+                                      {filename}
+                                    </button>
+                                  ))}
+                                </div>
+                                <div className="p-4 max-h-64 overflow-y-auto">
+                                  <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono">
+                                    {
+                                      message.complexFiles[
+                                        activeTab[message.id] || Object.keys(message.complexFiles)[0]
+                                      ]
+                                    }
+                                  </pre>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="p-4 max-h-64 overflow-y-auto">
+                                <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono">
+                                  {message.code}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex items-center space-x-2">
                           {!deployedPlugins.has(message.id) ? (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setExpandedCode(expandedCode === message.id ? null : message.id)}
-                                className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => handleDeployPlugin(message.id)}
-                                className="flex-1 bg-white text-black hover:bg-gray-200 h-10"
-                              >
-                                <Play className="h-4 w-4 mr-2" />
-                                Deploy
-                              </Button>
-                            </>
+                            <Button
+                              size="sm"
+                              onClick={() => handleDeployPlugin(message.id)}
+                              className="flex-1 bg-gradient-to-r from-white to-gray-100 text-black hover:from-gray-100 hover:to-white h-10 font-medium shadow-lg hover:shadow-xl transition-all duration-200"
+                            >
+                              <Play className="h-4 w-4 mr-2" />
+                              Deploy Plugin
+                            </Button>
                           ) : (
                             <>
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => setExpandedCode(expandedCode === message.id ? null : message.id)}
-                                className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
                                 onClick={() => setEditingPlugin(editingPlugin === message.id ? null : message.id)}
-                                className="text-white hover:bg-white/10 bg-white/5 h-8 w-8 p-0"
+                                className="text-white hover:bg-white/10 bg-white/5 h-10 px-4"
                               >
-                                <Edit3 className="h-4 w-4" />
+                                <Edit3 className="h-4 w-4 mr-2" />
+                                Edit
                               </Button>
-                              <div className="flex-1 flex items-center justify-center">
+                              <div className="flex-1 flex items-center justify-center bg-green-500/10 border border-green-500/20 rounded-lg h-10">
                                 <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
-                                <span className="text-sm text-green-400">Deployed</span>
+                                <span className="text-sm text-green-400 font-medium">Deployed</span>
                               </div>
                             </>
                           )}
                         </div>
                       </div>
-
-                      {expandedCode === message.id && (message.code || message.complexFiles) && (
-                        <div className="border-t border-white/10 bg-black/40">
-                          {message.complexFiles ? (
-                            <div>
-                              <div className="flex border-b border-white/10">
-                                {Object.keys(message.complexFiles).map((filename) => (
-                                  <button
-                                    key={filename}
-                                    onClick={() => setActiveTab((prev) => ({ ...prev, [message.id]: filename }))}
-                                    className={`px-4 py-2 text-sm border-r border-white/10 ${
-                                      (activeTab[message.id] || Object.keys(message.complexFiles!)[0]) === filename
-                                        ? "bg-white/10 text-white"
-                                        : "text-gray-400 hover:text-white"
-                                    }`}
-                                  >
-                                    {filename}
-                                  </button>
-                                ))}
-                              </div>
-                              <div className="p-4">
-                                <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
-                                  {message.complexFiles[activeTab[message.id] || Object.keys(message.complexFiles)[0]]}
-                                </pre>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="p-4">
-                              <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono overflow-x-auto">
-                                {message.code}
-                              </pre>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
@@ -663,7 +552,86 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
             ))
           )}
 
-          {isGenerating && (
+          {showPipeline && generatingPluginData && (
+            <div className="flex justify-start">
+              <div className="max-w-[90%] bg-gradient-to-br from-black/40 via-gray-900/20 to-black/40 backdrop-blur-xl border border-white/20 rounded-2xl overflow-hidden shadow-2xl">
+                <div className="px-6 py-4 bg-gradient-to-r from-white/5 via-white/10 to-white/5 border-b border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 relative">
+                        <Image src="/s1-logo.png" alt="S1" width={32} height={32} className="object-contain" />
+                        <span className="absolute -bottom-1 -right-1 text-[8px] text-gray-400 font-mono">s1-small</span>
+                      </div>
+                      <span className="text-sm font-medium text-white">
+                        {generationSteps[currentStep]?.label || "Generating Plugin"}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-400 font-mono bg-black/30 px-2 py-1 rounded-md">
+                      {Math.floor(generationTimer / 60000)
+                        .toString()
+                        .padStart(2, "0")}
+                      :
+                      {Math.floor((generationTimer % 60000) / 1000)
+                        .toString()
+                        .padStart(2, "0")}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-6 py-3 bg-gradient-to-r from-transparent via-white/5 to-transparent">
+                  <div className="bg-gray-800/50 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="h-2 rounded-full transition-all duration-500 ease-out bg-gradient-to-r from-blue-500 via-purple-500 to-green-500"
+                      style={{ width: `${Math.min(((currentStep + 1) / generationSteps.length) * 100, 100)}%` }}
+                    />
+                  </div>
+                  <div className="mt-2 text-xs text-gray-400 text-center">
+                    Step {currentStep + 1} of {generationSteps.length} •{" "}
+                    {Math.round(((currentStep + 1) / generationSteps.length) * 100)}% Complete
+                  </div>
+                </div>
+
+                <div className="px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    {generationSteps.map((step, idx) => (
+                      <div key={step.id} className="flex flex-col items-center space-y-2">
+                        <div
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all duration-300 ${
+                            step.status === "completed"
+                              ? "bg-green-500/20 border border-green-500/40 text-green-400"
+                              : step.status === "active"
+                                ? "bg-blue-500/20 border border-blue-500/40 text-blue-400 animate-pulse shadow-lg shadow-blue-500/20"
+                                : "bg-gray-600/20 border border-gray-600/40 text-gray-500"
+                          }`}
+                        >
+                          {step.status === "completed" ? (
+                            <CheckCircle className="h-5 w-5" />
+                          ) : step.status === "active" ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                          ) : (
+                            <div className="w-5 h-5 rounded-full bg-current opacity-50" />
+                          )}
+                        </div>
+                        <span
+                          className={`text-xs text-center max-w-16 leading-tight transition-colors duration-300 ${
+                            step.status === "active"
+                              ? "text-blue-300 font-medium"
+                              : step.status === "completed"
+                                ? "text-green-300"
+                                : "text-gray-500"
+                          }`}
+                        >
+                          {step.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isGenerating && !showPipeline && (
             <div className="flex justify-start">
               <div className="bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
                 <div className="flex items-center space-x-2">
