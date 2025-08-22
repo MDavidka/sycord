@@ -27,7 +27,7 @@ const StatusMonitor = () => {
   }, [])
 
   return (
-    <div className="flex items-center justify-center p-4 text-gray-400 text-sm">
+    <div className="flex items-center justify-center p-4 text-gray-400 text-sm bg-black">
       {status === 'checking' && (
         <div className="flex items-center">
           <StatusDot color="bg-gray-500" />
