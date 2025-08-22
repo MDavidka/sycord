@@ -12,29 +12,24 @@ export async function GET() {
       headers: {
         Authorization: authHeader,
       },
-      // Use a short cache lifetime for status checks
       next: { revalidate: 30 },
     })
 
     if (!response.ok) {
-      // If the request to Cronitor fails, we can't know the status.
       return NextResponse.json({ status: 'unavailable' })
     }
 
     const data = await response.json()
 
-    // Based on Cronitor's likely API response, we check the 'passing' property.
-    // `true` means the monitor is OK. `false` means it's failing.
-    if (data.passing === true) {
+    // Per user instruction, check the 'latest_event.event' field.
+    if (data.latest_event && data.latest_event.event === 'req-ok') {
       return NextResponse.json({ status: 'available' })
-    } else if (data.passing === false) {
+    } else {
+      // If the event is not 'req-ok' or the object is missing,
+      // consider the server to be down.
       return NextResponse.json({ status: 'server_down' })
     }
-
-    // Fallback for any unexpected status from Cronitor.
-    return NextResponse.json({ status: 'unavailable' })
   } catch (error) {
-    // This catches network errors when trying to reach Cronitor.
     return NextResponse.json({ status: 'unavailable' })
   }
 }
