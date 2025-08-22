@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-const apiKey = '78cdb567ccc24c1891c1f43838e6b998'
+const apiKey = '13ef63f9a8d042d2aaa6ad9496f30dcb'
 const monitorKey = '8uNG0D'
 const cronitorApiUrl = `https://cronitor.io/api/monitors/${monitorKey}`
 
