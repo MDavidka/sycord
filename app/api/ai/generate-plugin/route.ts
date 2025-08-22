@@ -53,19 +53,19 @@ ${message}
 3.  **For Plugin Requests:**
     *   Generate **complete and functional** Python code for a discord.py cog.
     *   **Adhere to modern discord.py standards:**
-        *   Use `discord.ext.commands.Cog`.
-        *   Ensure proper `intents` are configured.
-        *   Implement asynchronous methods (`async def`).
+        *   Use \\\`discord.ext.commands.Cog\\\`.
+        *   Ensure proper \\\`intents\\\` are configured.
+        *   Implement asynchronous methods (\\\`async def\\\`).
         *   Include all necessary imports.
     *   **The code must be production-ready and executable.** It should only require a Discord bot token to run.
-    *   **Crucially, do not include any markdown formatting (e.g., \`\`\`python), explanations, or usage instructions in your response.** Output **only** the raw Python code.
+    *   **Crucially, do not include any markdown formatting (e.g., \\\`\\\`\\\`python), explanations, or usage instructions in your response.** Output **only** the raw Python code.
 
 **Example of a good plugin generation:**
 
 *User Request:* "Create a simple command that replies with 'pong'."
 
 *Your Response:*
-\\`\\`\\`python
+\\\`\\\`\\\`python
 import discord
 from discord.ext import commands
 
@@ -79,7 +79,7 @@ class Ping(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(Ping(bot))
-\\`\\`\\`
+\\\`\\\`\\\`
 `,
           },
           {
