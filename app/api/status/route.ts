@@ -1,41 +1,40 @@
 import { NextResponse } from 'next/server'
 
-// Keywords that are specific to Cloudflare error pages when the origin is down.
-const cloudflareErrorKeywords = [
-  'bad gateway',
-  'error 502',
-  'origin is unreachable',
-  'host error',
-]
+const apiKey = '78cdb567ccc24c1891c1f43838e6b998'
+const monitorKey = '8uNG0D'
+const cronitorApiUrl = `https://cronitor.io/api/monitors/${monitorKey}`
 
 export async function GET() {
   try {
-    const response = await fetch('https://admin.sycord.com', {
-      method: 'GET', // Use GET to retrieve page content
-      signal: AbortSignal.timeout(5000),
+    const authHeader = `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}`
+
+    const response = await fetch(cronitorApiUrl, {
+      headers: {
+        Authorization: authHeader,
+      },
+      // Use a short cache lifetime for status checks
+      next: { revalidate: 30 },
     })
 
-    const responseText = await response.text()
-    const lowerCaseText = responseText.toLowerCase()
+    if (!response.ok) {
+      // If the request to Cronitor fails, we can't know the status.
+      return NextResponse.json({ status: 'unavailable' })
+    }
 
-    // Check if the page content contains any of the Cloudflare error keywords.
-    const isCloudflareError = cloudflareErrorKeywords.some(keyword =>
-      lowerCaseText.includes(keyword)
-    )
+    const data = await response.json()
 
-    if (isCloudflareError) {
+    // Based on Cronitor's likely API response, we check the 'passing' property.
+    // `true` means the monitor is OK. `false` means it's failing.
+    if (data.passing === true) {
+      return NextResponse.json({ status: 'available' })
+    } else if (data.passing === false) {
       return NextResponse.json({ status: 'server_down' })
     }
 
-    // If the response is ok and it's not a Cloudflare error page, the site is available.
-    if (response.ok) {
-      return NextResponse.json({ status: 'available' })
-    }
-
-    // For any other non-ok response, treat as a general issue.
+    // Fallback for any unexpected status from Cronitor.
     return NextResponse.json({ status: 'unavailable' })
   } catch (error) {
-    // This catches network errors, timeouts, etc.
+    // This catches network errors when trying to reach Cronitor.
     return NextResponse.json({ status: 'unavailable' })
   }
 }
