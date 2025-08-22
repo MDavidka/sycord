@@ -12,16 +12,9 @@ const StatusMonitor = () => {
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        const response = await fetch('https://admin.sycord.com', {
-          method: 'HEAD',
-        })
-        if (response.ok) {
-          setStatus('available')
-        } else if (response.status === 502) {
-          setStatus('server_down')
-        } else {
-          setStatus('unavailable')
-        }
+        const response = await fetch('/api/status')
+        const data = await response.json()
+        setStatus(data.status)
       } catch (error) {
         setStatus('unavailable')
       }
