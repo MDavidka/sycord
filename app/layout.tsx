@@ -28,12 +28,12 @@ html {
 }
         `}</style>
       </head>
-      <body className="bg-black min-h-screen">
+      <body className="bg-black min-h-screen flex flex-col">
         <Providers>
           <Toaster />
-          {children}
+          <main className="flex-grow">{children}</main>
+          <StatusMonitor />
         </Providers>
-        <StatusMonitor />
       </body>
     </html>
   )

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { CheckCircle, XCircle, Loader } from 'lucide-react'
 
 const StatusMonitor = () => {
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null)
@@ -25,13 +26,22 @@ const StatusMonitor = () => {
   }, [])
 
   return (
-    <div className="fixed bottom-0 left-0 w-full bg-black text-white p-2 text-center text-sm">
+    <div className="flex items-center justify-center p-4 bg-gray-900 text-gray-400 text-sm">
       {isAvailable === null ? (
-        <span>Checking status...</span>
+        <div className="flex items-center">
+          <Loader className="animate-spin mr-2" size={16} />
+          <span>Checking status...</span>
+        </div>
       ) : isAvailable ? (
-        <span>🟢 | all systems functional</span>
+        <div className="flex items-center text-green-500">
+          <CheckCircle className="mr-2" size={16} />
+          <span>all systems functional</span>
+        </div>
       ) : (
-        <span>🔴 | our site having an issue</span>
+        <div className="flex items-center text-red-500">
+          <XCircle className="mr-2" size={16} />
+          <span>our site having an issue</span>
+        </div>
       )}
     </div>
   )
