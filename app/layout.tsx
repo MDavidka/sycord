@@ -4,6 +4,7 @@ import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 import Providers from './providers'
 import { Toaster } from 'react-hot-toast'
+import StatusMonitor from '@/components/status-monitor'
 
 export const metadata: Metadata = {
   title: 'all in one bot',
@@ -32,6 +33,7 @@ html {
           <Toaster />
           {children}
         </Providers>
+        <StatusMonitor />
       </body>
     </html>
   )
