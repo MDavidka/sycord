@@ -7,18 +7,23 @@ const StatusDot = ({ color }: { color: string }) => (
 )
 
 const StatusMonitor = () => {
-  const [isAvailable, setIsAvailable] = useState<boolean | null>(null)
+  const [status, setStatus] = useState<'checking' | 'available' | 'unavailable' | 'server_down'>('checking')
 
   useEffect(() => {
     const checkStatus = async () => {
       try {
         const response = await fetch('https://admin.sycord.com', {
           method: 'HEAD',
-          mode: 'no-cors',
         })
-        setIsAvailable(true)
+        if (response.ok) {
+          setStatus('available')
+        } else if (response.status === 502) {
+          setStatus('server_down')
+        } else {
+          setStatus('unavailable')
+        }
       } catch (error) {
-        setIsAvailable(false)
+        setStatus('unavailable')
       }
     }
 
@@ -29,20 +34,22 @@ const StatusMonitor = () => {
   }, [])
 
   return (
-    <div className="flex items-center justify-center p-4 bg-transparent text-gray-400 text-sm">
-      {isAvailable === null ? (
+    <div className="flex items-center justify-center p-4 text-gray-400 text-sm">
+      {status === 'checking' && (
         <div className="flex items-center">
           <StatusDot color="bg-gray-500" />
           <span>Checking status...</span>
         </div>
-      ) : isAvailable ? (
+      )}
+      {status === 'available' && (
         <div className="flex items-center">
           <StatusDot color="bg-green-500" />
           <span>all systems functional</span>
         </div>
-      ) : (
+      )}
+      {(status === 'unavailable' || status === 'server_down') && (
         <div className="flex items-center">
-          <StatusDot color="bg-yellow-500" />
+          <StatusDot color="bg-orange-500" />
           <span>our site having an issue</span>
         </div>
       )}
