@@ -24,6 +24,16 @@
     --input: 0 0% 14.9%;
     --ring: 0 0% 83.1%;
     --radius: 0.75rem;
+
+    /* Added design tokens for AI chat interface */
+    --chat-primary: 31 41% 11%;
+    --chat-primary-foreground: 0 0% 98%;
+    --chat-accent: 262 83% 58%;
+    --chat-accent-foreground: 0 0% 98%;
+    --chat-glass: 0 0% 0% / 0.4;
+    --chat-glass-border: 0 0% 100% / 0.1;
+    --chat-input: 240 10% 9%;
+    --chat-muted: 215 28% 42%;
   }
 }
 
@@ -36,13 +46,14 @@
     background: linear-gradient(135deg, #000000 0%, #0a0a0a 50%, #000000 100%) !important;
     min-height: 100vh;
   }
-  
+
   html {
     background: #000000 !important;
   }
-  
+
   /* Ensure all containers maintain dark background */
-  #__next, [data-nextjs-scroll-focus-boundary] {
+  #__next,
+  [data-nextjs-scroll-focus-boundary] {
     background: transparent !important;
   }
 }
@@ -62,6 +73,51 @@
 
   .mobile-block {
     @apply p-4 rounded-xl bg-black/60 border border-white/10 backdrop-blur-sm;
+  }
+
+  /* Added chat-specific component classes */
+  .chat-container {
+    @apply bg-[hsl(var(--chat-glass))] backdrop-blur-xl border border-[hsl(var(--chat-glass-border))] rounded-2xl;
+  }
+
+  .chat-message {
+    @apply p-4 rounded-xl backdrop-blur-sm border transition-all duration-200;
+  }
+
+  .chat-message-user {
+    @apply bg-[hsl(var(--chat-accent))]/10 border-[hsl(var(--chat-accent))]/20 ml-8;
+  }
+
+  .chat-message-ai {
+    @apply bg-[hsl(var(--chat-primary))]/20 border-[hsl(var(--chat-glass-border))] mr-8;
+  }
+
+  .chat-input-area {
+    @apply bg-[hsl(var(--chat-input))] backdrop-blur-sm border-t border-[hsl(var(--chat-glass-border))];
+  }
+
+  .mark-indicator {
+    @apply inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold;
+  }
+
+  .mark-question {
+    @apply bg-blue-500/20 text-blue-400 border border-blue-500/30;
+  }
+
+  .mark-code {
+    @apply bg-green-500/20 text-green-400 border border-green-500/30;
+  }
+
+  .mark-missing {
+    @apply bg-yellow-500/20 text-yellow-400 border border-yellow-500/30;
+  }
+
+  .mark-confirmation {
+    @apply bg-purple-500/20 text-purple-400 border border-purple-500/30;
+  }
+
+  .mark-error {
+    @apply bg-red-500/20 text-red-400 border border-red-500/30;
   }
 }
 
@@ -92,5 +148,33 @@
   to {
     transform: translateY(0);
     opacity: 1;
+  }
+}
+
+/* Added pipeline animation keyframes */
+.animate-pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 5px rgba(139, 92, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
+  }
+}
+
+.animate-progress {
+  animation: progress 1s ease-out forwards;
+}
+
+@keyframes progress {
+  from {
+    width: 0%;
+  }
+  to {
+    width: var(--progress-width);
   }
 }

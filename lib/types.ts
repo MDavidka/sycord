@@ -1,3 +1,4 @@
+import type React from "react"
 import type { ObjectId } from "mongodb"
 
 export interface User {
@@ -231,4 +232,71 @@ export interface DiscordGuild {
   owner: boolean
   permissions: string
   approximate_member_count?: number
+}
+
+export interface AIPluginSession {
+  _id?: ObjectId | string
+  sessionId: string
+  userId: string
+  name: string
+  description?: string
+  status: "active" | "completed" | "abandoned"
+  currentStep: number
+  totalSteps: number
+  pipeline: PipelineStep[]
+  messages: AIPluginMessage[]
+  generatedCode?: string
+  pluginMetadata?: PluginMetadata
+  created_at: string
+  last_updated: string
+  followUpEnforced?: boolean
+}
+
+export interface PipelineStep {
+  id: string
+  name: string
+  status: "pending" | "in-progress" | "completed" | "error"
+  startTime?: string
+  endTime?: string
+  progress: number
+}
+
+export interface AIPluginMessage {
+  id: string
+  role: "user" | "ai" | "system"
+  content: string
+  marks?: MessageMark[]
+  timestamp: string
+  stepId?: string
+}
+
+export interface MessageMark {
+  type: "question" | "code" | "missing_detail" | "confirmation" | "error"
+  markNumber: number
+  content: string
+  resolved?: boolean
+}
+
+export interface PluginMetadata {
+  name: string
+  description: string
+  category: string
+  permissions: string[]
+  dependencies: string[]
+  version: string
+  author: string
+}
+
+export interface FrostedGlassProps {
+  children: React.ReactNode
+  className?: string
+  blur?: "sm" | "md" | "lg" | "xl"
+  opacity?: number
+  border?: boolean
+}
+
+export interface AnimatedTaskRowProps {
+  step: PipelineStep
+  isActive: boolean
+  onComplete?: () => void
 }
