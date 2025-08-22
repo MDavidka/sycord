@@ -60,7 +60,10 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       const response = await fetch("/api/ai/generate-plugin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: inputValue }),
+        body: JSON.stringify({
+          message: inputValue,
+          history: messages.map((m) => ({ role: m.role, content: m.content })),
+        }),
       })
 
       if (!response.ok) throw new Error("Failed to generate response")

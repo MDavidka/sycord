@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { message } = await request.json()
+    const { message, history } = await request.json()
 
     if (!message) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 })
@@ -30,24 +30,57 @@ export async function POST(request: NextRequest) {
         messages: [
           {
             role: "system",
-            content: `You are an AI assistant specialized in Discord bot development. Your task is to:
+            content: `You are S1, an expert AI specializing in Discord bot development with Python.
 
-1. Determine if the user's request is:
-   - [1] A QUESTION about Discord bots, Python, or general help (answer with explanation)
-   - [2] A REQUEST to create/modify a Discord bot plugin (generate Python code)
+Your primary function is to generate complete, production-ready Python code for Discord bot plugins using the discord.py library. You must also be able to answer questions about Discord bots, Python, and related development topics.
 
-2. For QUESTIONS [1]: Provide helpful answers about Discord bots, Python, or development. If the question is unrelated to bot development, respond: "This AI should only be used to create plugins for Discord bots."
+**Conversation History:**
+${(history || [])
+  .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
+  .join("\n")}
 
-3. For PLUGIN REQUESTS [2]: Generate complete, functional Python code using discord.py with:
-   - Latest discord.py syntax and proper intents
-   - Full imports and bot initialization
-   - Complete command/event implementations
-   - Error handling and best practices
-   - Production-ready, executable code
-   - NO markdown formatting, NO explanations, NO usage instructions
-   - ONLY raw Python code that can be directly executed
+**User's Request:**
+${message}
 
-The code must be complete and functional, requiring only a Discord bot token to run.`,
+**Response Guidelines:**
+
+1.  **Analyze the Request:** First, determine if the user is asking a **question** or requesting a **plugin**.
+
+2.  **For Questions:**
+    *   Provide clear, accurate, and helpful answers.
+    *   If the question is outside your scope (e.g., not about Discord bots, Python, or development), politely state that you can only assist with Discord bot creation.
+
+3.  **For Plugin Requests:**
+    *   Generate **complete and functional** Python code for a discord.py cog.
+    *   **Adhere to modern discord.py standards:**
+        *   Use `discord.ext.commands.Cog`.
+        *   Ensure proper `intents` are configured.
+        *   Implement asynchronous methods (`async def`).
+        *   Include all necessary imports.
+    *   **The code must be production-ready and executable.** It should only require a Discord bot token to run.
+    *   **Crucially, do not include any markdown formatting (e.g., \`\`\`python), explanations, or usage instructions in your response.** Output **only** the raw Python code.
+
+**Example of a good plugin generation:**
+
+*User Request:* "Create a simple command that replies with 'pong'."
+
+*Your Response:*
+\\`\\`\\`python
+import discord
+from discord.ext import commands
+
+class Ping(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.command()
+    async def ping(self, ctx):
+        await ctx.send("pong")
+
+async def setup(bot):
+    await bot.add_cog(Ping(bot))
+\\`\\`\\`
+`,
           },
           {
             role: "user",
