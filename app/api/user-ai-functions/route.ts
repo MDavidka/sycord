@@ -161,26 +161,33 @@ export async function PUT(request: NextRequest) {
     }
 
     if (action === "addCodeVersion") {
-      // Add new code version to chat session
+      const { newMessages } = body
+      // Add new code version and optionally new messages to chat session
+      const updateQuery: any = {
+        $push: {
+          "chatSessions.$.codeVersions": newCodeVersion,
+        },
+        $set: {
+          "chatSessions.$.last_updated": new Date().toISOString(),
+          code: newCodeVersion.code,
+          usageInstructions: newCodeVersion.usageInstructions,
+        },
+      }
+
+      if (newMessages && Array.isArray(newMessages) && newMessages.length > 0) {
+        updateQuery.$push["chatSessions.$.messages"] = { $each: newMessages }
+      }
+
       const result = await functionsCollection.updateOne(
         {
           _id: new (await import("mongodb")).ObjectId(functionId),
           created_by: session.user.email,
           "chatSessions.id": chatSessionId,
         },
-        {
-          $push: {
-            "chatSessions.$.codeVersions": newCodeVersion,
-          },
-          $set: {
-            "chatSessions.$.last_updated": new Date().toISOString(),
-            code: newCodeVersion.code,
-            usageInstructions: newCodeVersion.usageInstructions,
-          },
-        },
+        updateQuery,
       )
 
-      return NextResponse.json({ message: "Code version added successfully" })
+      return NextResponse.json({ message: "Code version and messages added successfully" })
     }
 
     if (action === "createNewChat") {

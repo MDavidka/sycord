@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft, MessageSquare, Send, Save } from "lucide-react"
 import Image from "next/image"
 import type { UserAIFunction } from "@/lib/types"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface ChatMessage {
   id: string
@@ -46,6 +47,12 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     thumbnailUrl: "",
     profileUrl: "",
   })
+  const [isDeployed, setIsDeployed] = useState(false)
+  const [usageInstructions, setUsageInstructions] = useState("")
+  const [requestedDetails, setRequestedDetails] = useState<string[]>([])
+  const [detailAnswers, setDetailAnswers] = useState<Record<string, string>>({})
+  const [originalPrompt, setOriginalPrompt] = useState("")
+  const [multiFileData, setMultiFileData] = useState<{ filename: string; code: string }[] | null>(null)
 
   const [pipeline, setPipeline] = useState<PipelineState>({
     isActive: false,
@@ -71,14 +78,37 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
 
   const [elapsedTime, setElapsedTime] = useState(0)
   useEffect(() => {
-    let interval: NodeJS.Timeout
+    let timerInterval: NodeJS.Timeout
     if (pipeline.isActive) {
-      interval = setInterval(() => {
+      timerInterval = setInterval(() => {
         setElapsedTime(Date.now() - pipeline.startTime)
       }, 100)
     }
-    return () => clearInterval(interval)
+    return () => clearInterval(timerInterval)
   }, [pipeline.isActive, pipeline.startTime])
+
+  // Effect to simulate pipeline progress on the frontend
+  useEffect(() => {
+    let stepInterval: NodeJS.Timeout
+    if (pipeline.isActive && pipeline.currentStep < 4) {
+      stepInterval = setInterval(() => {
+        setPipeline(prev => {
+          if (prev.currentStep < 4) {
+            const nextStep = prev.currentStep + 1
+            return {
+              ...prev,
+              currentStep: nextStep,
+              steps: prev.steps.map(s =>
+                s.id === nextStep ? { ...s, status: "active" } : s.id < nextStep ? { ...s, status: "completed" } : s,
+              ),
+            }
+          }
+          return prev
+        })
+      }, 1500) // Simulate each step taking 1.5 seconds
+    }
+    return () => clearInterval(stepInterval)
+  }, [pipeline.isActive, pipeline.currentStep])
 
   const formatTime = (ms: number) => {
     const seconds = Math.floor(ms / 1000)
@@ -87,44 +117,87 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`
   }
 
-  const executeStep = async (step: number, userMessage: string) => {
+  const [activeFunction, setActiveFunction] = useState<UserAIFunction | null>(null)
+
+  useEffect(() => {
+    if (currentAIFunction) {
+      const currentSession = currentAIFunction.chatSessions?.find(
+        (s) => s.id === currentAIFunction.currentChatId,
+      )
+      // @ts-ignore
+      setMessages(currentSession?.messages || [])
+      setActiveFunction(currentAIFunction)
+    }
+  }, [currentAIFunction])
+
+  const handleApiResponse = (aiResponseContent: string) => {
+    // --- Mark Parsing ---
+    const usageMatch = aiResponseContent.match(/\[6\]([\s\S]*?)\[6\]/s)
+    const pluginNameMatch = aiResponseContent.match(/\[1\.1\](.*?)\[1\.1\]/s)
+    const detailMatch = aiResponseContent.matchAll(/\[3\](.*?)\[3\]/g)
+    const multiFileMatch = aiResponseContent.matchAll(/\[4\.\d+\]\s*(.*?)\s*\n([\s\S]*?)(?=\[4\.\d+\]|$)/g)
+
+    const files = Array.from(multiFileMatch, m => ({ filename: m[1].trim(), code: m[2].trim() }))
+
+    if (files.length > 0) {
+      setMultiFileData(files)
+      setPipeline(prev => ({ ...prev, pluginCode: "" }))
+    } else {
+      const codeMatch = aiResponseContent.match(/\[2\]([\s\S]*?)\[2\]/s)
+      setMultiFileData(null)
+      setPipeline(prev => ({ ...prev, pluginCode: codeMatch ? codeMatch[1].trim() : "" }))
+    }
+
+    const detailsToRequest = Array.from(detailMatch, m => m[1])
+    if (detailsToRequest.length > 0) {
+      setRequestedDetails(detailsToRequest)
+      setDetailAnswers(detailsToRequest.reduce((acc, detail) => ({ ...acc, [detail]: "" }), {}))
+    } else {
+      // Only add non-detail-requesting messages to chat
+      const aiMessage: ChatMessage = {
+        id: `msg_${Date.now()}_ai`,
+        role: "ai",
+        content: aiResponseContent,
+        type: "plugin",
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, aiMessage])
+    }
+
+    setUsageInstructions(usageMatch ? usageMatch[1].trim() : "")
+
+    setPipeline((prev) => ({
+      ...prev,
+      isActive: false,
+      currentStep: detailsToRequest.length > 0 ? 1 : 5,
+      pluginName: pluginNameMatch ? pluginNameMatch[1].trim() : prev.pluginName,
+      steps: prev.steps.map(s => ({ ...s, status: detailsToRequest.length > 0 ? 'pending' : 'completed' })),
+    }))
+  }
+
+  const handleSubmitDetails = async () => {
+    setIsGenerating(true)
+    setRequestedDetails([])
+    setPipeline(prev => ({ ...prev, isActive: true, currentStep: 1, startTime: Date.now() }))
+
     try {
+      const apiBody: any = { message: originalPrompt, details: detailAnswers }
+      if (activeFunction) {
+        apiBody.functionId = activeFunction._id
+        apiBody.chatSessionId = activeFunction.currentChatId
+      }
       const response = await fetch("/api/ai/generate-plugin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage, step }),
+        body: JSON.stringify(apiBody),
       })
-
-      if (!response.ok) throw new Error("Failed to generate response")
-
+      if (!response.ok) throw new Error(`API error: ${response.status}`)
       const data = await response.json()
-
-      // Update pipeline step status
-      setPipeline((prev) => ({
-        ...prev,
-        steps: prev.steps.map((s) => (s.id === step ? { ...s, status: "completed" } : s)),
-        currentStep: step,
-      }))
-
-      // Parse response for step 5 (final step)
-      if (step === 5 && data.response) {
-        const pluginNameMatch = data.response.match(/\[1\.1\]\s*(.+?)(?:\n|\[2\])/s)
-        const codeMatch = data.response.match(/\[2\]\s*([\s\S]+)/)
-
-        if (pluginNameMatch && codeMatch) {
-          setPipeline((prev) => ({
-            ...prev,
-            pluginName: pluginNameMatch[1].trim(),
-            pluginCode: codeMatch[1].trim(),
-            isActive: false,
-          }))
-        }
-      }
-
-      return data
+      handleApiResponse(data.response || "")
     } catch (error) {
-      console.error(`Error in step ${step}:`, error)
-      throw error
+      // ... error handling
+    } finally {
+      setIsGenerating(false)
     }
   }
 
@@ -138,98 +211,57 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
       type: "normal",
       timestamp: new Date(),
     }
-
     setMessages((prev) => [...prev, userMessage])
+    if (!activeFunction) { // This is the start of a new plugin conversation
+      setOriginalPrompt(inputValue)
+    }
     setInputValue("")
     setIsGenerating(true)
 
-    const isPluginRequest =
-      inputValue.toLowerCase().includes("plugin") ||
-      inputValue.toLowerCase().includes("command") ||
-      inputValue.toLowerCase().includes("bot") ||
-      inputValue.toLowerCase().includes("create") ||
-      inputValue.toLowerCase().includes("make")
+    setPipeline((prev) => ({
+      ...prev,
+      isActive: true,
+      currentStep: 1,
+      startTime: Date.now(),
+      steps: prev.steps.map(s => ({ ...s, status: 'pending' })),
+    }))
 
-    if (isPluginRequest) {
-      // Initialize pipeline
-      setPipeline((prev) => ({
-        ...prev,
-        isActive: true,
-        currentStep: 1,
-        startTime: Date.now(),
-        steps: prev.steps.map((s, i) => ({
-          ...s,
-          status: i === 0 ? "active" : "pending",
-        })),
-        pluginName: "",
-        pluginCode: "",
-      }))
-
-      try {
-        // Execute steps with delays
-        for (let step = 1; step <= 5; step++) {
-          // Update current step to active
-          setPipeline((prev) => ({
-            ...prev,
-            currentStep: step,
-            steps: prev.steps.map((s) =>
-              s.id === step ? { ...s, status: "active" } : s.id < step ? { ...s, status: "completed" } : s,
-            ),
-          }))
-
-          await executeStep(step, inputValue)
-
-          // Add delay between steps (except last step)
-          if (step < 5) {
-            await new Promise((resolve) => setTimeout(resolve, 2000 + Math.random() * 1000))
-          }
-        }
-      } catch (error) {
-        console.error("Pipeline error:", error)
-        setPipeline((prev) => ({ ...prev, isActive: false }))
+    try {
+      const apiBody: any = { message: inputValue }
+      if (activeFunction) {
+        apiBody.functionId = activeFunction._id
+        apiBody.chatSessionId = activeFunction.currentChatId
       }
-    } else {
-      // Handle regular questions
-      try {
-        const response = await fetch("/api/ai/generate-plugin", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: inputValue, step: 1 }),
-        })
 
-        if (!response.ok) throw new Error("Failed to generate response")
+      const response = await fetch("/api/ai/generate-plugin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(apiBody),
+      })
 
-        const data = await response.json()
-        const content = data.response || ""
-        const displayContent = content.replace(/^\[1\]\s*/, "")
+      if (!response.ok) throw new Error(`API error: ${response.status}`)
+      const data = await response.json()
+      handleApiResponse(data.response || "")
 
-        const aiMessage: ChatMessage = {
-          id: `msg_${Date.now()}_ai`,
-          role: "ai",
-          content: displayContent,
-          type: "question",
-          timestamp: new Date(),
-        }
-
-        setMessages((prev) => [...prev, aiMessage])
-      } catch (error) {
-        console.error("Error:", error)
-        const errorMessage: ChatMessage = {
-          id: `msg_${Date.now()}_error`,
-          role: "ai",
-          content: "Sorry, I encountered an error. Please try again.",
-          type: "question",
-          timestamp: new Date(),
-        }
-        setMessages((prev) => [...prev, errorMessage])
+    } catch (error) {
+      console.error("Error sending message:", error)
+      const errorMessage: ChatMessage = {
+        id: `msg_${Date.now()}_error`,
+        role: "ai",
+        content: "Sorry, I encountered an error. Please try again.",
+        type: "question",
+        timestamp: new Date(),
       }
+      setMessages((prev) => [...prev, errorMessage])
+      setPipeline(prev => ({ ...prev, isActive: false }))
     }
 
     setIsGenerating(false)
   }
 
   const handleSavePlugin = async () => {
-    if (!pipeline.pluginCode || !pipeline.pluginName) return
+    const codeToSave = multiFileData ? multiFileData[0].code : pipeline.pluginCode
+    if (!codeToSave || !pipeline.pluginName) return
 
     try {
       const response = await fetch("/api/user-ai-functions", {
@@ -238,26 +270,24 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
         body: JSON.stringify({
           name: pipeline.pluginName,
           description: pluginMetadata.description || "AI Generated Discord Bot Plugin",
-          code: pipeline.pluginCode,
+          code: codeToSave,
+          usageInstructions: usageInstructions,
           thumbnailUrl: pluginMetadata.thumbnailUrl,
           profileUrl: pluginMetadata.profileUrl,
         }),
       })
 
       if (response.ok) {
+        const data = await response.json()
+        setActiveFunction(data.function)
+        setIsDeployed(true)
         setPluginMetadata({ name: "", description: "", thumbnailUrl: "", profileUrl: "" })
-        // Reset pipeline after saving
-        setPipeline((prev) => ({
-          ...prev,
-          isActive: false,
-          currentStep: 0,
-          steps: prev.steps.map((s) => ({ ...s, status: "pending" })),
-          pluginName: "",
-          pluginCode: "",
-        }))
+      } else {
+        throw new Error("Failed to save plugin")
       }
     } catch (error) {
       console.error("Error saving plugin:", error)
+      // TODO: Show an error toast to the user
     }
   }
 
@@ -331,18 +361,31 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
               {messages.map((message) => (
                 <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                   {message.role === "user" ? (
-                    <div className="max-w-[80%] bg-white/90 backdrop-blur-sm text-gray-900 rounded-2xl px-4 py-3 shadow-lg">
+                    <div className="max-w-[80%] bg-blue-500 text-white rounded-2xl px-4 py-2.5 shadow-md">
                       <p className="text-sm leading-relaxed">{message.content}</p>
                     </div>
                   ) : (
-                    <div className="max-w-[80%] bg-[#101010]/60 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
-                      <p className="text-sm leading-relaxed">{message.content}</p>
+                    <div
+                      className="max-w-[80%] bg-black/20 backdrop-blur-lg border border-white/10 rounded-2xl px-4 py-2.5 shadow-lg"
+                      style={{
+                        background: "rgba(0, 0, 0, 0.18)",
+                        backdropFilter: "blur(14px) saturate(120%)",
+                      }}
+                    >
+                      <p className="text-sm leading-relaxed text-gray-200">{message.content}</p>
                     </div>
                   )}
                 </div>
               ))}
 
-              {(pipeline.isActive || pipeline.pluginCode) && (
+              {usageInstructions && (
+                <div className="max-w-[90%] mx-auto my-2 p-4 bg-blue-900/20 border border-blue-500/30 rounded-2xl text-sm text-gray-300">
+                  <h4 className="font-semibold text-white mb-2">Usage Instructions</h4>
+                  <p className="whitespace-pre-wrap">{usageInstructions}</p>
+                </div>
+              )}
+
+              {(pipeline.isActive || pipeline.pluginCode || multiFileData) && (
                 <div className="max-w-[90%] mx-auto">
                   <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/20 rounded-2xl overflow-hidden shadow-2xl">
                     {/* Header with status and timer */}
@@ -386,65 +429,66 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
                         {pipeline.steps.map((step, index) => (
                           <div key={step.id} className="flex flex-col items-center">
                             <div
-                              className={`
-                              w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all duration-300
-                              ${
+                              className={`w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all duration-300 ${
                                 step.status === "completed"
                                   ? "bg-white/20 text-white"
                                   : step.status === "active"
                                     ? "bg-white/30 text-white animate-pulse"
                                     : "bg-gray-600/50 text-gray-400"
-                              }
-                            `}
+                              }`}
                             >
                               {step.icon}
                             </div>
-                            {index < pipeline.steps.length - 1 && (
-                              <div
-                                className={`
-                                absolute w-16 h-0.5 mt-5 transition-all duration-300
-                                ${step.status === "completed" ? "bg-white/30" : "bg-gray-600/30"}
-                              `}
-                                style={{ left: `${index * 20 + 10}%` }}
-                              />
-                            )}
                           </div>
                         ))}
                       </div>
                     </div>
 
                     {/* Plugin content when completed */}
-                    {pipeline.pluginCode && (
-                      <div className="border-t border-white/10">
-                        <div className="p-4">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
-                                <span className="text-xs font-mono text-white">PY</span>
-                              </div>
-                              <div>
-                                <h3 className="font-medium text-white">{pipeline.pluginName}</h3>
-                                <p className="text-xs text-gray-400">Discord Bot Plugin</p>
-                              </div>
+                    {(pipeline.pluginCode || multiFileData) && (
+                      <div className="border-t border-white/10 p-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
+                              <span className="text-xs font-mono text-white">PY</span>
                             </div>
-                            <div className="flex space-x-2">
-                              <Button
-                                size="sm"
-                                onClick={handleSavePlugin}
-                                className="bg-white text-black hover:bg-gray-200 h-8 px-3"
-                              >
-                                <Save className="h-4 w-4 mr-1" />
-                                Deploy
-                              </Button>
+                            <div>
+                              <h3 className="font-medium text-white">{pipeline.pluginName}</h3>
+                              <p className="text-xs text-gray-400">Discord Bot Plugin</p>
                             </div>
                           </div>
-
-                          <div className="bg-black/40 rounded-lg p-4 max-h-64 overflow-y-auto">
-                            <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono">
-                              {pipeline.pluginCode}
-                            </pre>
+                          <div className="flex space-x-2">
+                            <Button
+                              size="sm"
+                              onClick={handleSavePlugin}
+                              className="bg-white text-black hover:bg-gray-200 h-8 px-3 disabled:bg-green-500 disabled:text-white"
+                              disabled={isDeployed}
+                            >
+                              {isDeployed ? "✓ Deployed" : <><Save className="h-4 w-4 mr-1" /> Deploy</>}
+                            </Button>
                           </div>
                         </div>
+
+                        {multiFileData ? (
+                          <Tabs defaultValue={multiFileData[0].filename}>
+                            <TabsList>
+                              {multiFileData.map(file => (
+                                <TabsTrigger key={file.filename} value={file.filename}>{file.filename}</TabsTrigger>
+                              ))}
+                            </TabsList>
+                            {multiFileData.map(file => (
+                              <TabsContent key={file.filename} value={file.filename}>
+                                <div className="bg-black/40 rounded-lg p-4 max-h-64 overflow-y-auto">
+                                  <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono">{file.code}</pre>
+                                </div>
+                              </TabsContent>
+                            ))}
+                          </Tabs>
+                        ) : (
+                          <div className="bg-black/40 rounded-lg p-4 max-h-64 overflow-y-auto">
+                            <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono">{pipeline.pluginCode}</pre>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -454,22 +498,56 @@ export default function AIChat({ isOpen, onClose, currentAIFunction }: AIChatPro
           )}
 
           <div ref={messagesEndRef} />
+
+          {/* Details Request Form */}
+          {requestedDetails.length > 0 && (
+            <div className="max-w-[90%] mx-auto my-4 p-4 bg-white/5 border border-white/10 rounded-2xl">
+              <h3 className="text-lg font-semibold mb-3 text-white">Details Required</h3>
+              <div className="space-y-4">
+                {requestedDetails.map(detail => (
+                  <div key={detail}>
+                    <label className="text-sm font-medium text-gray-300 capitalize">
+                      {detail.replace(/-/g, " ")}
+                    </label>
+                    <input
+                      type="text"
+                      value={detailAnswers[detail] || ""}
+                      onChange={e =>
+                        setDetailAnswers(prev => ({ ...prev, [detail]: e.target.value }))
+                      }
+                      className="mt-1 w-full bg-black/20 backdrop-blur-lg border border-white/10 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-400/50"
+                      style={{
+                        background: "rgba(0, 0, 0, 0.18)",
+                        backdropFilter: "blur(14px) saturate(120%)",
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <Button
+                onClick={handleSubmitDetails}
+                disabled={isGenerating}
+                className="mt-4 w-full bg-indigo-500 text-white hover:bg-indigo-600 transition-all"
+              >
+                Submit Details
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Input */}
-        <div className="border-t border-white/10 p-4 bg-[#101010]/40 backdrop-blur-sm">
+        <div className="border-t border-white/10 p-4 bg-black/10 backdrop-blur-sm">
           <div className="flex items-end space-x-3">
             <textarea
               ref={inputRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder={
-                messages.length > 0 || pipeline.pluginCode
-                  ? "Continue the conversation or ask for modifications..."
-                  : "Ask a question or request a plugin..."
-              }
-              className="flex-1 bg-[#101010]/60 backdrop-blur-sm border border-white/20 rounded-2xl px-4 py-2 text-white placeholder-gray-400 resize-none min-h-[40px] max-h-32 text-base focus:outline-none focus:ring-2 focus:ring-white/20"
-              style={{ fontSize: "16px" }}
+              placeholder="Ask a question or request a plugin..."
+              className="flex-1 bg-black/20 backdrop-blur-lg border border-white/10 rounded-2xl px-4 py-2 text-white placeholder-gray-400 resize-none min-h-[44px] max-h-32 text-base focus:outline-none focus:ring-2 focus:ring-indigo-400/50"
+              style={{
+                background: "rgba(0, 0, 0, 0.18)",
+                backdropFilter: "blur(14px) saturate(120%)",
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault()
