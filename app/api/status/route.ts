@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server'
 
-// Keywords that indicate a Cloudflare error page when the origin is down.
+// Keywords that are specific to Cloudflare error pages when the origin is down.
 const cloudflareErrorKeywords = [
-  'cloudflare',
   'bad gateway',
   'error 502',
   'origin is unreachable',
-  'database error',
+  'host error',
 ]
 
 export async function GET() {
