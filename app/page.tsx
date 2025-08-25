@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useSession, signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardDescription, CardTitle } from "@/components/ui/card"
 import { Bot, Shield, MessageSquare, Clock, Users, Zap, ArrowRight, Github, Twitter } from "lucide-react"
@@ -17,22 +17,9 @@ interface AppSettings {
   }
 }
 
-const ADMIN_CODE = "7625819-7528-715"
-
 export default function LandingPage() {
-  const router = useRouter()
+  const { data: session } = useSession()
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null)
-  const [adminCode, setAdminCode] = useState("")
-  const [shake, setShake] = useState(false)
-  const [glowSuccess, setGlowSuccess] = useState(false)
-  const [isAuthorized, setIsAuthorized] = useState(false)
-  const inputRef = useRef<HTMLInputElement | null>(null)
-
-  const typingPhrases = ["Moderate smarter…", "Automate faster…", "Grow your community…"]
-  const [typedText, setTypedText] = useState("")
-  const [typingIndex, setTypingIndex] = useState(0)
-  const [charIndex, setCharIndex] = useState(0)
-  const [isDeleting, setIsDeleting] = useState(false)
 
   const socialProof = [
     { quote: "Sycord cut moderation time in half.", who: "Nova Server" },
@@ -61,45 +48,13 @@ export default function LandingPage() {
     fetchAppSettings()
   }, [])
 
-  useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
-
-  useEffect(() => {
-    let timeout
-    const currentPhrase = typingPhrases[typingIndex % typingPhrases.length]
-
-    if (!isDeleting) {
-      if (charIndex <= currentPhrase.length) {
-        timeout = setTimeout(() => {
-          setTypedText(currentPhrase.slice(0, charIndex))
-          setCharIndex((c) => c + 1)
-        }, 80)
-      } else {
-        timeout = setTimeout(() => setIsDeleting(true), 800)
-      }
-    } else {
-      if (charIndex >= 0) {
-        timeout = setTimeout(() => {
-          setTypedText(currentPhrase.slice(0, charIndex))
-          setCharIndex((c) => c - 1)
-        }, 35)
-      } else {
-        setIsDeleting(false)
-        setTypingIndex((i) => (i + 1) % typingPhrases.length)
-        setCharIndex(0)
-      }
-    }
-
-    return () => clearTimeout(timeout)
-  }, [charIndex, isDeleting, typingIndex])
 
   useEffect(() => {
     const id = setInterval(() => {
       setProofIndex((i) => (i + 1) % socialProof.length)
     }, 4200)
     return () => clearInterval(id)
-  }, [])
+  }, [socialProof.length])
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -118,65 +73,6 @@ export default function LandingPage() {
     return () => observer.disconnect()
   }, [])
 
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    const pasted = e.clipboardData.getData("text").trim()
-    if (pasted === ADMIN_CODE) {
-      e.preventDefault()
-      authorize()
-    }
-  }
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setAdminCode(value)
-
-    if (value.trim().length === ADMIN_CODE.length) {
-      if (value.trim() === ADMIN_CODE) {
-        authorize()
-      } else {
-        setShake(true)
-        setTimeout(() => setShake(false), 520)
-      }
-    }
-  }
-
-  const authorize = () => {
-    setGlowSuccess(true)
-    setIsAuthorized(true)
-    spawnConfetti()
-    setTimeout(() => {
-      router.push("/login")
-    }, 700)
-  }
-
-  const spawnConfetti = () => {
-    const parent = document.body
-    const colors = ["#3b82f6", "#60a5fa", "#93c5fd", "#bfdbfe"]
-    for (let i = 0; i < 22; i++) {
-      const el = document.createElement("span")
-      el.className = "sy-confetti"
-      const size = Math.floor(Math.random() * 8) + 6
-      el.style.width = `${size}px`
-      el.style.height = `${size}px`
-      el.style.left = `${50 + (Math.random() - 0.5) * 40}vw`
-      el.style.background = colors[Math.floor(Math.random() * colors.length)]
-      el.style.transform = `rotate(${Math.random() * 360}deg)`
-      parent.appendChild(el)
-      setTimeout(() => {
-        el.remove()
-      }, 1200)
-    }
-  }
-
-  const protectedNavigate = (path: string) => {
-    if (isAuthorized) {
-      router.push(path)
-    } else {
-      setShake(true)
-      setTimeout(() => setShake(false), 520)
-      inputRef.current?.focus()
-    }
-  }
 
   const isMaintenanceMode = appSettings?.maintenanceMode.enabled || false
   const maintenanceTime = appSettings?.maintenanceMode.estimatedTime || "30 minutes"
@@ -196,16 +92,14 @@ export default function LandingPage() {
           <div className="flex items-center space-x-4 pt-8">
             <Button
               variant="outline"
-              className={`border-white/20 text-white hover:bg-white/10 bg-transparent ${!isAuthorized ? "opacity-60 cursor-not-allowed" : ""}`}
-              onClick={() => protectedNavigate("/login")}
-              disabled={!isAuthorized}
+              className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+              onClick={() => signIn('discord', { callbackUrl: "/dashboard" })}
             >
               Login
             </Button>
             <Button
-              className={`bg-white text-black hover:bg-gray-200 ${!isAuthorized ? "opacity-60 cursor-not-allowed" : ""}`}
-              onClick={() => protectedNavigate("/login")}
-              disabled={!isAuthorized}
+              className="bg-white text-black hover:bg-gray-200"
+              onClick={() => signIn('discord', { callbackUrl: "/dashboard" })}
             >
               Get Started
             </Button>
@@ -215,40 +109,30 @@ export default function LandingPage() {
 
       <section className="container mx-auto px-4 py-20 text-center relative">
         <div className="max-w-4xl mx-auto animate-fade-in">
-          <div className="flex items-center justify-center gap-6">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6">Meet Sycord</h1>
-          </div>
+          <h1 className="text-5xl md:text-6xl font-bold mb-4 text-white">Meet Sycord</h1>
+          <h2 className="text-xl md:text-2xl text-gray-400 mb-8">All in one discord bot</h2>
 
-          <p className="text-xl md:text-2xl text-gray-300 mb-2 leading-relaxed">
-            The intelligent Discord bot that moderates your server, manages tickets, and keeps your community engaged
-            with smart automation.
-          </p>
-
-          <p className="text-sm mb-6 h-6 typing-text">
-            {typedText}
-            <span className="typing-cursor">|</span>
-          </p>
-
-          <div className="max-w-sm mx-auto">
-            <input
-              ref={inputRef}
-              type="text"
-              placeholder="Enter admin code"
-              value={adminCode}
-              onChange={handleInputChange}
-              onPaste={handlePaste}
-              aria-label="Admin code"
-              maxLength={ADMIN_CODE.length}
-              className={`admin-input ${shake ? "animate-shake" : ""} ${glowSuccess ? "glow-success" : ""}`}
+          <div className="flex justify-center my-8">
+            <img
+              src="https://i.ibb.co/mk9twVx/IMG-0537.jpg"
+              alt="Sycord application screenshot"
+              className="max-w-[90%] md:max-w-[70%] rounded-lg shadow-lg"
             />
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
-            {isMaintenanceMode ? (
-              <Button size="lg" className="bg-gray-700 text-gray-300 cursor-not-allowed text-lg px-8 py-3">
-                Under Maintenance ({maintenanceTime})
+          <div className="mt-8">
+            {session?.user ? (
+              <Button asChild size="lg" className="rounded-full bg-[#2C2F33] text-white hover:bg-gray-700 px-8 py-3 text-lg flex items-center">
+                <Link href="/dashboard">
+                  {session.user.image && <Image src={session.user.image} alt="user avatar" width={32} height={32} className="rounded-full mr-3" />}
+                  Continue as {session.user.name || "User"}
+                </Link>
               </Button>
-            ) : null}
+            ) : (
+              <Button size="lg" onClick={() => signIn('discord', { callbackUrl: "/dashboard" })} className="rounded-full bg-[#2C2F33] text-white hover:bg-gray-700 px-8 py-3 text-lg">
+                Login with Discord
+              </Button>
+            )}
           </div>
         </div>
       </section>
@@ -360,9 +244,8 @@ export default function LandingPage() {
           ) : (
             <Button
               size="lg"
-              className={`bg-white text-black hover:bg-gray-200 text-lg px-8 py-3 ${!isAuthorized ? "opacity-60 cursor-not-allowed" : ""}`}
-              onClick={() => protectedNavigate("/login")}
-              disabled={!isAuthorized}
+              className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3"
+              onClick={() => signIn('discord', { callbackUrl: "/dashboard" })}
             >
               Get Started Now
               <ArrowRight className="ml-2 h-5 w-5" />
