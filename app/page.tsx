@@ -114,13 +114,13 @@ export default function LandingPage() {
 
           <div className="flex justify-center my-8">
             <img
-              src="https://i.ibb.co/mk9twVx/IMG-0537.jpg"
+              src="https://i.ibb.co/rG925GVJ/IMG-0539.jpg"
               alt="Sycord application screenshot"
               className="max-w-[90%] md:max-w-[70%] rounded-lg shadow-lg"
             />
           </div>
 
-          <div className="mt-8">
+          <div className="mt-8 flex justify-center">
             {session?.user ? (
               <Button asChild size="lg" className="rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white hover:bg-white/10 px-8 py-3 text-lg flex items-center">
                 <Link href="/dashboard">
