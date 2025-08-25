@@ -122,14 +122,14 @@ export default function LandingPage() {
 
           <div className="mt-8">
             {session?.user ? (
-              <Button asChild size="lg" className="rounded-full bg-[#2C2F33] text-white hover:bg-gray-700 px-8 py-3 text-lg flex items-center">
+              <Button asChild size="lg" className="rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white hover:bg-white/10 px-8 py-3 text-lg flex items-center">
                 <Link href="/dashboard">
                   {session.user.image && <Image src={session.user.image} alt="user avatar" width={32} height={32} className="rounded-full mr-3" />}
                   Continue as {session.user.name || "User"}
                 </Link>
               </Button>
             ) : (
-              <Button size="lg" onClick={() => signIn('discord', { callbackUrl: "/dashboard" })} className="rounded-full bg-[#2C2F33] text-white hover:bg-gray-700 px-8 py-3 text-lg">
+              <Button size="lg" onClick={() => signIn('discord', { callbackUrl: "/dashboard" })} className="rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white hover:bg-white/10 px-8 py-3 text-lg">
                 Login with Discord
               </Button>
             )}
