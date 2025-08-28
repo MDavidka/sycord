@@ -3,7 +3,7 @@
 import { CardDescription } from "@/components/ui/card"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input"
 import { Plus, Search, Users, Crown, Settings, ArrowRight, Trash2 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { UserProfile } from "@/components/UserProfile"
 
 interface DiscordGuild {
   id: string
@@ -31,18 +30,10 @@ interface UserServer {
   color?: string
 }
 
-interface UserDetails {
-  name: string
-  email: string
-  createdAt: string
-  image: string
-}
-
 export default function Dashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [userServers, setUserServers] = useState<UserServer[]>([])
-  const [userDetails, setUserDetails] = useState<UserDetails | null>(null)
   const [availableGuilds, setAvailableGuilds] = useState<DiscordGuild[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -65,20 +56,14 @@ export default function Dashboard() {
     if (session) {
       fetchData()
     }
-  }, [session, fetchData])
+  }, [session])
 
-  const fetchData = useCallback(async () => {
+  const fetchData = async () => {
     try {
       const userServersResponse = await fetch("/api/user-servers")
       if (userServersResponse.ok) {
         const userServersData = await userServersResponse.json()
         setUserServers(userServersData.servers)
-      }
-
-      const userDetailsResponse = await fetch("/api/user/details")
-      if (userDetailsResponse.ok) {
-        const details = await userDetailsResponse.json()
-        setUserDetails(details)
       }
 
       const guildsResponse = await fetch("/api/discord/guilds")
@@ -102,7 +87,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }, [router])
+  }
 
   const handleSelectServer = async (guild: DiscordGuild) => {
     try {
@@ -196,7 +181,12 @@ export default function Dashboard() {
                 <p className="text-sm text-gray-400">Manage your Discord servers</p>
               </div>
             </div>
-            {userDetails && <UserProfile user={userDetails} />}
+            <Button
+              onClick={() => setShowAddServerModal(true)}
+              className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
+            >
+              <Plus className="h-5 w-5" />
+            </Button>
           </div>
         </div>
       </header>
@@ -292,16 +282,6 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
               ))}
-              {/* Add Server Card */}
-              <Card
-                className="hover-glow animate-fade-in group flex items-center justify-center border-2 border-dashed border-gray-700 hover:border-gray-500 cursor-pointer transition-colors min-h-[200px]"
-                onClick={() => setShowAddServerModal(true)}
-              >
-                <div className="text-center text-gray-400">
-                  <Plus className="h-12 w-12 mx-auto" />
-                  <p className="mt-2 font-semibold">Add New Server</p>
-                </div>
-              </Card>
             </div>
           </div>
         )}
