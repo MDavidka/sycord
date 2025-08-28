@@ -22,9 +22,9 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      name: user.name,
+      name: user.username,
       email: user.email,
-      image: user.image,
+      image: user.avatar ? `https://cdn.discordapp.com/avatars/${user.discordId}/${user.avatar}.png` : null,
       createdAt: user.createdAt,
     })
   } catch (error) {
