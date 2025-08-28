@@ -19,6 +19,10 @@ interface UserProfileProps {
 }
 
 export function UserProfile({ user }: UserProfileProps) {
+  if (!user) {
+    return null
+  }
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -43,15 +47,17 @@ export function UserProfile({ user }: UserProfileProps) {
               />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-lg font-semibold truncate text-white">{user.name}</p>
+              <p className="text-lg font-semibold truncate text-white">{user.name || "User"}</p>
               {/* Badge can go here if available */}
             </div>
           </div>
           <div>
-            <p className="text-sm text-gray-400 opacity-80">{user.email}</p>
-            <p className="text-xs text-gray-500 mt-1">
-              Account created: {new Date(user.createdAt).toLocaleDateString()}
-            </p>
+            <p className="text-sm text-gray-400 opacity-80">{user.email || "No email provided"}</p>
+            {user.createdAt && (
+              <p className="text-xs text-gray-500 mt-1">
+                Account created: {new Date(user.createdAt).toLocaleDateString()}
+              </p>
+            )}
           </div>
           <Button
             variant="ghost"

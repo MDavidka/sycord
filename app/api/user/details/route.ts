@@ -24,10 +24,10 @@ export async function GET(request: NextRequest) {
 
     // Return the required user details
     return NextResponse.json({
-      name: user.name,
-      email: user.email,
-      createdAt: user.createdAt,
-      image: user.image, // Also return image for the avatar
+      name: user.name || session.user.name || "User",
+      email: user.email || session.user.email || null,
+      createdAt: user.createdAt || null,
+      image: user.image || session.user.image || null,
     })
   } catch (error) {
     console.error("Error fetching user details:", error)
