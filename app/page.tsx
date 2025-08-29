@@ -112,13 +112,11 @@ export default function LandingPage() {
           <h1 className="text-5xl md:text-6xl font-bold mb-4 text-white">Meet Sycord</h1>
           <h2 className="text-xl md:text-2xl text-gray-400 mb-8">All in one discord bot</h2>
           <div className="flex justify-center my-8">
-            <div className="bg-gradient-to-b from-black via-gray-800 to-white p-2 rounded-xl shadow-2xl">
-              <img
-                src="https://i.ibb.co/rG925GVJ/IMG-0539.jpg"
-                alt="Sycord application screenshot"
-                className="max-w-full md:max-w-[50%] rounded-lg"
-              />
-            </div>
+            <img
+              src="https://i.ibb.co/rG925GVJ/IMG-0539.jpg"
+              alt="Sycord application screenshot"
+              className="max-w-[90%] md:max-w-[50%] rounded-lg shadow-lg"
+            />
           </div>
 
           <div className="mt-8 flex justify-center">
