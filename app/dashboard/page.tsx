@@ -59,6 +59,12 @@ export default function Dashboard() {
     }
   }, [session])
 
+  useEffect(() => {
+    if (!loading && userServers.length === 0) {
+      setShowAddServerModal(true);
+    }
+  }, [loading, userServers]);
+
   const fetchData = async () => {
     try {
       const userServersResponse = await fetch("/api/user-servers")
