@@ -281,11 +281,7 @@ export default function LandingPage() {
               <Link href="#" className="text-gray-400 hover:text-white transition-colors">
                 <Twitter className="h-5 w-5" />
               </Link>
-              <Link href="/status" className="text-gray-400 hover:text-white transition-colors text-sm">
-                Status
-              </Link>
               <span className="text-gray-400 text-sm">© 2024 Sycord Bot. All rights reserved.</span>
-              <span className="text-gray-500 text-xs">v2c7d9</span>
             </div>
           </div>
         </div>
