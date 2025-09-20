@@ -173,7 +173,7 @@ export default function SettingsTab({
                 Terms of Service
               </Button>
               <Button variant="link" size="sm" className="text-gray-400 hover:text-white p-0" asChild>
-                <Link href="/privacy-policy">Privacy Policy</Link>
+                <Link href="/status">Status</Link>
               </Button>
               <Button variant="link" size="sm" className="text-gray-400 hover:text-white p-0">
                 Support
