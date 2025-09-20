@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect, useRef } from "react"
 import { useSession, signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
@@ -48,7 +46,6 @@ export default function LandingPage() {
     fetchAppSettings()
   }, [])
 
-
   useEffect(() => {
     const id = setInterval(() => {
       setProofIndex((i) => (i + 1) % socialProof.length)
@@ -73,7 +70,6 @@ export default function LandingPage() {
     return () => observer.disconnect()
   }, [])
 
-
   const isMaintenanceMode = appSettings?.maintenanceMode.enabled || false
   const maintenanceTime = appSettings?.maintenanceMode.estimatedTime || "30 minutes"
 
@@ -93,13 +89,13 @@ export default function LandingPage() {
             <Button
               variant="outline"
               className="border-white/20 text-white hover:bg-white/10 bg-transparent"
-              onClick={() => signIn('discord', { callbackUrl: "/dashboard" })}
+              onClick={() => signIn("discord", { callbackUrl: "/dashboard" })}
             >
               Login
             </Button>
             <Button
               className="bg-white text-black hover:bg-gray-200"
-              onClick={() => signIn('discord', { callbackUrl: "/dashboard" })}
+              onClick={() => signIn("discord", { callbackUrl: "/dashboard" })}
             >
               Get Started
             </Button>
@@ -115,20 +111,36 @@ export default function LandingPage() {
             <img
               src="https://i.ibb.co/rG925GVJ/IMG-0539.jpg"
               alt="Sycord application screenshot"
-              className="max-w-[90%] md:max-w-[50%] rounded-lg shadow-lg"
+              className="max-w-[90%] md:max-w-[70%] rounded-lg shadow-lg"
             />
           </div>
 
           <div className="mt-8 flex justify-center">
             {session?.user ? (
-              <Button asChild size="lg" className="rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white hover:bg-white/10 px-8 py-3 text-lg flex items-center">
+              <Button
+                asChild
+                size="lg"
+                className="rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white hover:bg-white/10 px-8 py-3 text-lg flex items-center"
+              >
                 <Link href="/dashboard">
-                  {session.user.image && <Image src={session.user.image} alt="user avatar" width={32} height={32} className="rounded-full mr-3" />}
+                  {session.user.image && (
+                    <Image
+                      src={session.user.image || "/placeholder.svg"}
+                      alt="user avatar"
+                      width={32}
+                      height={32}
+                      className="rounded-full mr-3"
+                    />
+                  )}
                   Continue as {session.user.name || "User"}
                 </Link>
               </Button>
             ) : (
-              <Button size="lg" onClick={() => signIn('discord', { callbackUrl: "/dashboard" })} className="rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white hover:bg-white/10 px-8 py-3 text-lg">
+              <Button
+                size="lg"
+                onClick={() => signIn("discord", { callbackUrl: "/dashboard" })}
+                className="rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white hover:bg-white/10 px-8 py-3 text-lg"
+              >
                 Login with Discord
               </Button>
             )}
@@ -244,7 +256,7 @@ export default function LandingPage() {
             <Button
               size="lg"
               className="bg-white text-black hover:bg-gray-200 text-lg px-8 py-3"
-              onClick={() => signIn('discord', { callbackUrl: "/dashboard" })}
+              onClick={() => signIn("discord", { callbackUrl: "/dashboard" })}
             >
               Get Started Now
               <ArrowRight className="ml-2 h-5 w-5" />
@@ -269,7 +281,11 @@ export default function LandingPage() {
               <Link href="#" className="text-gray-400 hover:text-white transition-colors">
                 <Twitter className="h-5 w-5" />
               </Link>
+              <Link href="/privacy-policy" className="text-gray-400 hover:text-white transition-colors text-sm">
+                Privacy Policy
+              </Link>
               <span className="text-gray-400 text-sm">© 2024 Sycord Bot. All rights reserved.</span>
+              <span className="text-gray-500 text-xs">v2c7d9</span>
             </div>
           </div>
         </div>

@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Bot, Mail, Download, LinkIcon, Eye, EyeOff } from "lucide-react"
+import Link from "next/link"
 
 interface SettingsTabProps {
   profilePictureUrl: string
@@ -171,8 +172,8 @@ export default function SettingsTab({
               <Button variant="link" size="sm" className="text-gray-400 hover:text-white p-0">
                 Terms of Service
               </Button>
-              <Button variant="link" size="sm" className="text-gray-400 hover:text-white p-0">
-                Privacy Policy
+              <Button variant="link" size="sm" className="text-gray-400 hover:text-white p-0" asChild>
+                <Link href="/privacy-policy">Privacy Policy</Link>
               </Button>
               <Button variant="link" size="sm" className="text-gray-400 hover:text-white p-0">
                 Support
@@ -185,6 +186,7 @@ export default function SettingsTab({
                 We collect minimal data necessary for bot functionality. Your data is never sold or shared with third
                 parties.
               </p>
+              <p className="mt-1 text-gray-600">Build: 2c7d9</p>
             </div>
           </div>
         </CardContent>
