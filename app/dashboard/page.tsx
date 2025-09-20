@@ -8,9 +8,19 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Plus, Search, Users, Crown, Settings, ArrowRight, Trash2 } from "lucide-react"
+import { Plus, Search, Users, Crown, Settings, ArrowRight, Trash2, LogOut, GitBranch } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { signOut } from "next-auth/react"
 
 interface DiscordGuild {
   id: string
@@ -30,6 +40,16 @@ interface UserServer {
   color?: string
 }
 
+interface UserProfile {
+  discordId: string
+  username: string
+  discriminator: string
+  avatar: string
+  email: string
+  createdAt: string
+  lastLogin: string
+}
+
 export default function Dashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -39,6 +59,7 @@ export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState("")
   const [showAddServerModal, setShowAddServerModal] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
 
   useEffect(() => {
     if (session?.user?.email === "dmarton336@gmail.com") {
@@ -64,6 +85,12 @@ export default function Dashboard() {
       if (userServersResponse.ok) {
         const userServersData = await userServersResponse.json()
         setUserServers(userServersData.servers)
+      }
+
+      const userProfileResponse = await fetch("/api/user/profile")
+      if (userProfileResponse.ok) {
+        const userProfileData = await userProfileResponse.json()
+        setUserProfile(userProfileData)
       }
 
       const guildsResponse = await fetch("/api/discord/guilds")
@@ -138,6 +165,15 @@ export default function Dashboard() {
     return !isAlreadyAdded && matchesSearch
   })
 
+  const formatJoinedDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+  }
+
   if (status === "loading" || loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -181,15 +217,64 @@ export default function Dashboard() {
                 <p className="text-sm text-gray-400">Manage your Discord servers</p>
               </div>
             </div>
-            <Button
-              onClick={() => setShowAddServerModal(true)}
-              className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
-            >
-              <Plus className="h-5 w-5" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full bg-gray-800/50 hover:bg-gray-700/50">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={session?.user?.image || ""} alt={session?.user?.name || "User"} />
+                    <AvatarFallback className="bg-gray-600 text-white">
+                      {session?.user?.name?.charAt(0) || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-64" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{userProfile?.username || session?.user?.name}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {userProfile?.email || session?.user?.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {userProfile?.createdAt && (
+                  <DropdownMenuItem disabled>
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground">Joined since</span>
+                      <span className="text-sm">{formatJoinedDate(userProfile.createdAt)}</span>
+                    </div>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <a
+                    href="https://dev.sycord.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center"
+                  >
+                    <GitBranch className="mr-2 h-4 w-4" />
+                    <span>dev.sycord</span>
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => signOut()}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Logout</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
+
+      <Button
+        onClick={() => setShowAddServerModal(true)}
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-white text-black hover:bg-gray-200 shadow-lg z-40"
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
 
       <div className="container mx-auto px-4 py-8">
         {userServers.length > 0 && (
