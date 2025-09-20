@@ -115,7 +115,7 @@ export default function LandingPage() {
             <img
               src="https://i.ibb.co/rG925GVJ/IMG-0539.jpg"
               alt="Sycord application screenshot"
-              className="max-w-[90%] md:max-w-[70%] rounded-lg shadow-lg"
+              className="max-w-[90%] md:max-w-[50%] rounded-lg shadow-lg"
             />
           </div>
 

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Plus, Search, Users, Crown, Settings, ArrowRight, Trash2 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { UserProfile } from "@/components/UserProfile"
 
 interface DiscordGuild {
   id: string
@@ -57,6 +58,12 @@ export default function Dashboard() {
       fetchData()
     }
   }, [session])
+
+  useEffect(() => {
+    if (!loading && userServers.length === 0) {
+      setShowAddServerModal(true);
+    }
+  }, [loading, userServers]);
 
   const fetchData = async () => {
     try {
@@ -181,12 +188,7 @@ export default function Dashboard() {
                 <p className="text-sm text-gray-400">Manage your Discord servers</p>
               </div>
             </div>
-            <Button
-              onClick={() => setShowAddServerModal(true)}
-              className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
-            >
-              <Plus className="h-5 w-5" />
-            </Button>
+            <UserProfile />
           </div>
         </div>
       </header>
@@ -194,7 +196,16 @@ export default function Dashboard() {
       <div className="container mx-auto px-4 py-8">
         {userServers.length > 0 && (
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-white mb-4">Your Configured Servers</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-white">Your Configured Servers</h2>
+              <Button
+                onClick={() => setShowAddServerModal(true)}
+                className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Add Server
+              </Button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {userServers.map((server) => (
                 <Card key={server.serverId} className="hover-glow animate-fade-in group overflow-hidden">
