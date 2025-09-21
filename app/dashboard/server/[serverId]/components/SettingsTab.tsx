@@ -28,6 +28,7 @@ interface ServerMember {
   userId: string
   username: string
   avatar?: string
+  avatar_url?: string
   discriminator: string
   hasAdminAccess: boolean
 }
@@ -36,7 +37,7 @@ interface Contributor {
   userId: string
   username: string
   avatar?: string
-  discriminator: string
+  avatar_url?: string
   email: string
   invitedAt: string
   role: string
@@ -119,7 +120,7 @@ export default function SettingsTab({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-6 py-6">
+      <div className="flex flex-col items-center space-y-4 py-6">
         {/* Bot Avatar */}
         <div className="relative">
           <Avatar className="w-20 h-20 border-4 border-blue-500">
@@ -131,118 +132,24 @@ export default function SettingsTab({
           <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-2 border-background"></div>
         </div>
 
-        {/* Bot Info */}
-        <div className="flex-1">
-          <div className="flex items-center space-x-4 mb-2">
-            <h2 className="text-2xl font-bold text-white">{customBotName || "sycord"}</h2>
-            <Button onClick={handleSaveBotSettings} className="bg-white text-black hover:bg-gray-100" size="sm">
-              Save
-            </Button>
-          </div>
-          <p className="text-gray-400 mb-2">sycord#9882</p>
+        {/* Bot Info - Centered */}
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-white">{customBotName || "sycord"}</h2>
+          <p className="text-gray-400">sycord#9882</p>
         </div>
       </div>
-
-      <Card className="glass-card">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center text-xl">
-            <Crown className="h-6 w-6 mr-3" />
-            Server Owner
-          </CardTitle>
-          <CardDescription className="text-gray-400">
-            Select the server owner from users with admin access
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Select value={selectedOwner} onValueChange={setSelectedOwner}>
-            <SelectTrigger className="bg-black/60 border-white/20 text-white">
-              <SelectValue placeholder="Select server owner" />
-            </SelectTrigger>
-            <SelectContent>
-              {adminMembers.map((member) => (
-                <SelectItem key={member.userId} value={member.userId}>
-                  <div className="flex items-center space-x-2">
-                    <Avatar className="w-6 h-6">
-                      <AvatarImage src={member.avatar || "/placeholder.svg"} />
-                      <AvatarFallback className="text-xs">{member.username?.charAt(0) || "U"}</AvatarFallback>
-                    </Avatar>
-                    <span>
-                      {member.username}#{member.discriminator}
-                    </span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
-
-      <Card className="glass-card">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center text-xl">
-            <Users className="h-6 w-6 mr-3" />
-            Invite Access
-          </CardTitle>
-          <CardDescription className="text-gray-400">Send invites to users via email</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex space-x-2">
-            <Input
-              placeholder="Enter email address"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              className="bg-black/60 border-white/20 text-white placeholder-gray-400 flex-1"
-              type="email"
-            />
-            <Button
-              onClick={handleSendInvite}
-              disabled={isLoading || !inviteEmail.trim()}
-              className="bg-white text-black hover:bg-gray-100"
-            >
-              <Send className="h-4 w-4 mr-2" />
-              Send
-            </Button>
-          </div>
-
-          <div className="space-y-3">
-            <Label className="text-white text-sm">Server Access:</Label>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {contributors.map((contributor) => (
-                <div
-                  key={contributor.userId}
-                  className="flex items-center space-x-3 p-3 bg-black/40 rounded-lg border border-white/10"
-                >
-                  <Avatar className="w-10 h-10">
-                    <AvatarImage src={contributor.avatar || "/placeholder.svg"} />
-                    <AvatarFallback className="text-sm">{contributor.username?.charAt(0) || "U"}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm font-medium truncate">
-                      {contributor.username}#{contributor.discriminator}
-                    </p>
-                    <p className="text-gray-400 text-xs truncate">{contributor.email}</p>
-                    <Badge
-                      variant="outline"
-                      className="text-xs mt-1 bg-green-500/20 text-green-400 border-green-500/50"
-                    >
-                      {contributor.role}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       <div className="space-y-4">
         <Button
           onClick={() => setShowBotConfig(!showBotConfig)}
-          className="w-full bg-gray-800/50 hover:bg-gray-700/50 text-white border border-white/20"
+          className="w-full bg-gray-800/50 hover:bg-gray-700/50 text-white border border-white/20 flex items-center justify-center space-x-2"
           variant="outline"
         >
-          <Bot className="h-4 w-4 mr-2" />
-          Bot Configuration
+          <Bot className="h-4 w-4" />
+          <span>Bot Configuration</span>
+          <Badge variant="secondary" className="bg-blue-500/20 text-blue-400 border-blue-500/50 text-xs">
+            BETA
+          </Badge>
         </Button>
 
         {showBotConfig && (
@@ -299,10 +206,112 @@ export default function SettingsTab({
                 </div>
                 <p className="text-xs text-gray-400 mt-1">Leave empty to use the default Sycord bot</p>
               </div>
+
+              <Button onClick={handleSaveBotSettings} className="w-full bg-white text-black hover:bg-gray-100">
+                Save Configuration
+              </Button>
             </CardContent>
           </Card>
         )}
       </div>
+
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center text-xl">
+            <Crown className="h-6 w-6 mr-3" />
+            Server Owner
+          </CardTitle>
+          <CardDescription className="text-gray-400">
+            Select the server owner from users with admin access
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Select value={selectedOwner} onValueChange={setSelectedOwner}>
+            <SelectTrigger className="bg-black/60 border-white/20 text-white">
+              <SelectValue placeholder="Select server owner" />
+            </SelectTrigger>
+            <SelectContent>
+              {adminMembers.map((member) => (
+                <SelectItem key={member.userId} value={member.userId}>
+                  <div className="flex items-center space-x-2">
+                    <Avatar className="w-6 h-6">
+                      <AvatarImage src={member.avatar_url || member.avatar || "/placeholder.svg"} />
+                      <AvatarFallback className="text-xs">{member.username?.charAt(0) || "U"}</AvatarFallback>
+                    </Avatar>
+                    <span>
+                      {member.username}#{member.discriminator}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
+      <Card className="glass-card">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center text-xl">
+            <Users className="h-6 w-6 mr-3" />
+            Invite Access
+          </CardTitle>
+          <CardDescription className="text-gray-400">Send invites to users via email</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex space-x-2">
+            <Input
+              placeholder="Enter email address"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              className="bg-black/60 border-white/20 text-white placeholder-gray-400 flex-1"
+              type="email"
+            />
+            <Button
+              onClick={handleSendInvite}
+              disabled={isLoading || !inviteEmail.trim()}
+              className="bg-gray-800/50 hover:bg-gray-700/50 text-white border border-white/20"
+              variant="outline"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Send
+            </Button>
+          </div>
+
+          <div className="space-y-3">
+            <Label className="text-white text-sm">Server Access:</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {contributors.map((contributor) => (
+                <div
+                  key={contributor.userId}
+                  className="flex items-center space-x-3 p-3 bg-black/40 rounded-lg border border-white/10"
+                >
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={contributor.avatar_url || contributor.avatar || "/placeholder.svg"} />
+                    <AvatarFallback className="text-sm">{contributor.username?.charAt(0) || "U"}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2">
+                      <p className="text-white text-sm font-medium truncate">
+                        {contributor.username}#{contributor.discriminator}
+                      </p>
+                      {contributor.role === "admin" ? (
+                        <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-xs font-bold">A</span>
+                        </div>
+                      ) : (
+                        <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-xs font-bold">C</span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-gray-400 text-xs truncate">{contributor.email}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

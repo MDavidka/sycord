@@ -509,7 +509,10 @@ function ContributorProfiles({ serverId }: { serverId: string }) {
     <div className="flex -space-x-2">
       {contributors.slice(0, 3).map((contributor, index) => (
         <Avatar key={contributor.userId} className="w-8 h-8 border-2 border-gray-800">
-          <AvatarImage src={contributor.avatar || "/placeholder.svg"} alt={contributor.username} />
+          <AvatarImage
+            src={contributor.avatar_url || contributor.avatar || "/placeholder.svg"}
+            alt={contributor.username}
+          />
           <AvatarFallback className="bg-gray-600 text-white text-xs">
             {contributor.username?.charAt(0) || "U"}
           </AvatarFallback>
