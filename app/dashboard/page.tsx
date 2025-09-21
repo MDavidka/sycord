@@ -160,6 +160,25 @@ export default function Dashboard() {
     }
   }
 
+  const handleRevokeAccess = async (serverId: string) => {
+    try {
+      const response = await fetch(`/api/server/${serverId}/revoke`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (response.ok) {
+        setUserServers(userServers.filter((server) => server.serverId !== serverId))
+      } else {
+        console.error("Failed to revoke access")
+      }
+    } catch (error) {
+      console.error("Error revoking access:", error)
+    }
+  }
+
   const filteredGuilds = availableGuilds.filter((guild) => {
     const isAlreadyAdded = userServers.some((server) => server.serverId === guild.id)
     const matchesSearch = guild.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -304,7 +323,7 @@ export default function Dashboard() {
                           src={
                             server.serverIcon
                               ? `https://cdn.discordapp.com/icons/${server.serverId}/${server.serverIcon}.png?size=128`
-                              : "/placeholder.svg?height=64&width=64"
+                              : `https://sycord.com/placeholder.svg?height=64&width=64`
                           }
                           alt={server.serverName}
                           width={64}
@@ -366,7 +385,19 @@ export default function Dashboard() {
                               </Button>
                             )}
                           </div>
-                          {server.role === "contributor" && <ContributorProfiles serverId={server.serverId} />}
+                          <div className="flex items-center space-x-2">
+                            {server.role === "contributor" && <ContributorProfiles serverId={server.serverId} />}
+                            {server.role === "contributor" && (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border-red-600/30"
+                                onClick={() => handleRevokeAccess(server.serverId)}
+                              >
+                                Revoke
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -438,7 +469,7 @@ export default function Dashboard() {
                               src={
                                 guild.icon
                                   ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`
-                                  : "/placeholder.svg?height=40&width=40"
+                                  : `https://sycord.com/placeholder.svg?height=40&width=40`
                               }
                               alt={guild.name}
                               width={40}
