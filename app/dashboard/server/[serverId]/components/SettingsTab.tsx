@@ -118,6 +118,23 @@ export default function SettingsTab({
     }
   }
 
+  const handleRevokeContributor = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/server/${serverId}/revoke`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      })
+
+      if (response.ok) {
+        // Refresh contributors list
+        fetchContributors()
+      }
+    } catch (error) {
+      console.error("Error revoking contributor access:", error)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col items-center space-y-4 py-6">
@@ -286,7 +303,12 @@ export default function SettingsTab({
                   className="flex items-center space-x-3 p-3 bg-black/40 rounded-lg border border-white/10"
                 >
                   <Avatar className="w-10 h-10">
-                    <AvatarImage src={contributor.avatar_url || contributor.avatar || "/placeholder.svg"} />
+                    <AvatarImage
+                      src={
+                        contributor.avatar_url ||
+                        `https://cdn.discordapp.com/avatars/${contributor.userId}/${contributor.avatar}.png?size=64`
+                      }
+                    />
                     <AvatarFallback className="text-sm">{contributor.username?.charAt(0) || "U"}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
@@ -306,6 +328,16 @@ export default function SettingsTab({
                     </div>
                     <p className="text-gray-400 text-xs truncate">{contributor.email}</p>
                   </div>
+                  {contributor.role !== "admin" && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="bg-red-600/20 hover:bg-red-600/30 text-red-400 border-red-600/30"
+                      onClick={() => handleRevokeContributor(contributor.userId)}
+                    >
+                      Revoke
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
