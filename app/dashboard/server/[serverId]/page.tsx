@@ -641,6 +641,7 @@ export default function ServerConfigPage() {
             setShowToken={setShowToken}
             handleSaveBotSettings={handleSaveBotSettings}
             downloadUserData={downloadUserData}
+            serverId={serverId}
           />
         )}
 
