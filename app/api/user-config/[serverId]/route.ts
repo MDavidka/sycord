@@ -22,8 +22,27 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Find the specific server in the user's servers array
-    const server = user.servers?.find((s: any) => s.server_id === params.serverId)
+    let server = user.servers?.find((s: any) => s.server_id === params.serverId)
+    let userRole = "owner"
+
+    if (!server) {
+      const contributor = await db.collection("server_contributors").findOne({
+        serverId: params.serverId,
+        userId: session.user.id,
+      })
+
+      if (contributor) {
+        // Find the server owner and get server config
+        const serverOwner = await users.findOne({
+          "servers.server_id": params.serverId,
+        })
+
+        if (serverOwner) {
+          server = serverOwner.servers.find((s: any) => s.server_id === params.serverId)
+          userRole = "contributor"
+        }
+      }
+    }
 
     if (!server) {
       return NextResponse.json({ error: "Server configuration not found" }, { status: 404 })
@@ -37,6 +56,7 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
       },
       server,
       isBotAdded: server.is_bot_added,
+      userRole, // Added user role to response
     })
   } catch (error) {
     console.error("Error fetching user config:", error)
@@ -56,6 +76,15 @@ export async function PUT(request: NextRequest, { params }: { params: { serverId
     const client = await clientPromise
     const db = client.db("dash-bot")
     const users = db.collection("users")
+
+    const contributor = await db.collection("server_contributors").findOne({
+      serverId: params.serverId,
+      userId: session.user.id,
+    })
+
+    if (contributor) {
+      return NextResponse.json({ error: "Contributors cannot modify server configuration" }, { status: 403 })
+    }
 
     // Update the specific server configuration in the user's servers array
     const updateResult = await users.updateOne(

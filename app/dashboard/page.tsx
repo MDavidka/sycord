@@ -332,39 +332,41 @@ export default function Dashboard() {
                             )}
                           </Badge>
                         </div>
-                        <div className="flex items-center space-x-2 mt-4">
-                          {server.isBotAdded ? (
-                            <Link href={`/dashboard/server/${server.serverId}`}>
-                              <Button size="sm" className="bg-gray-800/50 hover:bg-gray-700/50 text-white">
-                                <Settings className="h-4 w-4 mr-2" />
-                                {server.role === "contributor" ? "View" : "Configure"}{" "}
-                                {/* Changed button text based on role */}
+                        <div className="flex items-center justify-between mt-4">
+                          <div className="flex items-center space-x-2">
+                            {server.isBotAdded ? (
+                              <Link href={`/dashboard/server/${server.serverId}`}>
+                                <Button size="sm" className="bg-gray-800/50 hover:bg-gray-700/50 text-white">
+                                  <Settings className="h-4 w-4 mr-2" />
+                                  {server.role === "contributor" ? "View" : "Configure"}
+                                </Button>
+                              </Link>
+                            ) : (
+                              <Button
+                                size="sm"
+                                className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
+                                onClick={() =>
+                                  window.open(
+                                    "https://discord.com/oauth2/authorize?client_id=1319362022286295123&permissions=1478210153510&integration_type=0&scope=bot",
+                                    "_blank",
+                                  )
+                                }
+                              >
+                                <ArrowRight className="h-4 w-4 mr-2" />
+                                Invite Bot
                               </Button>
-                            </Link>
-                          ) : (
-                            <Button
-                              size="sm"
-                              className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
-                              onClick={() =>
-                                window.open(
-                                  "https://discord.com/oauth2/authorize?client_id=1319362022286295123&permissions=1478210153510&integration_type=0&scope=bot",
-                                  "_blank",
-                                )
-                              }
-                            >
-                              <ArrowRight className="h-4 w-4 mr-2" />
-                              Invite Bot
-                            </Button>
-                          )}
-                          {server.role !== "contributor" && (
-                            <Button
-                              size="sm"
-                              className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
-                              onClick={() => handleDeleteServer(server.serverId)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
+                            )}
+                            {server.role !== "contributor" && (
+                              <Button
+                                size="sm"
+                                className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
+                                onClick={() => handleDeleteServer(server.serverId)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                          {server.role === "contributor" && <ContributorProfiles serverId={server.serverId} />}
                         </div>
                       </div>
                     </div>
@@ -478,6 +480,46 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function ContributorProfiles({ serverId }: { serverId: string }) {
+  const [contributors, setContributors] = useState<any[]>([])
+
+  useEffect(() => {
+    const fetchContributors = async () => {
+      try {
+        const response = await fetch(`/api/server/${serverId}/members`)
+        if (response.ok) {
+          const data = await response.json()
+          setContributors(data.contributors || [])
+        }
+      } catch (error) {
+        console.error("Error fetching contributors:", error)
+      }
+    }
+
+    fetchContributors()
+  }, [serverId])
+
+  if (contributors.length === 0) return null
+
+  return (
+    <div className="flex -space-x-2">
+      {contributors.slice(0, 3).map((contributor, index) => (
+        <Avatar key={contributor.userId} className="w-8 h-8 border-2 border-gray-800">
+          <AvatarImage src={contributor.avatar || "/placeholder.svg"} alt={contributor.username} />
+          <AvatarFallback className="bg-gray-600 text-white text-xs">
+            {contributor.username?.charAt(0) || "U"}
+          </AvatarFallback>
+        </Avatar>
+      ))}
+      {contributors.length > 3 && (
+        <div className="w-8 h-8 rounded-full bg-gray-600 border-2 border-gray-800 flex items-center justify-center">
+          <span className="text-xs text-white">+{contributors.length - 3}</span>
+        </div>
+      )}
     </div>
   )
 }
