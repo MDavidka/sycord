@@ -38,6 +38,7 @@ interface UserServer {
   isBotAdded: boolean
   lastConfigUpdate?: string
   color?: string
+  role?: string // Added role field
 }
 
 interface UserProfile {
@@ -336,7 +337,8 @@ export default function Dashboard() {
                             <Link href={`/dashboard/server/${server.serverId}`}>
                               <Button size="sm" className="bg-gray-800/50 hover:bg-gray-700/50 text-white">
                                 <Settings className="h-4 w-4 mr-2" />
-                                Configure
+                                {server.role === "contributor" ? "View" : "Configure"}{" "}
+                                {/* Changed button text based on role */}
                               </Button>
                             </Link>
                           ) : (
@@ -354,13 +356,15 @@ export default function Dashboard() {
                               Invite Bot
                             </Button>
                           )}
-                          <Button
-                            size="sm"
-                            className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
-                            onClick={() => handleDeleteServer(server.serverId)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {server.role !== "contributor" && (
+                            <Button
+                              size="sm"
+                              className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
+                              onClick={() => handleDeleteServer(server.serverId)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
