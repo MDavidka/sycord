@@ -13,11 +13,27 @@ export async function POST(request: NextRequest, { params }: { params: { serverI
     }
 
     const { serverId } = params
+    const body = await request.json()
+    const { email } = body
+
     await client.connect()
     const db = client.db("sycord")
 
-    // Remove user from contributors array
-    await db.collection("servers").updateOne({ serverId }, { $pull: { contributors: { email: session.user.email } } })
+    const server = await db.collection("servers").findOne({ serverId })
+    if (!server) {
+      return NextResponse.json({ error: "Server not found" }, { status: 404 })
+    }
+
+    // Check if current user is owner or admin
+    const isOwner = server.userId === session.user.email
+    const isAdmin = session.user.email === "dmarton336@gmail.com"
+
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json({ error: "Only server owners can revoke access" }, { status: 403 })
+    }
+
+    const emailToRevoke = email || session.user.email
+    await db.collection("servers").updateOne({ serverId }, { $pull: { contributors: { email: emailToRevoke } } })
 
     return NextResponse.json({ success: true })
   } catch (error) {

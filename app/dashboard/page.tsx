@@ -514,6 +514,7 @@ function ContributorProfiles({ serverId }: { serverId: string }) {
         const response = await fetch(`/api/server/${serverId}/members`)
         if (response.ok) {
           const data = await response.json()
+          console.log("[v0] Contributors data:", data.contributors)
           setContributors(data.contributors || [])
         }
       } catch (error) {
@@ -529,16 +530,10 @@ function ContributorProfiles({ serverId }: { serverId: string }) {
   return (
     <div className="flex -space-x-2">
       {contributors.slice(0, 3).map((contributor, index) => (
-        <Avatar key={contributor.userId} className="w-8 h-8 border-2 border-gray-800">
-          <AvatarImage
-            src={
-              contributor.avatar_url ||
-              `https://cdn.discordapp.com/avatars/${contributor.userId}/${contributor.avatar}.png?size=64`
-            }
-            alt={contributor.username}
-          />
+        <Avatar key={contributor.userId || contributor.email} className="w-8 h-8 border-2 border-gray-800">
+          <AvatarImage src={contributor.avatar_url || ""} alt={contributor.username} />
           <AvatarFallback className="bg-gray-600 text-white text-xs">
-            {contributor.username?.charAt(0) || "U"}
+            {contributor.username?.charAt(0)?.toUpperCase() || "U"}
           </AvatarFallback>
         </Avatar>
       ))}
