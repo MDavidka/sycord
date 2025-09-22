@@ -30,9 +30,24 @@ export async function GET(request: NextRequest, { params }: { params: { serverId
         .toArray(),
     ])
 
+    const contributorsWithProfiles = await Promise.all(
+      contributors.map(async (contributor) => {
+        const userProfile = await db.collection("users").findOne({
+          email: contributor.email,
+        })
+
+        return {
+          ...contributor,
+          avatar_url: userProfile?.avatar_url || null,
+          username: userProfile?.username || contributor.email.split("@")[0],
+          discriminator: userProfile?.discriminator || null,
+        }
+      }),
+    )
+
     return NextResponse.json({
       members: serverMembers,
-      contributors: contributors,
+      contributors: contributorsWithProfiles,
     })
   } catch (error) {
     console.error("Error fetching server members:", error)
