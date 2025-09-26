@@ -51,6 +51,13 @@ interface UserProfile {
   lastLogin: string
 }
 
+interface PendingInvite {
+  _id: string
+  serverId: string
+  serverName: string
+  invitedBy: string
+}
+
 export default function Dashboard() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -61,6 +68,8 @@ export default function Dashboard() {
   const [showAddServerModal, setShowAddServerModal] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([])
+  const [showInviteModal, setShowInviteModal] = useState(false)
 
   useEffect(() => {
     if (session?.user?.email === "dmarton336@gmail.com") {
@@ -109,6 +118,15 @@ export default function Dashboard() {
 
         alert(`Failed to load Discord servers: ${errorData.details || errorData.error}`)
       }
+
+      const invitesResponse = await fetch("/api/invites/pending")
+      if (invitesResponse.ok) {
+        const invitesData = await invitesResponse.json()
+        if (invitesData.invites.length > 0) {
+          setPendingInvites(invitesData.invites)
+          setShowInviteModal(true)
+        }
+      }
     } catch (error) {
       console.error("Error fetching data:", error)
       alert("Failed to load dashboard data. Please try refreshing the page.")
@@ -116,6 +134,37 @@ export default function Dashboard() {
       setLoading(false)
     }
   }
+
+  const handleAcceptInvite = async (serverId: string) => {
+    try {
+      const response = await fetch("/api/invites/accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serverId }),
+      });
+      if (response.ok) {
+        setPendingInvites(pendingInvites.filter((invite) => invite.serverId !== serverId));
+        fetchData(); // Refresh server list
+      }
+    } catch (error) {
+      console.error("Error accepting invite:", error);
+    }
+  };
+
+  const handleDeclineInvite = async (serverId: string) => {
+    try {
+      const response = await fetch("/api/invites/decline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ serverId }),
+      });
+      if (response.ok) {
+        setPendingInvites(pendingInvites.filter((invite) => invite.serverId !== serverId));
+      }
+    } catch (error) {
+      console.error("Error declining invite:", error);
+    }
+  };
 
   const handleSelectServer = async (guild: DiscordGuild) => {
     try {
@@ -501,6 +550,35 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {showInviteModal && pendingInvites.length > 0 && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="glass-card max-w-lg w-full">
+            <CardHeader>
+              <CardTitle>Server Invitations</CardTitle>
+              <CardDescription>You have pending invitations to join servers.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {pendingInvites.map((invite) => (
+                <div key={invite._id} className="flex items-center justify-between p-3 bg-black/40 rounded-lg">
+                  <div>
+                    <p className="font-semibold">{invite.serverName}</p>
+                    <p className="text-sm text-gray-400">Invited by: {invite.invitedBy}</p>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button onClick={() => handleAcceptInvite(invite.serverId)} size="sm">
+                      Accept
+                    </Button>
+                    <Button onClick={() => handleDeclineInvite(invite.serverId)} size="sm" variant="destructive">
+                      Decline
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

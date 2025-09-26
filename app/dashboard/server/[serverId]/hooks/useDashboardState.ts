@@ -196,6 +196,7 @@ export function useDashboardState(serverId: string) {
   const [activeTab, setActiveTab] = useState("home")
   const [supportView, setSupportView] = useState<SupportView>("overview")
   const [activeEventSection, setActiveEventSection] = useState<EventView>("overview")
+  const [userRole, setUserRole] = useState<string | null>(null)
 
   // Modal states
   const [showInfoModal, setShowInfoModal] = useState(false)
@@ -324,6 +325,7 @@ export function useDashboardState(serverId: string) {
         }
         setServerConfig(initialConfig)
         setUserData(configData.user)
+        setUserRole(configData.userRole)
       }
     } catch (error) {
       console.error("Error loading data:", error)
@@ -566,6 +568,7 @@ export function useDashboardState(serverId: string) {
     setSupportView,
     activeEventSection,
     setActiveEventSection,
+    userRole,
 
     // Modal states
     showInfoModal,

@@ -311,6 +311,7 @@ export default function ServerConfigPage() {
     handleDismissAnnouncement,
     handleMaintenanceToggle,
     downloadUserData,
+    userRole,
   } = useDashboardState(serverId)
 
   if (status === "loading" || loading) {
@@ -548,17 +549,19 @@ export default function ServerConfigPage() {
               <Package className="h-4 w-4 mr-2" />
               Plugins
             </Button>
-            <Button
-              variant={activeTab === "settings" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setActiveTab("settings")}
-              className={`${
-                activeTab === "settings" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
-              } transition-colors flex-shrink-0 text-sm px-4 h-9`}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
-            </Button>
+            {userRole !== "contributor" && (
+              <Button
+                variant={activeTab === "settings" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setActiveTab("settings")}
+                className={`${
+                  activeTab === "settings" ? "bg-white text-black" : "text-white hover:bg-gray-100 hover:text-gray-900"
+                } transition-colors flex-shrink-0 text-sm px-4 h-9`}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Settings
+              </Button>
+            )}
           </nav>
         </div>
       </div>

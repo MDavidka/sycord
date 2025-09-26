@@ -17,48 +17,40 @@ export async function POST(request: NextRequest, { params }: { params: { serverI
       return NextResponse.json({ error: "Email is required" }, { status: 400 })
     }
 
+    if (email === session.user.email) {
+      return NextResponse.json({ error: "You cannot invite yourself" }, { status: 400 })
+    }
+
     const client = await clientPromise
     const db = client.db("dash-bot")
 
     // Check if user exists in database
     const existingUser = await db.collection("users").findOne({ email })
 
-    if (existingUser) {
-      // Add user as contributor to server
-      await db.collection("server_contributors").insertOne({
-        serverId,
-        userId: existingUser.discordId,
-        email,
-        invitedBy: session.user.id,
-        invitedAt: new Date(),
-        role: "contributor",
-      })
-
-      return NextResponse.json({
-        success: true,
-        userExists: true,
-        user: {
-          username: existingUser.username,
-          avatar: existingUser.avatar,
-          discriminator: existingUser.discriminator,
-        },
-      })
-    } else {
-      // Send invite email (placeholder for now)
-      await db.collection("server_invites").insertOne({
-        serverId,
-        email,
-        invitedBy: session.user.id,
-        invitedAt: new Date(),
-        status: "pending",
-      })
-
-      return NextResponse.json({
-        success: true,
-        userExists: false,
-        message: "Invite sent to email",
-      })
+    if (!existingUser) {
+      return NextResponse.json({ error: "User with this email does not exist" }, { status: 404 })
     }
+
+    // Add user as contributor to server
+    await db.collection("server_contributors").insertOne({
+      serverId,
+      userId: existingUser.discordId,
+      email,
+      invitedBy: session.user.id,
+      invitedAt: new Date(),
+      role: "contributor",
+      status: "pending",
+    })
+
+    return NextResponse.json({
+      success: true,
+      userExists: true,
+      user: {
+        username: existingUser.username,
+        avatar: existingUser.avatar,
+        discriminator: existingUser.discriminator,
+      },
+    })
   } catch (error) {
     console.error("Error sending invite:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
