@@ -346,60 +346,68 @@ export default function Dashboard() {
       </Button>
 
       <div className="container mx-auto px-4 py-8">
-        {pendingInvites.length > 0 && (
+        {(userServers.length > 0 || pendingInvites.length > 0) && (
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-white mb-4">Pending Invitations</h2>
+            <h2 className="text-xl font-semibold text-white mb-4">Your Servers</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {pendingInvites.map((invite) => (
-                <Card
-                  key={invite._id}
-                  className="hover-glow animate-fade-in group overflow-hidden bg-black/50 border-white/10"
-                >
-                  <div
-                    className="relative h-24 bg-cover bg-center"
-                    style={{
-                      backgroundImage: `url(${
-                        invite.serverIcon
-                          ? `https://cdn.discordapp.com/icons/${invite.serverId}/${invite.serverIcon}.png?size=128`
-                          : ""
-                      })`,
-                    }}
-                  >
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-                  </div>
-                  <CardContent className="p-6 relative -mt-20">
-                    <div className="relative z-10 flex flex-col items-center text-center">
-                      <Avatar className="w-20 h-20 border-4 border-gray-800">
-                        <AvatarImage src={invite.inviter.avatar || ""} alt={invite.inviter.username} />
-                        <AvatarFallback>{invite.inviter.username.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <p className="mt-2 text-gray-300">
-                        <span className="font-bold text-white">{invite.inviter.username}</span> invited you to manage
-                      </p>
-                      <p className="text-lg font-semibold text-white truncate">{invite.serverName}</p>
-                      <div className="flex space-x-2 mt-4">
-                        <Button
-                          onClick={() => handleAcceptInvite(invite.serverId)}
-                          size="sm"
-                          className="bg-white text-black hover:bg-gray-200"
-                        >
-                          Accept
-                        </Button>
-                        <Button onClick={() => handleDeclineInvite(invite.serverId)} size="sm" variant="destructive">
-                          Decline
-                        </Button>
+                <Card key={invite._id} className="hover-glow animate-fade-in group overflow-hidden relative">
+                  <div className="blur-sm">
+                    <div
+                      className="relative h-16 bg-cover bg-center"
+                      style={{
+                        backgroundImage: `url(${
+                          invite.serverIcon
+                            ? `https://cdn.discordapp.com/icons/${invite.serverId}/${invite.serverIcon}.png?size=128`
+                            : ""
+                        })`,
+                      }}
+                    />
+                    <CardContent className="p-6 relative">
+                      <div className="flex items-start space-x-4">
+                        <div className="relative">
+                          <Image
+                            src={
+                              invite.serverIcon
+                                ? `https://cdn.discordapp.com/icons/${invite.serverId}/${invite.serverIcon}.png?size=128`
+                                : `https://sycord.com/placeholder.svg?height=64&width=64`
+                            }
+                            alt={invite.serverName}
+                            width={64}
+                            height={64}
+                            className="rounded-xl"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-semibold text-white truncate">{invite.serverName}</h3>
+                        </div>
                       </div>
+                    </CardContent>
+                  </div>
+                  <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-center p-4">
+                    <Avatar className="w-16 h-16 border-4 border-gray-800">
+                      <AvatarImage src={invite.inviter.avatar || ""} alt={invite.inviter.username} />
+                      <AvatarFallback>{invite.inviter.username.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <p className="mt-2 text-gray-300">
+                      <span className="font-bold text-white">{invite.inviter.username}</span> invited you to manage
+                    </p>
+                    <p className="text-lg font-semibold text-white truncate">{invite.serverName}</p>
+                    <div className="flex space-x-2 mt-4">
+                      <Button
+                        onClick={() => handleAcceptInvite(invite.serverId)}
+                        size="sm"
+                        className="bg-white text-black hover:bg-gray-200"
+                      >
+                        Accept
+                      </Button>
+                      <Button onClick={() => handleDeclineInvite(invite.serverId)} size="sm" variant="destructive">
+                        Decline
+                      </Button>
                     </div>
-                  </CardContent>
+                  </div>
                 </Card>
               ))}
-            </div>
-          </div>
-        )}
-        {userServers.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold text-white mb-4">Your Configured Servers</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {userServers.map((server) => (
                 <Card key={server.serverId} className="hover-glow animate-fade-in group overflow-hidden">
                   <div className="relative h-16 overflow-hidden">
@@ -474,7 +482,15 @@ export default function Dashboard() {
                                 Invite Bot
                               </Button>
                             )}
-                            {server.role !== "contributor" && (
+                            {server.role === "contributor" ? (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleRevokeAccess(server.serverId)}
+                              >
+                                <LogOut className="h-4 w-4" />
+                              </Button>
+                            ) : (
                               <Button
                                 size="sm"
                                 className="bg-gray-800/50 hover:bg-gray-700/50 text-white"
