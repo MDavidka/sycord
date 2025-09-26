@@ -353,16 +353,18 @@ export default function Dashboard() {
               {pendingInvites.map((invite) => (
                 <Card key={invite._id} className="hover-glow animate-fade-in group overflow-hidden relative">
                   <div className="blur-sm">
-                    <div
-                      className="relative h-16 bg-cover bg-center"
-                      style={{
-                        backgroundImage: `url(${
-                          invite.serverIcon
-                            ? `https://cdn.discordapp.com/icons/${invite.serverId}/${invite.serverIcon}.png?size=128`
-                            : ""
-                        })`,
-                      }}
-                    />
+                    <div className="relative h-16 overflow-hidden">
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          backgroundImage: invite.serverIcon
+                            ? `url(https://cdn.discordapp.com/icons/${invite.serverId}/${invite.serverIcon}.png?size=128)`
+                            : "none",
+                          backgroundSize: "1000%",
+                          backgroundPosition: "center",
+                        }}
+                      ></div>
+                    </div>
                     <CardContent className="p-6 relative">
                       <div className="flex items-start space-x-4">
                         <div className="relative">
@@ -384,7 +386,7 @@ export default function Dashboard() {
                       </div>
                     </CardContent>
                   </div>
-                  <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-center p-4">
+                  <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-center p-4">
                     <Avatar className="w-16 h-16 border-4 border-gray-800">
                       <AvatarImage src={invite.inviter.avatar || ""} alt={invite.inviter.username} />
                       <AvatarFallback>{invite.inviter.username.charAt(0)}</AvatarFallback>
