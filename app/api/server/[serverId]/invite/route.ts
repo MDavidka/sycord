@@ -18,20 +18,31 @@ export async function POST(request: NextRequest, { params }: { params: { serverI
     }
 
     if (email === session.user.email) {
-      return NextResponse.json({ error: "You cannot invite yourself" }, { status: 400 })
+      return NextResponse.json({ error: "You cannot invite yourself." }, { status: 400 })
     }
 
     const client = await clientPromise
     const db = client.db("dash-bot")
 
-    // Check if user exists in database
     const existingUser = await db.collection("users").findOne({ email })
 
     if (!existingUser) {
-      return NextResponse.json({ error: "User with this email does not exist" }, { status: 404 })
+      return NextResponse.json({ error: "User with this email does not exist." }, { status: 404 })
     }
 
-    // Add user as contributor to server
+    const existingContributor = await db.collection("server_contributors").findOne({
+      serverId,
+      userId: existingUser.discordId,
+    })
+
+    if (existingContributor) {
+      const errorMessage =
+        existingContributor.status === "pending"
+          ? "This user already has a pending invitation."
+          : "This user is already a contributor."
+      return NextResponse.json({ error: errorMessage }, { status: 409 })
+    }
+
     await db.collection("server_contributors").insertOne({
       serverId,
       userId: existingUser.discordId,
@@ -44,12 +55,7 @@ export async function POST(request: NextRequest, { params }: { params: { serverI
 
     return NextResponse.json({
       success: true,
-      userExists: true,
-      user: {
-        username: existingUser.username,
-        avatar: existingUser.avatar,
-        discriminator: existingUser.discriminator,
-      },
+      message: "Invite sent successfully.",
     })
   } catch (error) {
     console.error("Error sending invite:", error)

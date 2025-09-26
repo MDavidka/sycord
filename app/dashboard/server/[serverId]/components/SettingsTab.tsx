@@ -62,6 +62,8 @@ export default function SettingsTab({
   const [contributors, setContributors] = useState<Contributor[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showBotConfig, setShowBotConfig] = useState(false)
+  const [inviteError, setInviteError] = useState<string | null>(null)
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     fetchAdminMembers()
@@ -96,6 +98,9 @@ export default function SettingsTab({
     if (!inviteEmail.trim()) return
 
     setIsLoading(true)
+    setInviteError(null)
+    setInviteSuccess(null)
+
     try {
       const response = await fetch(`/api/server/${serverId}/invite`, {
         method: "POST",
@@ -103,18 +108,24 @@ export default function SettingsTab({
         body: JSON.stringify({ email: inviteEmail }),
       })
 
+      const data = await response.json()
+
       if (response.ok) {
-        const data = await response.json()
-        if (data.userExists) {
-          // Refresh contributors list
-          fetchContributors()
-        }
+        setInviteSuccess(data.message)
+        fetchContributors()
         setInviteEmail("")
+      } else {
+        setInviteError(data.error)
       }
     } catch (error) {
       console.error("Error sending invite:", error)
+      setInviteError("An unexpected error occurred.")
     } finally {
       setIsLoading(false)
+      setTimeout(() => {
+        setInviteError(null)
+        setInviteSuccess(null)
+      }, 5000)
     }
   }
 
@@ -293,6 +304,9 @@ export default function SettingsTab({
               Send
             </Button>
           </div>
+
+          {inviteError && <p className="text-red-500 text-sm">{inviteError}</p>}
+          {inviteSuccess && <p className="text-green-500 text-sm">{inviteSuccess}</p>}
 
           <div className="space-y-3">
             <Label className="text-white text-sm">Server Access:</Label>

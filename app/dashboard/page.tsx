@@ -55,7 +55,11 @@ interface PendingInvite {
   _id: string
   serverId: string
   serverName: string
-  invitedBy: string
+  serverIcon?: string
+  inviter: {
+    username: string
+    avatar?: string
+  }
 }
 
 export default function Dashboard() {
@@ -69,7 +73,6 @@ export default function Dashboard() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([])
-  const [showInviteModal, setShowInviteModal] = useState(false)
 
   useEffect(() => {
     if (session?.user?.email === "dmarton336@gmail.com") {
@@ -122,10 +125,7 @@ export default function Dashboard() {
       const invitesResponse = await fetch("/api/invites/pending")
       if (invitesResponse.ok) {
         const invitesData = await invitesResponse.json()
-        if (invitesData.invites.length > 0) {
-          setPendingInvites(invitesData.invites)
-          setShowInviteModal(true)
-        }
+        setPendingInvites(invitesData.invites)
       }
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -141,15 +141,15 @@ export default function Dashboard() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ serverId }),
-      });
+      })
       if (response.ok) {
-        setPendingInvites(pendingInvites.filter((invite) => invite.serverId !== serverId));
-        fetchData(); // Refresh server list
+        setPendingInvites(pendingInvites.filter((invite) => invite.serverId !== serverId))
+        fetchData() // Refresh server list
       }
     } catch (error) {
-      console.error("Error accepting invite:", error);
+      console.error("Error accepting invite:", error)
     }
-  };
+  }
 
   const handleDeclineInvite = async (serverId: string) => {
     try {
@@ -157,14 +157,14 @@ export default function Dashboard() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ serverId }),
-      });
+      })
       if (response.ok) {
-        setPendingInvites(pendingInvites.filter((invite) => invite.serverId !== serverId));
+        setPendingInvites(pendingInvites.filter((invite) => invite.serverId !== serverId))
       }
     } catch (error) {
-      console.error("Error declining invite:", error);
+      console.error("Error declining invite:", error)
     }
-  };
+  }
 
   const handleSelectServer = async (guild: DiscordGuild) => {
     try {
@@ -346,6 +346,56 @@ export default function Dashboard() {
       </Button>
 
       <div className="container mx-auto px-4 py-8">
+        {pendingInvites.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold text-white mb-4">Pending Invitations</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {pendingInvites.map((invite) => (
+                <Card
+                  key={invite._id}
+                  className="hover-glow animate-fade-in group overflow-hidden bg-black/50 border-white/10"
+                >
+                  <div
+                    className="relative h-24 bg-cover bg-center"
+                    style={{
+                      backgroundImage: `url(${
+                        invite.serverIcon
+                          ? `https://cdn.discordapp.com/icons/${invite.serverId}/${invite.serverIcon}.png?size=128`
+                          : ""
+                      })`,
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                  </div>
+                  <CardContent className="p-6 relative -mt-20">
+                    <div className="relative z-10 flex flex-col items-center text-center">
+                      <Avatar className="w-20 h-20 border-4 border-gray-800">
+                        <AvatarImage src={invite.inviter.avatar || ""} alt={invite.inviter.username} />
+                        <AvatarFallback>{invite.inviter.username.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <p className="mt-2 text-gray-300">
+                        <span className="font-bold text-white">{invite.inviter.username}</span> invited you to manage
+                      </p>
+                      <p className="text-lg font-semibold text-white truncate">{invite.serverName}</p>
+                      <div className="flex space-x-2 mt-4">
+                        <Button
+                          onClick={() => handleAcceptInvite(invite.serverId)}
+                          size="sm"
+                          className="bg-white text-black hover:bg-gray-200"
+                        >
+                          Accept
+                        </Button>
+                        <Button onClick={() => handleDeclineInvite(invite.serverId)} size="sm" variant="destructive">
+                          Decline
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
         {userServers.length > 0 && (
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-white mb-4">Your Configured Servers</h2>
@@ -550,35 +600,6 @@ export default function Dashboard() {
           </div>
         )}
       </div>
-
-      {showInviteModal && pendingInvites.length > 0 && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="glass-card max-w-lg w-full">
-            <CardHeader>
-              <CardTitle>Server Invitations</CardTitle>
-              <CardDescription>You have pending invitations to join servers.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {pendingInvites.map((invite) => (
-                <div key={invite._id} className="flex items-center justify-between p-3 bg-black/40 rounded-lg">
-                  <div>
-                    <p className="font-semibold">{invite.serverName}</p>
-                    <p className="text-sm text-gray-400">Invited by: {invite.invitedBy}</p>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button onClick={() => handleAcceptInvite(invite.serverId)} size="sm">
-                      Accept
-                    </Button>
-                    <Button onClick={() => handleDeclineInvite(invite.serverId)} size="sm" variant="destructive">
-                      Decline
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   )
 }

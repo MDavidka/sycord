@@ -28,7 +28,11 @@ export async function GET(request: NextRequest) {
         return {
           ...invite,
           serverName: server?.serverName || "Unknown Server",
-          invitedBy: inviter?.username || "Unknown User",
+          serverIcon: server?.serverIcon,
+          inviter: {
+            username: inviter?.username || "Unknown User",
+            avatar: inviter?.avatar,
+          },
         }
       }),
     )
