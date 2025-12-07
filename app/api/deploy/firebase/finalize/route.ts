@@ -1,58 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import clientPromise from "@/lib/mongodb"
-
-/**
- * Helper function to get valid access token
- */
-async function getAccessToken(userId: string) {
-  const client = await clientPromise
-  const db = client.db("dash-bot")
-  const deploymentsCollection = db.collection("firebase_deployments")
-
-  const deployment = await deploymentsCollection.findOne({ userId })
-
-  if (!deployment || !deployment.accessToken) {
-    throw new Error("No Firebase credentials found")
-  }
-
-  let accessToken = deployment.accessToken
-
-  if (deployment.expiresAt && new Date(deployment.expiresAt) < new Date()) {
-    const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        client_id: process.env.GOOGLE_CLIENT_ID!,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-        refresh_token: deployment.refreshToken,
-        grant_type: "refresh_token",
-      }),
-    })
-
-    if (!refreshResponse.ok) {
-      throw new Error("Failed to refresh token")
-    }
-
-    const tokens = await refreshResponse.json()
-    accessToken = tokens.access_token
-    
-    await deploymentsCollection.updateOne(
-      { userId },
-      {
-        $set: {
-          accessToken: tokens.access_token,
-          expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
-        },
-      }
-    )
-  }
-
-  return accessToken
-}
+import { isAdmin, getAccessToken, getDeploymentCollections } from "@/lib/firebase-deploy-utils"
 
 /**
  * Finalizes the deployment and makes it live
@@ -61,7 +10,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session || session.user?.email !== "dmarton336@gmail.com") {
+    if (!session || !isAdmin(session.user?.email)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -132,11 +81,9 @@ export async function POST(request: NextRequest) {
     console.log(`[Firebase Finalize] Release created: ${release.name}`)
 
     // Store deployment record
-    const client = await clientPromise
-    const db = client.db("dash-bot")
-    const deploymentsHistory = db.collection("deployment_history")
+    const { historyCollection } = await getDeploymentCollections()
 
-    await deploymentsHistory.insertOne({
+    await historyCollection.insertOne({
       userId: session.user.email,
       projectId,
       siteId: site,
@@ -150,6 +97,7 @@ export async function POST(request: NextRequest) {
       success: true,
       release: release.name,
       url: `https://${site}.web.app`,
+      alternativeUrl: `https://${site}.firebaseapp.com`,
       message: "Deployment successful! Site is now live."
     })
 

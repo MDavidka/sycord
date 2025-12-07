@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import clientPromise from "@/lib/mongodb"
+import { isAdmin, getDeploymentCollections } from "@/lib/firebase-deploy-utils"
 
 /**
  * Get Firebase deployment status and credentials
@@ -10,14 +10,11 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session || session.user?.email !== "dmarton336@gmail.com") {
+    if (!session || !isAdmin(session.user?.email)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const client = await clientPromise
-    const db = client.db("dash-bot")
-    const deploymentsCollection = db.collection("firebase_deployments")
-    const historyCollection = db.collection("deployment_history")
+    const { deploymentsCollection, historyCollection } = await getDeploymentCollections()
 
     const deployment = await deploymentsCollection.findOne({ userId: session.user.email })
     const recentDeployments = await historyCollection

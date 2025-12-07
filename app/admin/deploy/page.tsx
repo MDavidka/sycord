@@ -108,8 +108,20 @@ export default function DeployPage() {
       let parsedFiles
       try {
         parsedFiles = JSON.parse(files)
+        
+        // Validate it's an array
+        if (!Array.isArray(parsedFiles)) {
+          throw new Error("Files must be an array")
+        }
+        
+        // Validate each file has required fields
+        for (const file of parsedFiles) {
+          if (!file.path || !file.content) {
+            throw new Error(`Each file must have 'path' and 'content' properties`)
+          }
+        }
       } catch (e) {
-        throw new Error("Invalid JSON format for files")
+        throw new Error(`Invalid JSON format: ${e instanceof Error ? e.message : String(e)}. Expected format: [{"path": "index.html", "content": "<html>..."}]`)
       }
 
       // Step 1: Check/Create Firebase app
@@ -188,6 +200,12 @@ export default function DeployPage() {
       setDeploymentSuccess(true)
       setDeploymentUrl(finalizeData.url)
       setDeploymentStep("Deployment successful!")
+      
+      // Show alternative URL if available
+      if (finalizeData.alternativeUrl) {
+        console.log("Alternative URL:", finalizeData.alternativeUrl)
+      }
+      
       await fetchStatus() // Refresh status
 
     } catch (error) {
@@ -331,7 +349,7 @@ export default function DeployPage() {
                   disabled={deploying}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Example: {`[{"path": "index.html", "content": "<html><body>Hello</body></html>"}]`}
+                  JSON array of files with &apos;path&apos; and &apos;content&apos; properties. Example: {`[{"path": "index.html", "content": "<html><body>Hello</body></html>"}]`}
                 </p>
               </div>
 
@@ -357,6 +375,10 @@ export default function DeployPage() {
                     >
                       {deploymentUrl}
                     </a>
+                    <br />
+                    <span className="text-xs text-green-300">
+                      Also accessible at: {deploymentUrl.replace('.web.app', '.firebaseapp.com')}
+                    </span>
                   </AlertDescription>
                 </Alert>
               )}

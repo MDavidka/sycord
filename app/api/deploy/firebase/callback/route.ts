@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import clientPromise from "@/lib/mongodb"
+import { isAdmin, getDeploymentCollections } from "@/lib/firebase-deploy-utils"
 
 /**
  * Handles OAuth callback from Google
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if user is admin
-    if (session.user?.email !== "dmarton336@gmail.com") {
+    if (!isAdmin(session.user?.email)) {
       return NextResponse.redirect(`${process.env.NEXTAUTH_URL}/dashboard`)
     }
 
@@ -66,9 +66,7 @@ export async function GET(request: NextRequest) {
     console.log("[Firebase OAuth Callback] Successfully obtained tokens")
 
     // Store tokens in database
-    const client = await clientPromise
-    const db = client.db("dash-bot")
-    const deploymentsCollection = db.collection("firebase_deployments")
+    const { deploymentsCollection } = await getDeploymentCollections()
 
     await deploymentsCollection.updateOne(
       { userId: session.user.email },

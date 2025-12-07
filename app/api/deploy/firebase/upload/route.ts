@@ -1,59 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import clientPromise from "@/lib/mongodb"
+import { isAdmin, getAccessToken, validateFile } from "@/lib/firebase-deploy-utils"
 import { createHash } from "crypto"
-
-/**
- * Helper function to get valid access token
- */
-async function getAccessToken(userId: string) {
-  const client = await clientPromise
-  const db = client.db("dash-bot")
-  const deploymentsCollection = db.collection("firebase_deployments")
-
-  const deployment = await deploymentsCollection.findOne({ userId })
-
-  if (!deployment || !deployment.accessToken) {
-    throw new Error("No Firebase credentials found")
-  }
-
-  let accessToken = deployment.accessToken
-
-  if (deployment.expiresAt && new Date(deployment.expiresAt) < new Date()) {
-    const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        client_id: process.env.GOOGLE_CLIENT_ID!,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET!,
-        refresh_token: deployment.refreshToken,
-        grant_type: "refresh_token",
-      }),
-    })
-
-    if (!refreshResponse.ok) {
-      throw new Error("Failed to refresh token")
-    }
-
-    const tokens = await refreshResponse.json()
-    accessToken = tokens.access_token
-    
-    await deploymentsCollection.updateOne(
-      { userId },
-      {
-        $set: {
-          accessToken: tokens.access_token,
-          expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
-        },
-      }
-    )
-  }
-
-  return accessToken
-}
 
 /**
  * Uploads files to Firebase Hosting
@@ -62,7 +11,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session || session.user?.email !== "dmarton336@gmail.com") {
+    if (!session || !isAdmin(session.user?.email)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -77,6 +26,17 @@ export async function POST(request: NextRequest) {
     const site = siteId || projectId
 
     console.log(`[Firebase Upload] Uploading ${files.length} files to version: ${versionId}`)
+
+    // Validate each file
+    for (const file of files) {
+      const validation = validateFile(file)
+      if (!validation.valid) {
+        return NextResponse.json({ 
+          error: `Invalid file: ${validation.error}`,
+          file: file.path 
+        }, { status: 400 })
+      }
+    }
 
     const accessToken = await getAccessToken(session.user.email)
 

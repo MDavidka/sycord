@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { isAdmin } from "@/lib/firebase-deploy-utils"
 
 /**
  * Initiates Google OAuth flow for Firebase deployment
@@ -15,7 +16,7 @@ export async function GET() {
     }
 
     // Check if user is admin
-    if (session.user?.email !== "dmarton336@gmail.com") {
+    if (!isAdmin(session.user?.email)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
