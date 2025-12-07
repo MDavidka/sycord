@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ArrowLeft, Plus, Package, Users, Calendar } from "lucide-react"
+import { ArrowLeft, Plus, Package, Users, Calendar, Cloud } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 
@@ -120,10 +120,18 @@ export default function AdminPluginsPage() {
                 <p className="text-sm text-gray-400">Manage plugins for the Dash bot platform</p>
               </div>
             </div>
-            <Button onClick={() => setShowCreateForm(true)} className="bg-white text-black hover:bg-gray-200">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Plugin
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Link href="/admin/deploy">
+                <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
+                  <Cloud className="h-4 w-4 mr-2" />
+                  Deploy
+                </Button>
+              </Link>
+              <Button onClick={() => setShowCreateForm(true)} className="bg-white text-black hover:bg-gray-200">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Plugin
+              </Button>
+            </div>
           </div>
         </div>
       </header>
