@@ -47,20 +47,39 @@ export default function DeployPage() {
   const [deploymentError, setDeploymentError] = useState("")
   const [deploymentSuccess, setDeploymentSuccess] = useState(false)
   const [deploymentUrl, setDeploymentUrl] = useState("")
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     if (sessionStatus === "unauthenticated") {
       router.push("/login")
-    } else if (session?.user?.email !== "dmarton336@gmail.com") {
-      router.push("/dashboard")
     }
-  }, [sessionStatus, session, router])
+  }, [sessionStatus, router])
 
   useEffect(() => {
-    if (session?.user?.email === "dmarton336@gmail.com") {
-      fetchStatus()
+    // Check admin status by attempting to fetch deployment status
+    // If unauthorized, user is not admin and will be redirected
+    if (session) {
+      checkAdminAndFetchStatus()
     }
   }, [session])
+
+  const checkAdminAndFetchStatus = async () => {
+    try {
+      const response = await fetch("/api/deploy/firebase/status")
+      if (response.ok) {
+        const data = await response.json()
+        setStatus(data)
+        setIsAdmin(true)
+      } else if (response.status === 401 || response.status === 403) {
+        // Not admin, redirect to dashboard
+        router.push("/dashboard")
+      }
+    } catch (error) {
+      console.error("Error checking admin status:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
     // Check for OAuth callback errors/success
@@ -83,8 +102,6 @@ export default function DeployPage() {
       }
     } catch (error) {
       console.error("Error fetching status:", error)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -227,7 +244,7 @@ export default function DeployPage() {
     )
   }
 
-  if (!session || session.user?.email !== "dmarton336@gmail.com") {
+  if (!session || !isAdmin) {
     return null
   }
 

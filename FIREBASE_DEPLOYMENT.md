@@ -21,6 +21,9 @@ The Firebase deployment feature allows administrators to deploy the site to Fire
 Add the following environment variables to your `.env.local` file:
 
 ```bash
+# Admin Configuration
+ADMIN_EMAIL=your-admin-email@example.com  # Email address of the admin user
+
 # Google OAuth Credentials
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
@@ -28,6 +31,8 @@ GOOGLE_CLIENT_SECRET=your-google-client-secret
 # NextAuth Configuration
 NEXTAUTH_URL=http://localhost:3000  # or your production URL
 ```
+
+**Important**: The `ADMIN_EMAIL` environment variable must be set to restrict deployment access to authorized administrators only.
 
 ### Google Cloud Console Setup
 
@@ -45,7 +50,7 @@ NEXTAUTH_URL=http://localhost:3000  # or your production URL
 
 ### Accessing the Deployment Page
 
-1. Log in as an admin (email: `dmarton336@gmail.com`)
+1. Log in as an admin (the email must match the `ADMIN_EMAIL` environment variable)
 2. Navigate to Admin Panel → Plugins
 3. Click the "Deploy" button in the header
 4. You'll be redirected to `/admin/deploy`
@@ -140,11 +145,12 @@ Stores deployment records:
 
 ## Security Features
 
-1. **Admin-only access**: Only users with email `dmarton336@gmail.com` can access deployment features
+1. **Admin-only access**: Only users with email matching `ADMIN_EMAIL` environment variable can access deployment features
 2. **Token refresh**: Automatically refreshes expired OAuth tokens
 3. **Secure token storage**: Tokens stored in MongoDB database
 4. **OAuth scopes**: Minimal required scopes for Firebase Hosting
 5. **Error handling**: Comprehensive error handling and logging
+6. **File validation**: Size limits and path sanitization to prevent malicious uploads
 
 ## Debugging
 

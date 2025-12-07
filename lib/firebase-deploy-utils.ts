@@ -3,12 +3,16 @@ import clientPromise from "@/lib/mongodb"
 /**
  * Admin configuration
  */
-export const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "dmarton336@gmail.com"
+export const ADMIN_EMAIL = process.env.ADMIN_EMAIL || ""
 
 /**
  * Helper function to check if user is admin
  */
 export function isAdmin(email?: string | null): boolean {
+  if (!ADMIN_EMAIL) {
+    console.warn("[Admin Check] ADMIN_EMAIL environment variable not set")
+    return false
+  }
   return email === ADMIN_EMAIL
 }
 
