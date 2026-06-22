@@ -1,9 +1,12 @@
 import type { Metadata } from "next"
 import "./globals.css"
+import Navbar from "@/components/Navbar"
+import Footer from "@/components/Footer"
+import CartDrawer from "@/components/CartDrawer"
 
 export const metadata: Metadata = {
-  title: "Petal & Bloom | Artisan Flower Shop & DIY Studio",
-  description: "Fresh, handcrafted bouquets and custom flower arrangements hand-delivered to your doorstep. Experience our interactive DIY Bouquet Studio and live delivery tracker.",
+  title: "Petal & Bloom | Artisan Florist & Custom DIY Bouquets",
+  description: "Handcrafted signature floral arrangements, custom DIY bouquets, and same-day fresh flower delivery.",
 }
 
 export default function RootLayout({
@@ -12,15 +15,12 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="bg-background">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
-      </head>
-      <body className="antialiased">
-        {children}
+    <html lang="en" className="bg-background scroll-smooth">
+      <body className="flex flex-col min-h-screen selection:bg-primary/20 selection:text-primary">
+        <Navbar />
+        <main className="flex-grow">{children}</main>
+        <Footer />
+        <CartDrawer />
       </body>
     </html>
   )
