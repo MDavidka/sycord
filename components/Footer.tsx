@@ -19,7 +19,9 @@ export default function Footer() {
 
   const navigateTo = (tab: "home" | "catalog" | "builder" | "care" | "tracker") => {
     setActiveTab(tab)
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    }
   }
 
   return (

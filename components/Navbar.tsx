@@ -21,7 +21,9 @@ export default function Navbar() {
   const handleNavClick = (tab: typeof navLinks[number]["id"]) => {
     setActiveTab(tab)
     setIsMobileMenuOpen(false)
-    window.scrollTo({ top: 0, behavior: "smooth" })
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    }
   }
 
   return (

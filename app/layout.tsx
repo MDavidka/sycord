@@ -1,26 +1,26 @@
 import type { Metadata } from "next"
 import "./globals.css"
-import Navbar from "@/components/Navbar"
-import Footer from "@/components/Footer"
-import CartDrawer from "@/components/CartDrawer"
 
 export const metadata: Metadata = {
-  title: "Petal & Bloom | Artisan Florist & Custom DIY Bouquets",
-  description: "Handcrafted signature floral arrangements, custom DIY bouquets, and same-day fresh flower delivery.",
+  title: "Petal & Bloom | Artisan Florist & Flower Delivery",
+  description: "Bespoke handcrafted bouquets, same-day delivery, and a custom DIY flower arrangement studio.",
 }
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
-    <html lang="en" className="bg-background scroll-smooth">
-      <body className="flex flex-col min-h-screen selection:bg-primary/20 selection:text-primary">
-        <Navbar />
-        <main className="flex-grow">{children}</main>
-        <Footer />
-        <CartDrawer />
+    <html lang="en" className="bg-background">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet" />
+      </head>
+      <body className="min-h-screen flex flex-col bg-background text-foreground">
+        {children}
       </body>
     </html>
   )

@@ -87,7 +87,9 @@ export default function CartDrawer() {
       
       // Redirect to tracker tab
       setActiveTab("tracker")
-      window.scrollTo({ top: 0, behavior: "smooth" })
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" })
+      }
     }, 1800)
   }
 

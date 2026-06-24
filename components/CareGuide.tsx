@@ -1,276 +1,208 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { Search, Heart, BookOpen, AlertTriangle, Droplet, Scissors, ThermometerSun, RefreshCw } from "lucide-react"
+import { useState } from "react"
+import { Search, ChevronDown, ChevronUp, Flower, ShieldCheck, Heart, Sparkles } from "lucide-react"
 
 interface CareTip {
   id: string
-  name: string
+  species: string
   emoji: string
-  difficulty: "Easy" | "Medium" | "Advanced"
-  watering: string
-  trimming: string
-  placement: string
-  extra: string
+  difficulty: "Easy" | "Medium" | "Challenging"
+  summary: string
+  water: string
+  light: string
+  temperature: string
+  proTip: string
 }
 
-const SPECIAL_CARE_TIPS: CareTip[] = [
+const CARE_TIPS: CareTip[] = [
   {
     id: "roses",
-    name: "Artisan Roses",
+    species: "Roses (Cut Bouquets)",
     emoji: "🌹",
     difficulty: "Easy",
-    watering: "Change water every 2 days. Fill the vase up to 2/3 with clean, lukewarm water mixed with flower food.",
-    trimming: "Re-cut stems at a 45-degree angle every 2-3 days using sharp shears. Remove any leaves that sit below the water line.",
-    placement: "Keep in a cool, draft-free room away from direct sunlight and ripening fruit (which emits ethylene gas).",
-    extra: "If a rose head begins to droop, submerge the entire stem in warm water for 30 minutes to rehydrate the capillaries."
-  },
-  {
-    id: "peonies",
-    name: "Luxury Peonies",
-    emoji: "🌸",
-    difficulty: "Medium",
-    watering: "Peonies are heavy drinkers! Check the water level daily and keep the vase filled with fresh, cool water.",
-    trimming: "Cut stems at a sharp angle. If they are in tight buds, gently massage the petals or use warm water to encourage blooming.",
-    placement: "Thrive in cool environments. To slow down their bloom, place them in a cool dark room overnight.",
-    extra: "Peonies secrete a sticky sap. If buds are stuck closed, gently wipe them with a damp, warm cotton pad to help them open."
+    summary: "Cut roses can last up to 10-14 days with proper water hygiene and stem trimming.",
+    water: "Change water every 2 days. Use lukewarm water mixed with the provided flower food. Wash the vase thoroughly before refilling to eliminate bacteria.",
+    light: "Keep in a cool, draft-free room away from direct sunlight, radiators, or ripening fruit (which releases ethylene gas that ages flowers).",
+    temperature: "Cooler temperatures (60-68°F / 15-20°C) prolong rose life significantly.",
+    proTip: "Trim stems at a 45-degree angle under water using sharp shears. This prevents air bubbles from blocking the stem's water absorption capillaries."
   },
   {
     id: "lilies",
-    name: "Majestic Lilies",
+    species: "Lilies (Oriental & Asiatic)",
     emoji: "⚜️",
     difficulty: "Easy",
-    watering: "Keep water clean and clear. Lilies prefer deep vases with clean, room-temperature water.",
-    trimming: "Trim 1 inch off the bottom of the stems. Crucially, remove the yellow pollen anthers from the center as they open.",
-    placement: "Place in indirect light. Keep away from curious pets—lilies are highly toxic to cats.",
-    extra: "Removing the pollen anthers prevents staining of petals and tablecloths, and significantly extends the flower's lifespan."
-  },
-  {
-    id: "tulips",
-    name: "Vibrant Tulips",
-    emoji: "🌷",
-    difficulty: "Easy",
-    watering: "Tulips prefer ice-cold water! They will continue to grow in height even after being cut.",
-    trimming: "Prune stems straight across rather than angled. Pinprick the stem just below the bloom to prevent drooping.",
-    placement: "Keep away from heat. Tulips are phototropic—they bend toward light sources, so rotate the vase daily.",
-    extra: "Never mix tulips in a vase with fresh daffodils, as daffodils secrete an acidic sap that is toxic to other flowers."
+    summary: "Lilies are hardy blooms that open sequentially, giving a long-lasting show.",
+    water: "Fill the vase halfway with fresh water and flower food. Snip 1 inch off the stems every 3 days.",
+    light: "Thrive in bright, indirect light. Direct sunlight can scorch delicate petals.",
+    temperature: "Standard indoor room temperature (65-72°F) is perfect.",
+    proTip: "Gently snip off the pollen-bearing anthers from the center as soon as each bloom opens. This prevents staining of petals, furniture, and clothes, and extends the bloom's lifespan!"
   },
   {
     id: "orchids",
-    name: "Elegant Orchids",
-    emoji: "🪻",
-    difficulty: "Advanced",
-    watering: "Water sparingly. Give them 3 ice cubes once a week, or soak the root bark and let it drain completely.",
-    trimming: "Do not cut the main green spikes unless they turn yellow/brown. Prune dead roots with sterile scissors.",
-    placement: "Thrive in humid, warm environments with bright, filtered indirect sunlight (like a bathroom windowsill).",
-    extra: "Use a special orchid potting mix (bark) rather than soil, and feed with diluted orchid fertilizer once a month."
-  },
-  {
-    id: "hydrangeas",
-    name: "Hydrangeas",
+    species: "Phalaenopsis Orchids (Potted)",
     emoji: "🪻",
     difficulty: "Medium",
-    watering: "They love water (hence 'hydra'!). Spray their heads gently with a misting bottle daily.",
-    trimming: "Cut stems at a 45-degree angle, then make a vertical 1-inch slit up the bottom of the stem to maximize water absorption.",
-    placement: "Keep cool and shaded. Direct hot sun will cause instant wilting.",
-    extra: "If your hydrangea wilts, submerge the entire flower head in cool water for 1-2 hours. It will absorb water through its petals and fully revive!"
+    summary: "Potted orchids can bloom for months on end with minimal, precise watering.",
+    water: "Water once a week. The 'ice cube trick' (placing 3 ice cubes on the bark) works, but running lukewarm water through the bark for 30 seconds and letting it drain fully is ideal. Never let roots sit in water.",
+    light: "Bright, filtered indirect light (e.g., behind a sheer curtain). Yellow leaves indicate too much light; dark green leaves indicate too little.",
+    temperature: "65-80°F (18-27°C) during the day, with a slight drop at night.",
+    proTip: "Once all blooms fall, do not throw the plant away! Cut the stem just above the second node from the base to encourage a secondary flower spike in a few months."
+  },
+  {
+    id: "tulips",
+    species: "Tulips",
+    emoji: "🌷",
+    difficulty: "Easy",
+    summary: "Tulips continue to grow and bend toward the light even after being cut!",
+    water: "Keep water levels shallow (2-3 inches) but fresh. Tulips are thirsty but can rot if submerged too deep.",
+    light: "Keep in a cool spot away from bright sunlight. They naturally curve toward any ambient light source.",
+    temperature: "Keep as cool as possible. Adding an ice cube to the water can revive droopy tulips.",
+    proTip: "Tulips are phototropic (bend toward light). If you want them to stand straight, wrap them tightly in damp newspaper for a few hours after cutting before arranging them."
+  },
+  {
+    id: "peonies",
+    species: "Peonies",
+    emoji: "🌺",
+    difficulty: "Medium",
+    summary: "Stunning, massive blooms that transition from tight 'golf balls' to fluffy clouds.",
+    water: "Peonies are heavy drinkers. Keep vase filled with clean, food-treated water.",
+    light: "Moderate indirect light. Warm rooms will cause them to open very rapidly.",
+    temperature: "Cool spots extend their short but glorious blooming window.",
+    proTip: "If your peonies are stuck in tight buds and you need them to open for an event, gently massage the bud under warm water to dissolve the sticky sap holding the petals together."
   }
 ]
 
 export default function CareGuide() {
   const [search, setSearch] = useState("")
-  const [selectedTip, setSelectedTip] = useState<CareTip | null>(SPECIAL_CARE_TIPS[0])
+  const [openId, setOpenId] = useState<string | null>("roses")
 
-  const filteredTips = useMemo(() => {
-    return SPECIAL_CARE_TIPS.filter((tip) =>
-      tip.name.toLowerCase().includes(search.toLowerCase())
-    )
-  }, [search])
+  const filteredTips = CARE_TIPS.filter((tip) =>
+    tip.species.toLowerCase().includes(search.toLowerCase()) ||
+    tip.summary.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const toggleOpen = (id: string) => {
+    setOpenId(openId === id ? null : id)
+  }
 
   return (
-    <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+    <section className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Header */}
-      <div className="border-b border-border pb-6 text-center md:text-left">
-        <span className="rounded-full bg-primary/10 text-primary px-3 py-1 text-xs font-semibold tracking-wider uppercase">
-          Florist Secrets
-        </span>
-        <h2 className="text-3xl font-bold tracking-tight text-foreground mt-2 font-serif">
+      <div className="border-b border-border pb-6 text-center">
+        <h2 className="text-3xl font-bold tracking-tight text-foreground font-serif">
           Flower Care & Longevity Guide
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Learn how to make your premium hand-tied bouquets and indoor plants bloom beautifully for up to 14 days.
+        <p className="text-sm text-muted-foreground mt-1 max-w-lg mx-auto">
+          Learn the secrets of professional florists to keep your fresh cut bouquets and potted plants blooming beautifully for weeks.
         </p>
       </div>
 
-      {/* Universal Golden Rules */}
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-border bg-white p-4 flex gap-3 shadow-xs">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <Scissors className="h-5 w-5" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-foreground">1. Trim Stems</h4>
-            <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
-              Cut 1 inch off stems at a 45° angle under running water. This prevents air bubbles from blocking hydration.
-            </p>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border bg-white p-4 flex gap-3 shadow-xs">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <Droplet className="h-5 w-5" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-foreground">2. Clean Water</h4>
-            <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
-              Wash the vase thoroughly. Fill with fresh water and stir in the flower food packet. Change water every 2 days.
-            </p>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border bg-white p-4 flex gap-3 shadow-xs">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <ThermometerSun className="h-5 w-5" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-foreground">3. Cool Spot</h4>
-            <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
-              Keep blooms away from direct hot sun, cold drafts, radiators, and ripening fruit (which wilts petals).
-            </p>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border bg-white p-4 flex gap-3 shadow-xs">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <RefreshCw className="h-5 w-5" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-foreground">4. Prune Foliage</h4>
-            <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
-              Pinch off any leaves that sit below the water level. Submerged leaves rot, cultivating harmful bacteria.
-            </p>
-          </div>
+      {/* Quick Search */}
+      <div className="mt-6 max-w-md mx-auto">
+        <div className="relative">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search flower species (e.g. Roses, Orchids)..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-full border border-border bg-white pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          />
         </div>
       </div>
 
-      {/* Ethylene gas warning box */}
-      <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50/50 p-4 flex items-start gap-3 text-xs text-amber-900">
-        <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-        <div>
-          <p className="font-bold">The Silent Wilter: Ripening Fruit</p>
-          <p className="text-[10px] text-amber-800 mt-0.5 leading-relaxed">
-            Keep your fresh flower arrangements far away from fruit bowls! Ripening fruits (especially bananas, apples, and avocados) release invisible ethylene gas, which triggers rapid aging and premature wilting in delicate petals.
-          </p>
+      {/* General Golden Rules */}
+      <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col items-center text-center space-y-2">
+          <ShieldCheck className="h-6 w-6 text-primary" />
+          <h4 className="text-xs font-bold uppercase text-foreground">1. Keep it Clean</h4>
+          <p className="text-[10px] text-muted-foreground leading-relaxed">Bacteria is the #1 enemy of cut flowers. Wash your vase with soap and warm water before arranging.</p>
+        </div>
+        <div className="rounded-xl border border-secondary/20 bg-secondary/5 p-4 flex flex-col items-center text-center space-y-2">
+          <Heart className="h-6 w-6 text-secondary" />
+          <h4 className="text-xs font-bold uppercase text-foreground">2. Feed Them</h4>
+          <p className="text-[10px] text-muted-foreground leading-relaxed">Always use the provided flower food. It contains glucose for nourishment and a bactericide to keep water clear.</p>
+        </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 flex flex-col items-center text-center space-y-2">
+          <Sparkles className="h-6 w-6 text-amber-600" />
+          <h4 className="text-xs font-bold uppercase text-foreground">3. Trim & Prune</h4>
+          <p className="text-[10px] text-muted-foreground leading-relaxed">Snip 1 inch off stems at an angle every 2 days, and strip any leaves that sit below the water level to prevent rot.</p>
         </div>
       </div>
 
-      {/* Specialty Species Guides */}
-      <div className="mt-10 grid grid-cols-1 md:grid-cols-12 gap-8">
-        {/* Left Column: Species List (5 cols) */}
-        <div className="md:col-span-4 space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search flower species..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-border bg-white pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-            />
+      {/* Species Accordion */}
+      <div className="mt-8 space-y-3">
+        {filteredTips.length === 0 ? (
+          <div className="text-center py-12 border border-dashed border-border rounded-xl bg-white text-muted-foreground text-xs">
+            No care guides found matching your search. Try &ldquo;Roses&rdquo; or &ldquo;Lilies&rdquo;.
           </div>
-
-          <div className="space-y-2 max-h-[300px] md:max-h-none overflow-y-auto">
-            {filteredTips.map((tip) => (
-              <button
+        ) : (
+          filteredTips.map((tip) => {
+            const isOpen = openId === tip.id
+            return (
+              <div
                 key={tip.id}
-                onClick={() => setSelectedTip(tip)}
-                className={`w-full flex items-center justify-between rounded-xl border p-3 text-left transition-all ${
-                  selectedTip?.id === tip.id
-                    ? "border-primary bg-primary/5 text-primary shadow-xs"
-                    : "border-border bg-white text-muted-foreground hover:bg-stone-50 hover:text-foreground"
-                }`}
+                className="rounded-xl border border-border bg-white overflow-hidden shadow-xs transition-all duration-200"
               >
-                <div className="flex items-center gap-2.5">
-                  <span className="text-2xl">{tip.emoji}</span>
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground">{tip.name}</h4>
-                    <span className="text-[9px] text-muted-foreground">Difficulty: {tip.difficulty}</span>
+                {/* Accordion Trigger */}
+                <button
+                  onClick={() => toggleOpen(tip.id)}
+                  className="w-full flex items-center justify-between p-4 text-left hover:bg-stone-50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">{tip.emoji}</span>
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground font-serif">{tip.species}</h3>
+                      <span className={`inline-block text-[9px] font-bold uppercase px-2 py-0.5 rounded-full mt-1 ${
+                        tip.difficulty === "Easy"
+                          ? "bg-emerald-50 text-emerald-600"
+                          : tip.difficulty === "Medium"
+                          ? "bg-amber-50 text-amber-600"
+                          : "bg-red-50 text-red-600"
+                      }`}>
+                        Difficulty: {tip.difficulty}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                {selectedTip?.id === tip.id && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
-              </button>
-            ))}
-            {filteredTips.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-6">No matching flower guides found.</p>
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: Species Detail Card (8 cols) */}
-        <div className="md:col-span-8">
-          {selectedTip ? (
-            <div className="rounded-2xl border border-border bg-white p-6 shadow-sm space-y-6 animate-in fade-in duration-300">
-              <div className="flex items-center justify-between border-b border-border pb-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-4xl bg-stone-50 h-14 w-14 rounded-xl flex items-center justify-center shadow-inner border border-border">
-                    {selectedTip.emoji}
-                  </span>
-                  <div>
-                    <h3 className="text-xl font-bold text-foreground font-serif">{selectedTip.name} Care</h3>
-                    <span className="inline-block rounded-full bg-primary/10 text-primary text-[9px] font-bold px-2 py-0.5 mt-1">
-                      {selectedTip.difficulty} Care Level
-                    </span>
-                  </div>
-                </div>
-                <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
-                  <Heart className="h-4 w-4" />
-                  Save Guide
+                  {isOpen ? <ChevronUp className="h-4 w-4 text-stone-400" /> : <ChevronDown className="h-4 w-4 text-stone-400" />}
                 </button>
+
+                {/* Accordion Content */}
+                {isOpen && (
+                  <div className="border-t border-border p-4 sm:p-6 bg-stone-50/50 space-y-4 text-xs text-muted-foreground animate-in slide-in-from-top duration-200">
+                    <p className="text-foreground font-medium italic border-l-2 border-primary pl-3 py-0.5">
+                      &ldquo;{tip.summary}&rdquo;
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                      <div className="space-y-1">
+                        <h4 className="font-bold text-foreground flex items-center gap-1">💧 Water & Hydration</h4>
+                        <p className="leading-relaxed text-[11px]">{tip.water}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="font-bold text-foreground flex items-center gap-1">☀️ Light & Placement</h4>
+                        <p className="leading-relaxed text-[11px]">{tip.light}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="font-bold text-foreground flex items-center gap-1">🌡️ Temperature</h4>
+                        <p className="leading-relaxed text-[11px]">{tip.temperature}</p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 flex items-start gap-2.5 text-amber-900 leading-relaxed">
+                      <span className="text-lg shrink-0">💡</span>
+                      <div>
+                        <span className="font-bold text-amber-950">Florist Pro-Tip:</span>
+                        <p className="text-[11px] mt-0.5">{tip.proTip}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs leading-relaxed">
-                <div className="space-y-1.5">
-                  <h4 className="font-bold text-foreground uppercase tracking-wider text-[10px] text-secondary flex items-center gap-1">
-                    <Droplet className="h-3.5 w-3.5" />
-                    Hydration & Water
-                  </h4>
-                  <p className="text-muted-foreground">{selectedTip.watering}</p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <h4 className="font-bold text-foreground uppercase tracking-wider text-[10px] text-secondary flex items-center gap-1">
-                    <Scissors className="h-3.5 w-3.5" />
-                    Trimming & Pruning
-                  </h4>
-                  <p className="text-muted-foreground">{selectedTip.trimming}</p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <h4 className="font-bold text-foreground uppercase tracking-wider text-[10px] text-secondary flex items-center gap-1">
-                    <ThermometerSun className="h-3.5 w-3.5" />
-                    Temperature & Placement
-                  </h4>
-                  <p className="text-muted-foreground">{selectedTip.placement}</p>
-                </div>
-
-                <div className="space-y-1.5">
-                  <h4 className="font-bold text-foreground uppercase tracking-wider text-[10px] text-secondary flex items-center gap-1">
-                    <BookOpen className="h-3.5 w-3.5" />
-                    Florist Pro-Tip
-                  </h4>
-                  <p className="text-muted-foreground italic bg-stone-50 rounded-lg p-2.5 border border-stone-100">
-                    &ldquo;{selectedTip.extra}&rdquo;
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-border bg-stone-50 p-8 text-center h-full flex flex-col items-center justify-center">
-              <BookOpen className="h-10 w-10 text-stone-300 stroke-[1.5]" />
-              <p className="text-xs text-muted-foreground mt-2">Select a flower species from the left list to view detailed tips.</p>
-            </div>
-          )}
-        </div>
+            )
+          })
+        )}
       </div>
     </section>
   )

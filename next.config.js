@@ -1,6 +1,7 @@
-/** @type {import('next').NextConfig} */
+/** @type {import('next').Next.jsConfig} */
 const nextConfig = {
   output: 'standalone',
+  reactStrictMode: true,
   images: {
     remotePatterns: [
       {
